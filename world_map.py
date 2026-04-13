@@ -433,7 +433,7 @@ def build_markers(geo_data, lang='DE'):
         share  = info['share_pct']
         cont   = CONTINENT.get(country, 'Unknown')
         color  = CONTINENT_COLORS.get(cont, '#aaaaaa')
-        radius = max(8, min(50, math.sqrt(share) * 11))
+        radius = max(6, min(32, math.sqrt(share) * 8))
         addr_parts = [p for p in [info.get('address1', ''), city,
                                    info.get('zip', ''), country] if p]
         addr_str = ', '.join(addr_parts) or country
@@ -487,13 +487,14 @@ def generate_map_html(geo_data, lang='DE'):
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stock Monitor – World Map</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
   html, body {{ width: 100%; height: 100%; overflow: hidden; }}
-  #map {{ width: 100%; height: 100%; }}
+  #map {{ position: fixed; top: 0; left: 0; right: 0; bottom: 0; }}
   #legend {{
     position: fixed; bottom: 30px; left: 20px; z-index: 1000;
     background: rgba(255,255,255,0.95); border: 1px solid #ccc;
@@ -540,21 +541,28 @@ def generate_map_html(geo_data, lang='DE'):
   // ── Karte initialisieren ──────────────────────────────────────────────────
   var map = L.map('map', {{
     center: [20, 0],
-    zoom: 3,
-    minZoom: 3,
+    zoom: 2,
+    minZoom: 1,
     maxZoom: 19,
     zoomControl: true,
     worldCopyJump: false
   }});
 
-  // CartoDB Positron — noWrap verhindert Weltkarte-Wiederholung
+  // CartoDB Positron — noWrap verhindert Wiederholung
   L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
     subdomains: 'abcd',
     maxZoom: 19,
-    noWrap: true,
-    bounds: [[-90, -180], [90, 180]]
+    noWrap: true
   }}).addTo(map);
+
+  // Zoom dynamisch berechnen: Weltkarte füllt den Canvas ohne Wiederholung (4K-kompatibel)
+  // Fraktionaler Zoom: exakter log2-Wert → gerade so gross dass kein Grau-Rand entsteht
+  map.invalidateSize();
+  var cw = map.getContainer().offsetWidth;
+  var ch = map.getContainer().offsetHeight;
+  var autoZoom = Math.max(Math.log2(cw / 256), Math.log2(ch / 256), 2);
+  map.setView([20, 0], autoZoom);
 
   // ── Marker ───────────────────────────────────────────────────────────────
   var markers = {markers_json};
@@ -582,16 +590,7 @@ def generate_map_html(geo_data, lang='DE'):
     circle.addTo(map);
   }});
 
-  // ── Karte auf Marker zentrieren ───────────────────────────────────────────
-  if (markers.length > 0) {{
-    var lats = markers.map(function(m) {{ return m.lat; }});
-    var lons = markers.map(function(m) {{ return m.lon; }});
-    var bounds = L.latLngBounds(
-      [Math.min.apply(null,lats) - 5, Math.min.apply(null,lons) - 5],
-      [Math.max.apply(null,lats) + 5, Math.max.apply(null,lons) + 5]
-    );
-    map.fitBounds(bounds, {{ padding: [40, 40] }});
-  }}
+  // Karte zeigt immer die komplette Welt – kein automatischer Zoom auf Marker
 
   // ── Legende ──────────────────────────────────────────────────────────────
   var legendData = {legend_json};

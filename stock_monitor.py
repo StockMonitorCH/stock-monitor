@@ -19,7 +19,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.0"                              # beim Release anpassen
+APP_VERSION  = "5.0.0"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Sprach- und Konfigurationsmodul ───────────────────────────────────────────
@@ -100,6 +100,12 @@ def _setup_logging():
     # Linux:         neben stock_monitor.py
     if sys.platform == "win32":
         _log_dir = os.path.dirname(sys.executable)
+    elif os.environ.get("FLATPAK_ID"):
+        # Im Flatpak-Sandbox ist /app schreibgeschützt → XDG_CACHE_HOME nutzen
+        _log_dir = os.path.join(
+            os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")),
+            "stock-monitor"
+        )
     else:
         _log_dir = os.path.dirname(os.path.abspath(__file__))
     os.makedirs(_log_dir, exist_ok=True)
@@ -748,7 +754,7 @@ class LoadingDialog(QDialog):
         layout = QVBoxLayout()
         
         # Logo/Title
-        title = QLabel("📈 <b>Stock Monitor v5.0</b>")
+        title = QLabel(f"📈 <b>Stock Monitor v{APP_VERSION}</b>")
         title.setFont(QFont("Arial", 16))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
@@ -778,177 +784,176 @@ class LoadingDialog(QDialog):
             self.status_label.setText(text)
 
 
+class UrlFinderThread(QThread):
+    """Prüft Finment-URLs per HTTP und meldet die erste funktionierende"""
+    url_found = pyqtSignal(str)
+
+    def __init__(self, urls):
+        super().__init__()
+        self.urls = urls
+
+    def run(self):
+        import urllib.request, urllib.error
+        for url in self.urls[:-1]:
+            try:
+                req = urllib.request.Request(url, method='HEAD')
+                req.add_header('User-Agent', 'Mozilla/5.0')
+                with urllib.request.urlopen(req, timeout=3) as resp:
+                    if resp.status == 200:
+                        self.url_found.emit(url)
+                        return
+            except Exception:
+                continue
+        self.url_found.emit(self.urls[-1])
+
+
 class AnalysisWindow(QDialog):
     """Fenster zur Anzeige von Aktienanalysen"""
-    
+
     def __init__(self, symbol, company_name, analysis_type, parent=None):
         super().__init__(parent)
         self.symbol = symbol
         self.company_name = company_name
-        self.analysis_type = "Finment"  # Nur noch Finment
-            
+        self.analysis_type = "Finment"
+        self._url_thread = None
+        self.current_url = None
+        self.remaining_urls = []
+
         self.setWindowTitle(f"Finment Analyse - {symbol}")
-        self.setMinimumSize(1200, 800)
-        self.setup_ui()
+
+        if _WEBENGINE_AVAILABLE:
+            self.setMinimumSize(1200, 800)
+            self._setup_webengine_ui()
+        else:
+            self.setFixedSize(500, 200)
+            self._setup_browser_ui()
+
         self.load_analysis()
-    
-    def setup_ui(self):
+
+    def _setup_webengine_ui(self):
         layout = QVBoxLayout()
-        
-        # Header mit Info
         header = QHBoxLayout()
         info_label = QLabel(f"<b>{self.symbol}</b> {self.company_name}")
         info_label.setFont(QFont("Arial", 12))
         header.addWidget(info_label)
-        
         header.addStretch()
-        
-        # Refresh Button
         refresh_btn = QPushButton(TR("btn_reload"))
         refresh_btn.clicked.connect(self.load_analysis)
         header.addWidget(refresh_btn)
-        
-        # Im Browser öffnen
         browser_btn = QPushButton(TR("btn_open_browser"))
         browser_btn.clicked.connect(self.open_in_browser)
         header.addWidget(browser_btn)
-        
-        # Close Button
         close_btn = QPushButton(TR("btn_close"))
         close_btn.setAutoDefault(False)
         close_btn.clicked.connect(self.close)
         header.addWidget(close_btn)
-        
         layout.addLayout(header)
-        
-        # Status Label
         self.status_label = QLabel(TR("status_finment_search"))
         layout.addWidget(self.status_label)
-        
-        # Web View
-        if _WEBENGINE_AVAILABLE:
-            self.web_view = QWebEngineView()
-            self.web_page = CustomWebPage(self.web_view)
-            self.web_view.setPage(self.web_page)
-            self.web_page.page_loaded.connect(self.on_page_loaded)
-            layout.addWidget(self.web_view)
-        else:
-            self.web_view = None
-            self.web_page = None
-            fallback = QLabel(
-                TR("lbl_finment_no_webengine")
-            )
-            fallback.setWordWrap(True)
-            fallback.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            fallback.setStyleSheet("padding: 40px; color: #555; font-size: 13px;")
-            layout.addWidget(fallback)
-        
+        self.web_view = QWebEngineView()
+        self.web_page = CustomWebPage(self.web_view)
+        self.web_view.setPage(self.web_page)
+        self.web_page.page_loaded.connect(self.on_page_loaded)
+        layout.addWidget(self.web_view)
         self.setLayout(layout)
-        self.current_url = None
-    
+
+    def _setup_browser_ui(self):
+        layout = QVBoxLayout()
+        layout.setSpacing(12)
+        layout.setContentsMargins(24, 20, 24, 20)
+        title = QLabel(f"<b>Finment Analyse</b> – {self.symbol} {self.company_name}")
+        title.setFont(QFont("Arial", 11))
+        layout.addWidget(title)
+        self.status_label = QLabel("🔍 " + TR("status_finment_search"))
+        self.status_label.setStyleSheet("color: #555; font-size: 12px;")
+        layout.addWidget(self.status_label)
+        layout.addStretch()
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        close_btn = QPushButton(TR("btn_close"))
+        close_btn.setAutoDefault(False)
+        close_btn.clicked.connect(self.close)
+        btn_row.addWidget(close_btn)
+        layout.addLayout(btn_row)
+        self.setLayout(layout)
+
     def get_analysis_urls(self):
-        """Generiere mögliche URLs für Finment Analyse"""
         urls = []
-        
-        # Finment URLs - mehrere Varianten probieren
-        # Format: /boerse-aktien/[kategorie]/[name]-aktie-prognose/
-        
-        # Versuche mit verschiedenen Kategorien
         categories = ['tech-aktien', 'us-aktien', 'deutsche-aktien', 'schweizer-aktien', 'europaische-aktien']
-        
-        # Versuche Firmennamen zu ermitteln
         name_variants = []
-        
-        # Zuerst: Symbol (oft am besten)
         symbol_clean = self.symbol.lower().replace('.sw', '').replace('.de', '').replace('.f', '')
         name_variants.append(symbol_clean)
-        
         if self.company_name:
-            # Bereinige Firmennamen
             clean_name = self.company_name.lower()
-            clean_name = clean_name.replace(' inc.', '').replace(' inc', '')
-            clean_name = clean_name.replace(' corp.', '').replace(' corp', '')
-            clean_name = clean_name.replace(' corporation', '')
-            clean_name = clean_name.replace(' ag', '').replace(' plc', '')
-            clean_name = clean_name.replace(' ltd', '').replace(' limited', '')
-            clean_name = clean_name.replace(',', '').replace('.', '')
-            clean_name = clean_name.strip()
-            
-            # Verschiedene Varianten
+            for suffix in [' inc.', ' inc', ' corp.', ' corp', ' corporation',
+                           ' ag', ' plc', ' ltd', ' limited']:
+                clean_name = clean_name.replace(suffix, '')
+            clean_name = clean_name.replace(',', '').replace('.', '').strip()
             name_variants.append(clean_name.replace(' ', '-'))
-            
-            # Nur erster Name
             first_word = clean_name.split()[0] if clean_name.split() else clean_name
             if first_word and first_word != clean_name:
                 name_variants.append(first_word)
-        
-        # Generiere URLs
         for category in categories:
             for name in name_variants:
                 urls.append(f"https://finment.com/boerse-aktien/{category}/{name}-aktie-prognose/")
-        
-        # Direkte Suche als Fallback
         urls.append(f"https://finment.com/?s={urllib.parse.quote(self.symbol)}")
-        
         return urls
-    
+
     def load_analysis(self):
-        """Lade Analyse - probiere verschiedene URLs"""
         self.status_label.setText(TR("status_finment_search"))
-        if not _WEBENGINE_AVAILABLE or self.web_view is None:
-            self.status_label.setText(TR("lbl_finment_use_browser"))
-            return
         urls = self.get_analysis_urls()
-        
-        if urls:
+        if not urls:
+            self.status_label.setText(TR("lbl_no_data"))
+            return
+        if _WEBENGINE_AVAILABLE:
             self.current_url = urls[0]
             self.remaining_urls = urls[1:]
             self.web_view.setUrl(QUrl(self.current_url))
         else:
-            self.status_label.setText(TR("lbl_no_data"))
-    
+            self.status_label.setText("🔍 " + TR("status_finment_search"))
+            self._url_thread = UrlFinderThread(urls)
+            self._url_thread.url_found.connect(self._on_url_found)
+            self._url_thread.start()
+
+    def _on_url_found(self, url):
+        self.current_url = url
+        self.status_label.setText("✅ " + TR("lbl_finment_opening_browser"))
+        self.open_in_browser()
+        QTimer.singleShot(1500, self.close)
+
     def on_page_loaded(self, success):
-        """Callback wenn Seite geladen wurde"""
-        if not _WEBENGINE_AVAILABLE or self.web_view is None:
+        if not _WEBENGINE_AVAILABLE:
             return
         if success:
             self.status_label.setText(TR("status_finment_loaded"))
         else:
-            # Seite nicht gefunden - nächste URL probieren
             if self.remaining_urls:
                 self.current_url = self.remaining_urls.pop(0)
                 self.status_label.setText(TR("status_finment_retry"))
                 self.web_view.setUrl(QUrl(self.current_url))
             else:
-                # Keine URLs mehr - zeige Fehlermeldung
                 self.status_label.setText(TR("status_finment_none", symbol=self.symbol))
-                
                 error_html = f"""
                 <html>
                 <body style="font-family: Arial; padding: 40px; text-align: center;">
                     <h1>❌ Analyse nicht gefunden</h1>
-                    <p>Für <b>{self.symbol}</b> ({self.company_name}) konnte keine {self.analysis_type}-Analyse gefunden werden.</p>
-                    <p>Mögliche Gründe:</p>
-                    <ul style="text-align: left; display: inline-block;">
-                        <li>Die Aktie wird auf dieser Plattform nicht analysiert</li>
-                        <li>Der Firmenname konnte nicht automatisch ermittelt werden</li>
-                        <li>Für diese Aktie existiert keine deutschsprachige Analyse</li>
-                    </ul>
+                    <p>Für <b>{self.symbol}</b> ({self.company_name}) konnte keine Finment-Analyse gefunden werden.</p>
                     <p style="margin-top: 30px;">
-                        <a href="https://www.google.com/search?q={urllib.parse.quote(f'{self.symbol} {self.analysis_type} Analyse')}" 
-                           target="_blank" style="font-size: 18px;">
-                           🔍 Bei Google suchen
-                        </a>
+                        <a href="https://www.google.com/search?q={urllib.parse.quote(f'{self.symbol} Finment Analyse')}"
+                           target="_blank" style="font-size: 18px;">🔍 Bei Google suchen</a>
                     </p>
                 </body>
                 </html>
                 """
                 self.web_view.setHtml(error_html)
-    
+
     def open_in_browser(self):
-        """Öffne aktuelle URL im externen Browser"""
         if self.current_url:
-            webbrowser.open(self.current_url)
+            import os, subprocess
+            if os.path.exists('/.flatpak-info'):
+                subprocess.Popen(['flatpak-spawn', '--host', 'xdg-open', self.current_url])
+            else:
+                webbrowser.open(self.current_url)
 
 
 class AnalystInfoDialog(QDialog):
@@ -21828,6 +21833,7 @@ class PortfolioDialog(QMainWindow):
                 tmp.close()
 
                 url = f'file:///{tmp.name.replace(os.sep, "/")}'
+
                 opened = False
                 if sys.platform == 'win32':
                     for browser_exe in [
@@ -21853,20 +21859,10 @@ class PortfolioDialog(QMainWindow):
                         except Exception:
                             continue
                 else:
-                    import shutil
                     _in_flatpak = os.path.exists('/.flatpak-info')
-                    if shutil.which('xdg-open'):
-                        if _in_flatpak:
-                            subprocess.Popen(['flatpak-spawn', '--host', 'xdg-open', url])
-                        else:
-                            subprocess.Popen(['xdg-open', url])
-                        opened = True
-                    else:
-                        for exe in ['firefox', 'chromium', 'chromium-browser', 'google-chrome']:
-                            if shutil.which(exe):
-                                subprocess.Popen([exe, url])
-                                opened = True
-                                break
+                    _spawn = ['flatpak-spawn', '--host'] if _in_flatpak else []
+                    subprocess.Popen(_spawn + ['xdg-open', url])
+                    opened = True
 
                 if not opened:
                     webbrowser.open(url)
@@ -23887,7 +23883,7 @@ class StockMonitorApp(QMainWindow):
             # Titel: Full HD → nur Symbol (Platz sparen); 4K zeigt vollen Namen
             title = QLabel("📈" if _has_emoji else "SM")
             title.setFont(QFont(_emoji_font.family() if _has_emoji else "Arial", 11, QFont.Weight.Bold))
-            title.setToolTip("Stock Monitor v5.0")
+            title.setToolTip(f"Stock Monitor v{APP_VERSION}")
             row1.addWidget(title)
             row1.addWidget(QLabel("|"))
 
@@ -24098,7 +24094,7 @@ class StockMonitorApp(QMainWindow):
 
             title = QLabel("📈")
             title.setFont(QFont("Segoe UI Emoji", 16, QFont.Weight.Bold))
-            title.setToolTip("Stock Monitor v5.0")
+            title.setToolTip(f"Stock Monitor v{APP_VERSION}")
             row1.addWidget(title)
             row1.addWidget(QLabel("|"))
 
@@ -25562,7 +25558,7 @@ class StockMonitorApp(QMainWindow):
             'num_charts': len(self.charts),
             'chart_states': self.saved_states,
             'saved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'version': '5.0'
+            'version': APP_VERSION
         }
         
         # Dateiname vorschlagen
@@ -26524,13 +26520,37 @@ class StockMonitorApp(QMainWindow):
                 import webbrowser; webbrowser.open(_url)
             open_btn.clicked.connect(_open)
             btn_row.addWidget(open_btn)
+        countdown_lbl = QLabel()
+        countdown_lbl.setStyleSheet("color: #999; font-size: 11px;")
+        btn_row.addSpacing(8)
+        btn_row.addWidget(countdown_lbl)
+
         close_btn = QPushButton(TR("btn_close_plain"))
         close_btn.clicked.connect(dlg.close)
         btn_row.addWidget(close_btn)
         lay.addLayout(btn_row)
 
-        dlg.setWindowModality(Qt.WindowModality.NonModal)
+        # Countdown-Timer: schließt automatisch nach 10 Sekunden
+        _remaining = [10]
+        def _tick():
+            try:
+                if not dlg.isVisible():
+                    return
+                countdown_lbl.setText(f"({_remaining[0]}s)")
+                if _remaining[0] <= 0:
+                    dlg.close()
+                    return
+                _remaining[0] -= 1
+                QTimer.singleShot(1000, _tick)
+            except RuntimeError:
+                pass
+        QTimer.singleShot(1000, _tick)
+
+        dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
         dlg.show()
+        dlg.raise_()
+        dlg.activateWindow()
+        QApplication.setActiveWindow(dlg)
 
     def check_yfinance_update(self, status_label=None, silent=True):
         """Prüft ob eine neuere yfinance-Version auf PyPI verfügbar ist.
@@ -26599,11 +26619,7 @@ class StockMonitorApp(QMainWindow):
         """Kleines nicht-modales Fenster als Toast-Notification für yfinance-Update."""
         toast = QDialog(self)
         toast.setWindowTitle(TR("lbl_yf_toast_title"))
-        toast.setWindowFlags(
-            Qt.WindowType.Tool |
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint
-        )
+        toast.setWindowFlags(Qt.WindowType.Tool)
         toast.setFixedWidth(400)
         toast.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
@@ -26626,30 +26642,31 @@ class StockMonitorApp(QMainWindow):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        # Pip-Upgrade-Button
-        pip_btn = QPushButton(TR("btn_install_yfinance"))
-        pip_btn.setToolTip(TR("tip_install_yfinance"))
-        pip_btn.setStyleSheet(
-            "QPushButton{background:#1a73e8;color:white;font-weight:bold;"
-            "border-radius:5px;padding:3px 12px;}"
-            "QPushButton:hover{background:#1557b0;}"
-        )
-        def _run_pip(checked=False, _v=latest):
-            import subprocess, sys as _sys
-            try:
-                subprocess.Popen(
-                    [_sys.executable, "-m", "pip", "install",
-                     "--upgrade", f"yfinance=={_v}"],
-                    creationflags=0
-                )
-            except Exception as e:
-                QMessageBox.warning(self, "pip", str(e))
-            toast.close()
-        pip_btn.clicked.connect(_run_pip)
-        btn_row.addWidget(pip_btn)
+        # Pip-Upgrade-Button – im Flatpak-Kontext nicht verfügbar
+        _in_flatpak = os.path.exists('/.flatpak-info')
+        if not _in_flatpak:
+            pip_btn = QPushButton(TR("btn_install_yfinance"))
+            pip_btn.setToolTip(TR("tip_install_yfinance"))
+            pip_btn.setStyleSheet(
+                "QPushButton{background:#1a73e8;color:white;font-weight:bold;"
+                "border-radius:5px;padding:3px 12px;}"
+                "QPushButton:hover{background:#1557b0;}"
+            )
+            def _run_pip(checked=False, _v=latest):
+                import subprocess, sys as _sys
+                try:
+                    subprocess.Popen(
+                        [_sys.executable, "-m", "pip", "install",
+                         "--upgrade", f"yfinance=={_v}"]
+                    )
+                except Exception as e:
+                    QMessageBox.warning(self, "pip", str(e))
+                toast.close()
+            pip_btn.clicked.connect(_run_pip)
+            btn_row.addWidget(pip_btn)
 
         close_btn = QPushButton(TR("btn_close_plain"))
-        close_btn.clicked.connect(toast.close)
+        close_btn.clicked.connect(lambda: toast.close())
         btn_row.addWidget(close_btn)
         lay.addLayout(btn_row)
 
@@ -26666,7 +26683,13 @@ class StockMonitorApp(QMainWindow):
         )
         toast.show()
         # Auto-Close nach 15 Sekunden
-        QTimer.singleShot(15000, lambda: toast.close() if toast.isVisible() else None)
+        def _auto_close():
+            try:
+                if toast.isVisible():
+                    toast.close()
+            except RuntimeError:
+                pass  # Objekt wurde bereits durch WA_DeleteOnClose gelöscht
+        QTimer.singleShot(15000, _auto_close)
 
     def show_update_check_dialog(self):
         """Zeigt den Update-Prüf-Dialog mit App + yfinance Check."""
@@ -26855,7 +26878,7 @@ class StockMonitorApp(QMainWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle(TR("title_about"))
-        dialog.setFixedSize(420, 430)
+        dialog.setFixedSize(580, 430)
         
         layout = QVBoxLayout()
         
@@ -26870,7 +26893,7 @@ class StockMonitorApp(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         
-        version = QLabel("<b>Version 5.0</b>")
+        version = QLabel(f"<b>Version {APP_VERSION}</b>")
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(version)
         
@@ -26943,7 +26966,7 @@ class StockMonitorApp(QMainWindow):
         dialog.setLayout(layout)
         # App-Update-Check automatisch beim Öffnen starten (im About-Dialog-Modus)
         self.check_for_updates(status_label=update_status_lbl, update_btn=update_action_btn)
-        dialog.exec()
+        dialog.show()
 
     def show_license_dialog(self):
         """Zeige Lizenz- und Haftungsausschluss-Dialog"""
@@ -26978,7 +27001,7 @@ class StockMonitorApp(QMainWindow):
         layout.addLayout(btn_wrapper)
 
         dialog.setLayout(layout)
-        dialog.exec()
+        dialog.show()
 
 
 
@@ -27102,7 +27125,7 @@ class StockMonitorApp(QMainWindow):
         outer.addLayout(btn_wrapper)
 
         dialog.setLayout(outer)
-        dialog.exec()
+        dialog.show()
 
     def show_donate_dialog(self):
         """Zeige Spendenoptionen"""
@@ -27199,7 +27222,7 @@ class StockMonitorApp(QMainWindow):
         layout.addWidget(close_btn)
 
         dialog.setLayout(layout)
-        dialog.exec()
+        dialog.show()
 
     @safe_slot
     def show_watchlist(self):

@@ -143,7 +143,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn_not_save":                 "Nicht speichern",
 
         # ── Fenster-Titel ─────────────────────────────────────────────────────
-        "title_app":                    "Stock Monitor v5.0 - Mit MA, Analysen & Auto-Speichern",
+        "title_app":                    "Stock Monitor v5.0.0 - Mit MA, Analysen & Auto-Speichern",
         "title_app_loading":            "Stock Monitor wird geladen...",
         "title_help":                   "📖 Stock Monitor - Hilfe",
         "title_about":                  "ℹ️ Über Stock Monitor",
@@ -1047,6 +1047,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "ki_target_downside":                      "Achtung: Der Zielkurs liegt {pct:.0f}% niedriger! Die Aktie könnte überbewertet sein.",
         # ── Finment Status ────────────────────────────────────────────────────
         "lbl_finment_no_webengine":                "<b>Analyse-Ansicht nicht verfügbar</b><br><br>PyQt6-WebEngine ist nicht installiert.<br>Installieren mit:<br><code>pip install PyQt6-WebEngine</code><br><br>Die Analyse kann über '🌐 Im Browser öffnen' angezeigt werden.",
+        "lbl_finment_opening_browser":             "🌐 Finment-Analyse wird im Browser geöffnet...",
         "status_finment_search":                   "🔄 Suche Analyse...",
         "status_finment_loaded":                   "✓ Analyse geladen",
         "status_finment_retry":                    "🔄 Versuche alternative URL...",
@@ -1711,7 +1712,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "btn_not_save":                 "Don't Save",
 
         # ── Window Titles ─────────────────────────────────────────────────────
-        "title_app":                    "Stock Monitor v5.0 - With MA, Analysis & Auto-Save",
+        "title_app":                    "Stock Monitor v5.0.0 - With MA, Analysis & Auto-Save",
         "title_app_loading":            "Stock Monitor loading...",
         "title_help":                   "📖 Stock Monitor - Help",
         "title_about":                  "ℹ️ About Stock Monitor",
@@ -2615,6 +2616,7 @@ more than enough for personal use.</p>
         "ki_target_downside":                      "Caution: The target price is {pct:.0f}% lower! The stock may be overvalued.",
         # ── Finment Status ────────────────────────────────────────────────────
         "lbl_finment_no_webengine":                "<b>Analysis view not available</b><br><br>PyQt6-WebEngine is not installed.<br>Install with:<br><code>pip install PyQt6-WebEngine</code><br><br>The analysis can be opened via '🌐 Open in Browser'.",
+        "lbl_finment_opening_browser":             "🌐 Opening Finment analysis in browser...",
         "status_finment_search":                   "🔄 Searching for analysis...",
         "status_finment_loaded":                   "✓ Analysis loaded",
         "status_finment_retry":                    "🔄 Trying alternative URL...",
