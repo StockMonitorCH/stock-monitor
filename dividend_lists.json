@@ -1,0 +1,21 @@
+{
+  "_comment": "Dividend Kings (>=50 Jahre) und Aristocrats (>=25 Jahre) – Stand 2025.",
+  "_hint": "Symbole ohne Exchange-Suffix (z.B. 'KO', nicht 'KO.US'). Kings sind automatisch auch Aristocrats.",
+  "kings": [
+    "MMM",   "ABM",   "ABT",   "AFL",   "AWR",   "BDX",   "CINF",  "CL",
+    "KO",    "CLX",   "CB",    "DOV",   "EMR",   "GPC",   "GWW",   "HRL",
+    "ITW",   "JNJ",   "LANC",  "LOW",   "MKC",   "MDT",   "NDSN",  "NUE",
+    "PG",    "PPG",   "PH",    "SCL",   "SWK",   "SPGI",  "SYY",   "TROW",
+    "TGT",   "TR",    "VFC",   "WMT",   "WTR",   "MSA",   "FUL",   "CBSH",
+    "FFIN",  "BKH",   "SJW",   "MSEX",  "YORW",  "CWT",   "ARTNA", "CTBI",
+    "FMCB",  "NWN"
+  ],
+  "aristocrats": [
+    "ADP",   "ALB",   "AMCR",  "AOS",   "ATO",   "BRO",   "CAT",   "CTAS",
+    "CVX",   "CHD",   "CHRW",  "ECL",   "EL",    "ESS",   "ED",    "EXR",
+    "FDS",   "FRT",   "GD",    "GRMN",  "HSY",   "IBM",   "KVUE",  "KMB",
+    "L",     "LECO",  "LIN",   "MCD",   "MCO",   "MKTX",  "NEE",   "NOC",
+    "O",     "OTIS",  "PEP",   "RMD",   "ROL",   "ROP",   "SHW",   "SWKS",
+    "T",     "TSCO",  "VTR",   "WAB",   "WBA",   "WEC",   "XOM"
+  ]
+}
