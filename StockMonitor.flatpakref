@@ -1,0 +1,7 @@
+[Flatpak Ref]
+Name=ch.stockmonitor.StockMonitor
+Branch=master
+Title=Stock Monitor
+Url=https://StockMonitorCH.github.io/stock-monitor/repo
+RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo
+IsRuntime=false
