@@ -1,0 +1,76 @@
+name: Build and Publish Flatpak
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install flatpak & flatpak-builder
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y flatpak flatpak-builder
+
+      - name: Add Flathub remote
+        run: |
+          flatpak remote-add --user --if-not-exists flathub \
+            https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install KDE runtime, SDK and PyQt BaseApp
+        run: |
+          flatpak install --user -y flathub \
+            org.kde.Platform//6.10 \
+            org.kde.Sdk//6.10 \
+            com.riverbankcomputing.PyQt.BaseApp//6.10
+
+      - name: Build Flatpak and export OSTree repo
+        run: |
+          cd fp
+          flatpak-builder \
+            --user \
+            --force-clean \
+            --disable-rofiles-fuse \
+            --repo=repo \
+            build-dir \
+            ch.stockmonitor.StockMonitor.yml
+
+      - name: Create flatpakref file
+        run: |
+          mkdir -p fp/repo-web
+          cat > fp/repo-web/StockMonitor.flatpakref << 'EOF'
+          [Flatpak Ref]
+          Name=ch.stockmonitor.StockMonitor
+          Branch=master
+          Title=Stock Monitor
+          Url=https://StockMonitorCH.github.io/stock-monitor/repo
+          RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo
+          IsRuntime=false
+          EOF
+
+      - name: Deploy OSTree repo to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: fp/repo
+          destination_dir: repo
+          keep_files: false
+          force_orphan: false
+
+      - name: Deploy flatpakref to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: fp/repo-web
+          keep_files: true
