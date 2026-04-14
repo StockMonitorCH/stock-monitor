@@ -21824,15 +21824,24 @@ class PortfolioDialog(QMainWindow):
                 html_content = _gen_map(geo_data, lang=_translations.get_language())
 
                 # ── Temporäre HTML-Datei speichern & Browser öffnen ──────────
+                # Flatpak-Browser (z.B. Edge) haben keinen Zugriff auf /tmp oder
+                # ~/.local/share. ~/Downloads (xdg-download) ist für alle Browser
+                # erreichbar.
                 import time as _time
-                os.makedirs(os.path.expanduser("~/.local/share/stock-monitor"), exist_ok=True)
-                tmp = tempfile.NamedTemporaryFile(dir=os.path.expanduser("~/.local/share/stock-monitor"),
-                    suffix=f'_map_{int(_time.time())}.html',
-                    delete=False, mode='w', encoding='utf-8')
-                tmp.write(html_content)
-                tmp.close()
+                if sys.platform == 'linux':
+                    _map_dir = os.path.expanduser('~/Downloads')
+                elif sys.platform == 'win32':
+                    _map_dir = os.path.expanduser('~\\Downloads')
+                else:
+                    import tempfile as _tempfile
+                    _map_dir = _tempfile.gettempdir()
+                os.makedirs(_map_dir, exist_ok=True)
+                _map_fname = os.path.join(_map_dir, f'stock_monitor_map_{int(_time.time())}.html')
+                with open(_map_fname, 'w', encoding='utf-8') as _mf:
+                    _mf.write(html_content)
 
-                url = f'file:///{tmp.name.replace(os.sep, "/")}'
+                _map_path = _map_fname.replace(os.sep, "/")
+                url = f'file://{_map_path}' if _map_path.startswith('/') else f'file:///{_map_path}'
 
                 opened = False
                 if sys.platform == 'win32':
