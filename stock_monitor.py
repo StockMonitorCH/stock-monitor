@@ -26803,6 +26803,16 @@ class StockMonitorApp(QMainWindow):
         yf_status_lbl = QLabel(f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>")
         yf_status_lbl.setWordWrap(True)
         yf_lay.addWidget(yf_status_lbl)
+        _in_flatpak = os.path.exists('/.flatpak-info')
+        yf_install_btn = QPushButton(TR("btn_install_yfinance"))
+        yf_install_btn.setVisible(False)
+        yf_install_btn.setStyleSheet(
+            "QPushButton{background:#e67e00;color:white;font-weight:bold;"
+            "border-radius:5px;padding:3px 12px;}"
+            "QPushButton:hover{background:#cf6d00;}"
+        )
+        if not _in_flatpak:
+            yf_lay.addWidget(yf_install_btn)
         lay.addWidget(yf_grp)
 
         btn_row = QHBoxLayout()
@@ -26851,12 +26861,31 @@ class StockMonitorApp(QMainWindow):
 
             def _on_yf(result):
                 status, installed, latest = result
+                yf_install_btn.setVisible(False)
                 if status == "update_available":
                     yf_status_lbl.setText(
                         f"<span style='color:#e67e00;'>"
                         + TR("lbl_yf_update_available", latest=latest, installed=installed)
                         + "</span>"
                     )
+                    if not _in_flatpak:
+                        yf_install_btn.setVisible(True)
+                        try:
+                            yf_install_btn.clicked.disconnect()
+                        except Exception:
+                            pass
+                        def _run_pip(checked=False, _v=latest):
+                            import subprocess
+                            yf_install_btn.setEnabled(False)
+                            yf_status_lbl.setText(
+                                f"<span style='color:#888;'>⏳ yfinance=={_v} wird installiert...</span>"
+                            )
+                            try:
+                                subprocess.Popen([sys.executable, "-m", "pip", "install",
+                                                  "--upgrade", f"yfinance=={_v}"])
+                            except Exception as e:
+                                QMessageBox.warning(dlg, "pip", str(e))
+                        yf_install_btn.clicked.connect(_run_pip)
                 elif status == "current":
                     yf_status_lbl.setText(
                         f"<span style='color:#27ae60;'>"
