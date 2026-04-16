@@ -6,9 +6,21 @@ Unabhängig von Portfolio-Daten (.smpf).
 """
 
 import os
+import sys
 import json
 
-CONFIG_PATH = os.path.expanduser("~/.stock_monitor_config.json")
+def _get_data_home() -> str:
+    if sys.platform == "win32":
+        try:
+            base = (os.path.dirname(os.path.abspath(sys.executable))
+                    if getattr(sys, 'frozen', False)
+                    else os.path.dirname(os.path.abspath(__file__)))
+            return os.path.join(base, "_internal")
+        except Exception:
+            pass
+    return os.path.expanduser("~")
+
+CONFIG_PATH = os.path.join(_get_data_home(), ".stock_monitor_config.json")
 
 _DEFAULTS = {
     "language":         "DE",    # "DE" | "EN"
