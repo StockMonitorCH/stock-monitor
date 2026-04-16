@@ -22,6 +22,24 @@ from datetime import datetime, timedelta
 APP_VERSION  = "5.0.0"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
+# ── Portable-Modus ────────────────────────────────────────────────────────────
+# Windows: Daten immer neben der App (portable, keine Spuren auf Fremdrechner).
+#   Konfig/Cache → <app>/_internal/   Portfolio-Dateien → <app>/Portfolios/
+# Linux/Mac: weiterhin ~ (Flatpak/normale Installation)
+def _get_app_dir() -> str:
+    """Verzeichnis der laufenden EXE bzw. des Skripts."""
+    if sys.platform == "win32":
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.expanduser("~")
+
+_APP_DIR        = _get_app_dir()
+_DATA_HOME      = os.path.join(_APP_DIR, "_internal") if sys.platform == "win32" else os.path.expanduser("~")
+_PORTFOLIO_HOME = os.path.join(_APP_DIR, "Portfolios") if sys.platform == "win32" else os.path.expanduser("~")
+
+if sys.platform == "win32":
+    os.makedirs(_DATA_HOME, exist_ok=True)
+    os.makedirs(_PORTFOLIO_HOME, exist_ok=True)
+
 # ── Sprach- und Konfigurationsmodul ───────────────────────────────────────────
 try:
     import config as _app_config
@@ -256,7 +274,7 @@ except ImportError:
     _DB_IMPORT_OK = False
     CRYPTO_AVAILABLE = False
     FILE_EXT = ".smpf"
-    PORTFOLIO_DIR = os.path.expanduser("~/.stock_monitor_portfolios")
+    PORTFOLIO_DIR = os.path.join(_DATA_HOME, ".stock_monitor_portfolios")
 
 
 
@@ -7468,11 +7486,11 @@ class PortfolioPasswordDialog(QDialog):
 class PortfolioDialog(QMainWindow):
     """Portfolio-Ansicht: Übersicht + Admin in einem Fenster (QStackedWidget)"""
 
-    PORTFOLIO_FILE = os.path.expanduser("~/.stock_monitor_portfolio.json")
-    PORTFOLIO_DIR  = os.path.expanduser("~/.stock_monitor_portfolios")
-    CONFIG_FILE    = os.path.expanduser("~/.stock_monitor_portfolios/config.json")
-    LIMITS_FILE    = os.path.expanduser("~/.stock_monitor_limits.json")
-    SETTINGS_FILE  = os.path.expanduser("~/.stock_monitor_settings.json")
+    PORTFOLIO_FILE = os.path.join(_DATA_HOME, ".stock_monitor_portfolio.json")
+    PORTFOLIO_DIR  = os.path.join(_DATA_HOME, ".stock_monitor_portfolios")
+    CONFIG_FILE    = os.path.join(_DATA_HOME, ".stock_monitor_portfolios", "config.json")
+    LIMITS_FILE    = os.path.join(_DATA_HOME, ".stock_monitor_limits.json")
+    SETTINGS_FILE  = os.path.join(_DATA_HOME, ".stock_monitor_settings.json")
 
     # ── API-Key Defaults (leer = nicht konfiguriert) ──────────────────────
     _api_keys = {'finnhub': '', 'gemini': '', 'fmp': ''}
@@ -7486,7 +7504,7 @@ class PortfolioDialog(QMainWindow):
             return val
         # Direkt aus Datei lesen
         try:
-            sf = os.path.expanduser("~/.stock_monitor_settings.json")
+            sf = os.path.join(_DATA_HOME, ".stock_monitor_settings.json")
             if os.path.exists(sf):
                 with open(sf, 'r') as f:
                     data = json.load(f)
@@ -7545,8 +7563,8 @@ class PortfolioDialog(QMainWindow):
         self._CACHE_TTL          = 300   # 5 Minuten frisch genug
         self._OVERVIEW_CACHE_TTL = 300   # 5 Minuten für Übersicht
         # Sektor-Cache von Disk laden – alte deutsche Caches erkennen und löschen
-        _sc_path = os.path.expanduser('~/.stock_monitor_sectors.json')
-        _ic_path = os.path.expanduser('~/.stock_monitor_industries.json')
+        _sc_path = os.path.join(_DATA_HOME, ".stock_monitor_sectors.json")
+        _ic_path = os.path.join(_DATA_HOME, ".stock_monitor_industries.json")
 
         def _cache_is_old_format(d):
             """True wenn Cache deutsche/Emoji-Übersetzungen enthält (altes Format)."""
@@ -7597,7 +7615,7 @@ class PortfolioDialog(QMainWindow):
         # Firmenname-Cache von Disk laden
         try:
             import json as _json
-            _cn_path = os.path.expanduser('~/.stock_monitor_companies.json')
+            _cn_path = os.path.join(_DATA_HOME, ".stock_monitor_companies.json")
             if os.path.exists(_cn_path):
                 with open(_cn_path, 'r') as _f:
                     self._company_cache = _json.load(_f)
@@ -7608,7 +7626,7 @@ class PortfolioDialog(QMainWindow):
         self._time = _time_mod
         # AIBalance-Filter pro Portfolio: {portfolio_name: {'currencies': [...], 'sectors': [...]}}
         self._aib_filters = {}
-        self._aib_filters_file = os.path.expanduser('~/.stock_monitor_aib_filters.json')
+        self._aib_filters_file = os.path.join(_DATA_HOME, ".stock_monitor_aib_filters.json")
         try:
             import json as _json
             if os.path.exists(self._aib_filters_file):
@@ -8028,7 +8046,7 @@ class PortfolioDialog(QMainWindow):
             if successful_sectors:
                 try:
                     import json as _json
-                    _sc_path = os.path.expanduser('~/.stock_monitor_sectors.json')
+                    _sc_path = os.path.join(_DATA_HOME, ".stock_monitor_sectors.json")
                     with open(_sc_path, 'w') as _f:
                         _json.dump(successful_sectors, _f)
                 except Exception:
@@ -8039,7 +8057,7 @@ class PortfolioDialog(QMainWindow):
             if industry_result:
                 try:
                     import json as _json
-                    _ic_path = os.path.expanduser('~/.stock_monitor_industries.json')
+                    _ic_path = os.path.join(_DATA_HOME, ".stock_monitor_industries.json")
                     with open(_ic_path, 'w') as _f:
                         _json.dump(self._industry_cache, _f)
                 except Exception:
@@ -8049,7 +8067,7 @@ class PortfolioDialog(QMainWindow):
                 self._company_cache.update(worker._company_names)
                 try:
                     import json as _json
-                    _cn_path = os.path.expanduser('~/.stock_monitor_companies.json')
+                    _cn_path = os.path.join(_DATA_HOME, ".stock_monitor_companies.json")
                     with open(_cn_path, 'w') as _f:
                         _json.dump(self._company_cache, _f)
                 except Exception:
@@ -8139,7 +8157,7 @@ class PortfolioDialog(QMainWindow):
 
     def _get_active_portfolio_name(self) -> str:
         """Gibt den Namen des zuletzt aktiven Portfolios zurück (aus Meta-Datei)."""
-        meta_file = os.path.expanduser("~/.stock_monitor_active_portfolio")
+        meta_file = os.path.join(_DATA_HOME, ".stock_monitor_active_portfolio")
         try:
             if os.path.exists(meta_file):
                 with open(meta_file) as f:
@@ -8150,7 +8168,7 @@ class PortfolioDialog(QMainWindow):
 
     def _set_active_portfolio_name(self, name: str):
         """Merkt sich welches Portfolio zuletzt aktiv war."""
-        meta_file = os.path.expanduser("~/.stock_monitor_active_portfolio")
+        meta_file = os.path.join(_DATA_HOME, ".stock_monitor_active_portfolio")
         try:
             with open(meta_file, 'w') as f:
                 f.write(name)
@@ -8180,9 +8198,9 @@ class PortfolioDialog(QMainWindow):
         name = self._get_active_portfolio_name()
         safe = "".join(c for c in name if c.isalnum() or c in " _-").strip() if name else ""
         if safe:
-            return os.path.expanduser(f"~/.stock_monitor_limits_{safe}.json")
+            return os.path.join(_DATA_HOME, f".stock_monitor_limits_{safe}.json")
         # Kein Portfolio aktiv → feste Fallback-Datei (nicht dieselbe wie App-Charts)
-        return os.path.expanduser("~/.stock_monitor_portfolio_limits.json")
+        return os.path.join(_DATA_HOME, ".stock_monitor_portfolio_limits.json")
 
     def _load_limits(self):
         """Lädt Stop-Loss / eigene Zielkurse aus JSON (portfoliospezifisch)."""
@@ -8660,7 +8678,7 @@ class PortfolioDialog(QMainWindow):
         dest, _ = QFileDialog.getSaveFileName(
             self,
             TR("title_export_portfolio_location"),
-            os.path.join(os.path.expanduser("~"), f"{name}{FILE_EXT}"),
+            os.path.join(_PORTFOLIO_HOME, f"{name}{FILE_EXT}"),
             f"Stock Monitor Portfolio (*{FILE_EXT});;Alle Dateien (*)"
         )
         if not dest:
@@ -8756,7 +8774,7 @@ class PortfolioDialog(QMainWindow):
                     from PyQt6.QtWidgets import QFileDialog
                     dest, _ = QFileDialog.getSaveFileName(
                         dlg, "Portfolio exportieren",
-                        os.path.join(os.path.expanduser("~"), f"{name}{FILE_EXT}"),
+                        os.path.join(_PORTFOLIO_HOME, f"{name}{FILE_EXT}"),
                         f"Stock Monitor Portfolio (*{FILE_EXT})"
                     )
                     if not dest:
@@ -8787,7 +8805,7 @@ class PortfolioDialog(QMainWindow):
                 from PyQt6.QtWidgets import QFileDialog
                 filepath, _ = QFileDialog.getOpenFileName(
                     dlg, "Portfolio importieren",
-                    os.path.expanduser("~"),
+                    _PORTFOLIO_HOME,
                     f"Stock Monitor Portfolio (*{FILE_EXT});;Alle Dateien (*)"
                 )
                 if not filepath: return
@@ -23757,8 +23775,8 @@ class StockMonitorApp(QMainWindow):
         self.charts = []
         self.fullscreen_widget = None
         self.saved_states = []
-        self.config_file = os.path.expanduser("~/.stock_monitor_config.pkl")
-        self.favorites_file = os.path.expanduser("~/.stock_monitor_favorites.json")
+        self.config_file = os.path.join(_DATA_HOME, ".stock_monitor_config.pkl")
+        self.favorites_file = os.path.join(_DATA_HOME, ".stock_monitor_favorites.json")
         self._dollar_anim = None
         self.is_loading = True
         self._app_limits = self._load_limits_app()  # Stop-Loss/Zielkurs für Haupt-Charts
@@ -26410,7 +26428,10 @@ class StockMonitorApp(QMainWindow):
         class _W(QThread):
             done = _sig(object)
             def run(self):
-                self.done.emit(fn_check())
+                try:
+                    self.done.emit(fn_check())
+                except Exception:
+                    _log.exception("Update-Worker run() fehlgeschlagen")
 
         worker = _W(self)
         worker.done.connect(fn_result, Qt.ConnectionType.QueuedConnection)
@@ -26442,53 +26463,56 @@ class StockMonitorApp(QMainWindow):
                     return "error", APP_VERSION, "", ""
                 if latest != APP_VERSION:
                     return ("update_available", latest,
-                            data.get("html_url", ""),
-                            data.get("body", ""))
+                            data.get("html_url") or "",
+                            data.get("body") or "")
                 return "current", APP_VERSION, "", ""
             except Exception:
                 return "error", APP_VERSION, "", ""
 
         def _on_result(result):
-            status, version, url, notes = result
-            if status == "update_available":
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#e67e00;'>"
-                        + TR("lbl_app_update_available", version=version)
-                        + "</span>"
-                    )
-                if update_btn:
-                    update_btn.setText(f"⬇️ v{version} {TR('btn_update')}")
-                    update_btn.setEnabled(True)
-                    update_btn.setStyleSheet(
-                        "QPushButton { background-color: #e67e00; color: white; "
-                        "font-weight: bold; border-radius: 6px; padding: 4px 10px; }"
-                        "QPushButton:hover { background-color: #cf6d00; }"
-                    )
-                    try:
-                        update_btn.clicked.disconnect()
-                    except Exception:
-                        pass
-                    def _open_release(checked=False, _url=url):
-                        import webbrowser; webbrowser.open(_url)
-                    update_btn.clicked.connect(_open_release)
-                # Eigenständiger Dialog (kein status_label von aussen)
-                if not status_label:
-                    self._show_app_update_dialog(version, url, notes)
-            elif status == "current":
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#27ae60;'>"
-                        + TR("lbl_app_update_current", version=version)
-                        + "</span>"
-                    )
-                if update_btn:
-                    update_btn.setEnabled(False)
-            else:  # error
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#888;'>{TR('lbl_app_update_error')}</span>"
-                    )
+            try:
+                status, version, url, notes = result
+                if status == "update_available":
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#e67e00;'>"
+                            + TR("lbl_app_update_available", version=version)
+                            + "</span>"
+                        )
+                    if update_btn:
+                        update_btn.setText(f"⬇️ v{version} {TR('btn_update')}")
+                        update_btn.setEnabled(True)
+                        update_btn.setStyleSheet(
+                            "QPushButton { background-color: #e67e00; color: white; "
+                            "font-weight: bold; border-radius: 6px; padding: 4px 10px; }"
+                            "QPushButton:hover { background-color: #cf6d00; }"
+                        )
+                        try:
+                            update_btn.clicked.disconnect()
+                        except Exception:
+                            pass
+                        def _open_release(checked=False, _url=url):
+                            import webbrowser; webbrowser.open(_url)
+                        update_btn.clicked.connect(_open_release)
+                    # Eigenständiger Dialog (kein status_label von aussen)
+                    if not status_label:
+                        self._show_app_update_dialog(version, url, notes)
+                elif status == "current":
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#27ae60;'>"
+                            + TR("lbl_app_update_current", version=version)
+                            + "</span>"
+                        )
+                    if update_btn:
+                        update_btn.setEnabled(False)
+                else:  # error
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#888;'>{TR('lbl_app_update_error')}</span>"
+                        )
+            except Exception:
+                _log.exception("Update-Check _on_result fehlgeschlagen")
 
         self._start_update_worker(_do_check, _on_result)
 
@@ -26556,6 +26580,15 @@ class StockMonitorApp(QMainWindow):
         QTimer.singleShot(1000, _tick)
 
         dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        # Zentrieren: erst adjustSize damit Höhe bekannt, dann verschieben, dann anzeigen
+        dlg.adjustSize()
+        _screen = self.screen() or QApplication.primaryScreen()
+        if _screen:
+            _sg = _screen.availableGeometry()
+            dlg.move(
+                _sg.center().x() - dlg.width() // 2,
+                _sg.center().y() - dlg.height() // 2
+            )
         dlg.show()
         dlg.raise_()
         dlg.activateWindow()
@@ -26596,31 +26629,34 @@ class StockMonitorApp(QMainWindow):
                 return "error", installed, ""
 
         def _on_result(result):
-            status, installed, latest = result
-            if status == "update_available":
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#e67e00;'>"
-                        + TR("lbl_yf_update_available", latest=latest, installed=installed)
-                        + "</span>"
-                    )
-                elif silent:
-                    # Toast-Notification (nicht-blockierend)
-                    self._show_yfinance_toast(installed, latest)
-            elif status == "current":
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#27ae60;'>"
-                        + TR("lbl_yf_update_current", version=installed)
-                        + "</span>"
-                    )
-                elif not silent:
-                    pass  # Keine Notification wenn alles aktuell ist
-            else:  # error
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#888;'>{TR('lbl_yf_update_error')}</span>"
-                    )
+            try:
+                status, installed, latest = result
+                if status == "update_available":
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#e67e00;'>"
+                            + TR("lbl_yf_update_available", latest=latest, installed=installed)
+                            + "</span>"
+                        )
+                    elif silent:
+                        # Toast-Notification (nicht-blockierend)
+                        self._show_yfinance_toast(installed, latest)
+                elif status == "current":
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#27ae60;'>"
+                            + TR("lbl_yf_update_current", version=installed)
+                            + "</span>"
+                        )
+                    elif not silent:
+                        pass  # Keine Notification wenn alles aktuell ist
+                else:  # error
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#888;'>{TR('lbl_yf_update_error')}</span>"
+                        )
+            except Exception:
+                _log.exception("yfinance Update-Check _on_result fehlgeschlagen")
 
         self._start_update_worker(_do_check, _on_result)
 
@@ -28543,7 +28579,7 @@ def main():
     if _sys_plat.platform == "win32":
         import ctypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-            u"StockMonitor.App.4.0"
+            u"StockMonitor.App.5.0"
         )
     def _get_icon_path():
         import os as _os
