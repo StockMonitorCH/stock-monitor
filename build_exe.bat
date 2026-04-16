@@ -168,6 +168,8 @@ python -m PyInstaller ^
     --hidden-import "reportlab.platypus" ^
     --hidden-import "PIL" ^
     --hidden-import "PIL.Image" ^
+    --hidden-import "certifi" ^
+    --collect-all "certifi" ^
     --hidden-import "concurrent.futures" ^
     --collect-all "yfinance" ^
     --collect-all "pyqtgraph" ^

@@ -13,6 +13,7 @@ Features:
 """
 
 import sys
+import os
 import traceback
 import yfinance as yf
 import pandas as pd
@@ -97,7 +98,6 @@ import urllib.request
 import urllib.parse
 import webbrowser
 import pickle
-import os
 import matplotlib
 matplotlib.use('QtAgg')
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
@@ -26453,10 +26453,15 @@ class StockMonitorApp(QMainWindow):
 
         def _do_check():
             try:
-                import urllib.request, json as _json
+                import urllib.request, json as _json, ssl
                 url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
                 req = urllib.request.Request(url, headers={"User-Agent": "StockMonitor"})
-                with urllib.request.urlopen(req, timeout=8) as resp:
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+                with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
                     data = _json.loads(resp.read().decode())
                 latest = data.get("tag_name", "").lstrip("v")
                 if not latest:
@@ -26607,11 +26612,16 @@ class StockMonitorApp(QMainWindow):
             except Exception:
                 return "error", "", ""
             try:
-                import urllib.request, json as _json
+                import urllib.request, json as _json, ssl
                 req = urllib.request.Request(
                     "https://pypi.org/pypi/yfinance/json",
                     headers={"User-Agent": "StockMonitor"})
-                with urllib.request.urlopen(req, timeout=8) as resp:
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+                with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
                     data = _json.loads(resp.read().decode())
                 latest = data.get("info", {}).get("version", "")
                 if not latest:
