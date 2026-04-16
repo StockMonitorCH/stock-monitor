@@ -26705,9 +26705,10 @@ class StockMonitorApp(QMainWindow):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        # Pip-Upgrade-Button – im Flatpak/EXE-Kontext nicht verfügbar
         _in_flatpak = os.path.exists('/.flatpak-info')
-        if not _in_flatpak and not getattr(sys, 'frozen', False):
+        _is_exe     = getattr(sys, 'frozen', False)
+        if not _in_flatpak and not _is_exe:
+            # Script-Modus: pip install möglich
             pip_btn = QPushButton(TR("btn_install_yfinance"))
             pip_btn.setToolTip(TR("tip_install_yfinance"))
             pip_btn.setStyleSheet(
@@ -26727,6 +26728,20 @@ class StockMonitorApp(QMainWindow):
                 toast.close()
             pip_btn.clicked.connect(_run_pip)
             btn_row.addWidget(pip_btn)
+        elif _is_exe:
+            # EXE-Modus: neue App-Version herunterladen
+            dl_btn = QPushButton("⬇ Neue App-Version laden")
+            dl_btn.setStyleSheet(
+                "QPushButton{background:#e67e00;color:white;font-weight:bold;"
+                "border-radius:5px;padding:3px 12px;}"
+                "QPushButton:hover{background:#cf6d00;}"
+            )
+            def _open_release(checked=False):
+                import webbrowser
+                webbrowser.open(f"https://github.com/{GITHUB_REPO}/releases/latest")
+                toast.close()
+            dl_btn.clicked.connect(_open_release)
+            btn_row.addWidget(dl_btn)
 
         close_btn = QPushButton(TR("btn_close_plain"))
         close_btn.clicked.connect(lambda: toast.close())
@@ -26737,13 +26752,15 @@ class StockMonitorApp(QMainWindow):
             "QDialog{background:#fffbe6; border:2px solid #f0c040; border-radius:10px;}"
         )
 
-        # Positionierung: rechts unten im Hauptfenster
-        main_geo = self.geometry()
+        # Positionierung: Bildschirm-Mitte
         toast.adjustSize()
-        toast.move(
-            main_geo.right() - toast.width() - 20,
-            main_geo.bottom() - toast.height() - 20
-        )
+        _screen = self.screen() or QApplication.primaryScreen()
+        if _screen:
+            _sg = _screen.availableGeometry()
+            toast.move(
+                _sg.center().x() - toast.width() // 2,
+                _sg.center().y() - toast.height() // 2
+            )
         toast.show()
         # Auto-Close nach 15 Sekunden
         def _auto_close():
@@ -26869,12 +26886,19 @@ class StockMonitorApp(QMainWindow):
                         + TR("lbl_yf_update_available", latest=latest, installed=installed)
                         + "</span>"
                     )
+                    try:
+                        yf_install_btn.clicked.disconnect()
+                    except Exception:
+                        pass
                     if not _in_flatpak and not _is_frozen:
+                        # Script-Modus: pip install
+                        yf_install_btn.setText(TR("btn_install_yfinance"))
+                        yf_install_btn.setStyleSheet(
+                            "QPushButton{background:#e67e00;color:white;font-weight:bold;"
+                            "border-radius:5px;padding:3px 12px;}"
+                            "QPushButton:hover{background:#cf6d00;}"
+                        )
                         yf_install_btn.setVisible(True)
-                        try:
-                            yf_install_btn.clicked.disconnect()
-                        except Exception:
-                            pass
                         def _run_pip(checked=False, _v=latest):
                             import subprocess
                             yf_install_btn.setEnabled(False)
@@ -26887,6 +26911,19 @@ class StockMonitorApp(QMainWindow):
                             except Exception as e:
                                 QMessageBox.warning(dlg, "pip", str(e))
                         yf_install_btn.clicked.connect(_run_pip)
+                    elif _is_frozen:
+                        # EXE-Modus: neue App-Version herunterladen
+                        yf_install_btn.setText("⬇ Neue App-Version laden")
+                        yf_install_btn.setStyleSheet(
+                            "QPushButton{background:#e67e00;color:white;font-weight:bold;"
+                            "border-radius:5px;padding:3px 12px;}"
+                            "QPushButton:hover{background:#cf6d00;}"
+                        )
+                        yf_install_btn.setVisible(True)
+                        def _open_release(checked=False):
+                            import webbrowser
+                            webbrowser.open(f"https://github.com/{GITHUB_REPO}/releases/latest")
+                        yf_install_btn.clicked.connect(_open_release)
                 elif status == "current":
                     yf_status_lbl.setText(
                         f"<span style='color:#27ae60;'>"
