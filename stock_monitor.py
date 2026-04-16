@@ -30,7 +30,15 @@ GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 def _get_app_dir() -> str:
     """Verzeichnis der laufenden EXE bzw. des Skripts."""
     if sys.platform == "win32":
-        return os.path.dirname(os.path.abspath(sys.executable))
+        try:
+            if getattr(sys, 'frozen', False):
+                # PyInstaller EXE: sys.executable = Pfad zur .exe
+                return os.path.dirname(os.path.abspath(sys.executable))
+            else:
+                # Python-Script direkt gestartet: __file__ nutzen
+                return os.path.dirname(os.path.abspath(__file__))
+        except Exception:
+            pass
     return os.path.expanduser("~")
 
 _APP_DIR        = _get_app_dir()
