@@ -26705,9 +26705,9 @@ class StockMonitorApp(QMainWindow):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        # Pip-Upgrade-Button – im Flatpak-Kontext nicht verfügbar
+        # Pip-Upgrade-Button – im Flatpak/EXE-Kontext nicht verfügbar
         _in_flatpak = os.path.exists('/.flatpak-info')
-        if not _in_flatpak:
+        if not _in_flatpak and not getattr(sys, 'frozen', False):
             pip_btn = QPushButton(TR("btn_install_yfinance"))
             pip_btn.setToolTip(TR("tip_install_yfinance"))
             pip_btn.setStyleSheet(
