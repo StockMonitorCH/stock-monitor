@@ -25693,7 +25693,7 @@ class StockMonitorApp(QMainWindow):
         """Versuche beim Start die letzte Konfiguration zu laden (optional)"""
         # Alte Auto-Load Funktion - jetzt optional
         last_config = os.path.join(
-            os.path.expanduser("~/.stock_monitor_configs"),
+            os.path.join(_DATA_HOME, ".stock_monitor_configs"),
             "_last_session.pkl"
         )
         
@@ -25771,7 +25771,7 @@ class StockMonitorApp(QMainWindow):
             return
         
         try:
-            config_dir = os.path.join(os.path.expanduser("~"), ".stock_monitor_configs")
+            config_dir = os.path.join(_DATA_HOME, ".stock_monitor_configs")
             os.makedirs(config_dir, exist_ok=True)
             
             last_config = os.path.join(config_dir, "_last_session.pkl")
@@ -25833,7 +25833,7 @@ class StockMonitorApp(QMainWindow):
 
     def _limits_file_app(self) -> str:
         """Feste, portfoliounabhängige Limits-Datei für die Haupt-Charts der App."""
-        return os.path.expanduser("~/.stock_monitor_chart_limits.json")
+        return os.path.join(_DATA_HOME, ".stock_monitor_chart_limits.json")
 
     def _load_limits_app(self) -> dict:
         """Lädt Stop-Loss/Zielkurse für Haupt-Charts (portfoliospezifisch)."""
@@ -26804,6 +26804,7 @@ class StockMonitorApp(QMainWindow):
         yf_status_lbl.setWordWrap(True)
         yf_lay.addWidget(yf_status_lbl)
         _in_flatpak = os.path.exists('/.flatpak-info')
+        _is_frozen  = getattr(sys, 'frozen', False)
         yf_install_btn = QPushButton(TR("btn_install_yfinance"))
         yf_install_btn.setVisible(False)
         yf_install_btn.setStyleSheet(
@@ -26811,7 +26812,7 @@ class StockMonitorApp(QMainWindow):
             "border-radius:5px;padding:3px 12px;}"
             "QPushButton:hover{background:#cf6d00;}"
         )
-        if not _in_flatpak:
+        if not _in_flatpak and not _is_frozen:
             yf_lay.addWidget(yf_install_btn)
         lay.addWidget(yf_grp)
 
@@ -26868,7 +26869,7 @@ class StockMonitorApp(QMainWindow):
                         + TR("lbl_yf_update_available", latest=latest, installed=installed)
                         + "</span>"
                     )
-                    if not _in_flatpak:
+                    if not _in_flatpak and not _is_frozen:
                         yf_install_btn.setVisible(True)
                         try:
                             yf_install_btn.clicked.disconnect()
@@ -26900,18 +26901,23 @@ class StockMonitorApp(QMainWindow):
             # ── App-Worker ────────────────────────────────────────────────────
             def _check_app():
                 try:
-                    import urllib.request, json as _json
+                    import urllib.request, json as _json, ssl
                     url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
                     req = urllib.request.Request(url, headers={"User-Agent": "StockMonitor"})
-                    with urllib.request.urlopen(req, timeout=8) as resp:
+                    try:
+                        import certifi
+                        ctx = ssl.create_default_context(cafile=certifi.where())
+                    except Exception:
+                        ctx = ssl.create_default_context()
+                    with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
                         data = _json.loads(resp.read().decode())
                     latest = data.get("tag_name", "").lstrip("v")
                     if not latest:
                         return "error", APP_VERSION, "", ""
                     if latest != APP_VERSION:
                         return ("update_available", latest,
-                                data.get("html_url", ""),
-                                data.get("body", ""))
+                                data.get("html_url") or "",
+                                data.get("body") or "")
                     return "current", APP_VERSION, "", ""
                 except Exception:
                     return "error", APP_VERSION, "", ""
