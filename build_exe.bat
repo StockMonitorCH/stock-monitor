@@ -201,6 +201,15 @@ if exist "README.txt"  copy /y "README.txt"  "dist\StockMonitor_Portable\stock_m
 :: Changelog falls vorhanden
 if exist "CHANGELOG.md" copy /y "CHANGELOG.md" "dist\StockMonitor_Portable\stock_monitor\" >nul
 
+:: ── Demo-Portfolio für Erstbenutzer ──────────────────────────
+if exist "Demo.smpf" (
+    if not exist "dist\StockMonitor_Portable\stock_monitor\Portfolios" (
+        mkdir "dist\StockMonitor_Portable\stock_monitor\Portfolios"
+    )
+    copy /y "Demo.smpf" "dist\StockMonitor_Portable\stock_monitor\Portfolios\Demo.smpf" >nul
+    echo [OK]  Demo-Portfolio kopiert
+)
+
 :: ── Starte-Skript für bequemen Doppelklick ───────────────────
 (
 echo @echo off
