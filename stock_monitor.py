@@ -26473,18 +26473,24 @@ class StockMonitorApp(QMainWindow):
                     data = _json.loads(resp.read().decode())
                 latest = data.get("tag_name", "").lstrip("v")
                 if not latest:
-                    return "error", APP_VERSION, "", ""
+                    return "error", APP_VERSION, "", "", ""
+                zip_url = ""
+                for asset in data.get("assets", []):
+                    if asset.get("name", "").lower() == "stock_monitor.zip":
+                        zip_url = asset.get("browser_download_url", "")
+                        break
                 if latest != APP_VERSION:
                     return ("update_available", latest,
                             data.get("html_url") or "",
-                            data.get("body") or "")
-                return "current", APP_VERSION, "", ""
+                            data.get("body") or "",
+                            zip_url)
+                return "current", APP_VERSION, "", "", ""
             except Exception:
-                return "error", APP_VERSION, "", ""
+                return "error", APP_VERSION, "", "", ""
 
         def _on_result(result):
             try:
-                status, version, url, notes = result
+                status, version, url, notes, zip_url = result
                 if status == "update_available":
                     if status_label:
                         status_label.setText(
@@ -26504,12 +26510,12 @@ class StockMonitorApp(QMainWindow):
                             update_btn.clicked.disconnect()
                         except Exception:
                             pass
-                        def _open_release(checked=False, _url=url):
-                            import webbrowser; webbrowser.open(_url)
+                        def _open_release(checked=False, _url=url, _v=version, _n=notes, _z=zip_url):
+                            self._show_app_update_dialog(_v, _url, _n, _z)
                         update_btn.clicked.connect(_open_release)
                     # Eigenständiger Dialog (kein status_label von aussen)
                     if not status_label:
-                        self._show_app_update_dialog(version, url, notes)
+                        self._show_app_update_dialog(version, url, notes, zip_url)
                 elif status == "current":
                     if status_label:
                         status_label.setText(
@@ -26529,7 +26535,7 @@ class StockMonitorApp(QMainWindow):
 
         self._start_update_worker(_do_check, _on_result)
 
-    def _show_app_update_dialog(self, version, url, notes):
+    def _show_app_update_dialog(self, version, url, notes, zip_url=""):
         """Zeigt einen Nicht-Blocking-Dialog wenn eine neue App-Version verfügbar ist."""
         dlg = QDialog(self)
         dlg.setWindowTitle(TR("title_update_check"))
@@ -26555,6 +26561,19 @@ class StockMonitorApp(QMainWindow):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
+        _is_exe_win = getattr(sys, 'frozen', False) and sys.platform == "win32"
+        if _is_exe_win and zip_url:
+            auto_btn = QPushButton(TR("btn_auto_update"))
+            auto_btn.setStyleSheet(
+                "QPushButton{background:#27ae60;color:white;font-weight:bold;"
+                "border-radius:6px;padding:4px 14px;}"
+                "QPushButton:hover{background:#1e8449;}"
+            )
+            def _do_auto(checked=False, _v=version, _z=zip_url):
+                dlg.close()
+                self._do_self_update(_v, _z)
+            auto_btn.clicked.connect(_do_auto)
+            btn_row.addWidget(auto_btn)
         if url:
             open_btn = QPushButton(TR("btn_open_release_page"))
             open_btn.setStyleSheet(
@@ -26846,7 +26865,7 @@ class StockMonitorApp(QMainWindow):
 
             # App-Check – mit eigenem on_result für den Dialog-Modus
             def _on_app(result):
-                status, version, url, notes = result
+                status, version, url, notes, zip_url = result
                 recheck_btn.setEnabled(True)
                 if status == "update_available":
                     app_status_lbl.setText(
@@ -26859,12 +26878,8 @@ class StockMonitorApp(QMainWindow):
                         app_update_btn.clicked.disconnect()
                     except Exception:
                         pass
-                    def _open(checked=False, _url=url, _v=version, _n=notes):
-                        import webbrowser
-                        if _n and _n.strip():
-                            self._show_app_update_dialog(_v, _url, _n)
-                        else:
-                            webbrowser.open(_url)
+                    def _open(checked=False, _url=url, _v=version, _n=notes, _z=zip_url):
+                        self._show_app_update_dialog(_v, _url, _n, _z)
                     app_update_btn.clicked.connect(_open)
                 elif status == "current":
                     app_status_lbl.setText(
@@ -26950,14 +26965,20 @@ class StockMonitorApp(QMainWindow):
                         data = _json.loads(resp.read().decode())
                     latest = data.get("tag_name", "").lstrip("v")
                     if not latest:
-                        return "error", APP_VERSION, "", ""
+                        return "error", APP_VERSION, "", "", ""
+                    zip_url = ""
+                    for asset in data.get("assets", []):
+                        if asset.get("name", "").lower() == "stock_monitor.zip":
+                            zip_url = asset.get("browser_download_url", "")
+                            break
                     if latest != APP_VERSION:
                         return ("update_available", latest,
                                 data.get("html_url") or "",
-                                data.get("body") or "")
-                    return "current", APP_VERSION, "", ""
+                                data.get("body") or "",
+                                zip_url)
+                    return "current", APP_VERSION, "", "", ""
                 except Exception:
-                    return "error", APP_VERSION, "", ""
+                    return "error", APP_VERSION, "", "", ""
 
             # ── yfinance-Worker ───────────────────────────────────────────────
             def _check_yf():
@@ -26995,6 +27016,242 @@ class StockMonitorApp(QMainWindow):
         lay.addLayout(btn_row)
 
         _run_checks()
+        dlg.exec()
+
+    def _do_self_update(self, version, zip_url):
+        """Lädt die neue App-Version von GitHub herunter und startet den Update-Prozess.
+        Nur für Windows EXE (PyInstaller, sys.frozen=True).
+        Ablauf: ZIP herunterladen → entpacken → VBScript-Updater erstellen →
+                Updater starten → App schliessen → Updater wartet auf App-Ende
+                → Dateien ersetzen (Portfolios/Config bleiben unangetastet) → Neustart.
+        """
+        import tempfile, zipfile, threading
+        from PyQt6.QtCore import pyqtSignal, QObject
+        from PyQt6.QtWidgets import QProgressBar
+
+        class _Sigs(QObject):
+            progress_update = pyqtSignal(int, str)
+            finished        = pyqtSignal(str, str)
+
+        sigs = _Sigs(self)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(TR("title_update_download"))
+        dlg.setFixedWidth(450)
+        dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(20, 16, 20, 16)
+        lay.setSpacing(10)
+
+        title_lbl = QLabel(f"<b>Stock Monitor v{version}</b> {TR('lbl_update_connecting')[2:]}")
+        title_lbl.setStyleSheet("font-size:13px;")
+        lay.addWidget(title_lbl)
+
+        pbar = QProgressBar()
+        pbar.setRange(0, 100)
+        pbar.setValue(0)
+        lay.addWidget(pbar)
+
+        status_lbl = QLabel(TR("lbl_update_connecting"))
+        status_lbl.setStyleSheet("color:#555; font-size:11px;")
+        lay.addWidget(status_lbl)
+
+        warn_lbl = QLabel(TR("lbl_update_warn_backup"))
+        warn_lbl.setWordWrap(True)
+        warn_lbl.setStyleSheet(
+            "color:#666; font-size:11px; background:#f5f5f5; "
+            "border-radius:5px; padding:6px;"
+        )
+        lay.addWidget(warn_lbl)
+
+        cancel_btn = QPushButton(TR("btn_cancel"))
+        row = QHBoxLayout()
+        row.addStretch()
+        row.addWidget(cancel_btn)
+        lay.addLayout(row)
+
+        _cancelled = [False]
+        cancel_btn.clicked.connect(lambda: _cancelled.__setitem__(0, True) or dlg.reject())
+
+        sigs.progress_update.connect(
+            lambda v, t: (pbar.setValue(v), status_lbl.setText(t)),
+            Qt.ConnectionType.QueuedConnection
+        )
+
+        def _on_done(status, message):
+            dlg.close()
+            if status == "error":
+                QMessageBox.critical(self, TR("lbl_update_error_title"), message)
+            elif status == "ready":
+                QTimer.singleShot(300, self.close)
+
+        sigs.finished.connect(_on_done, Qt.ConnectionType.QueuedConnection)
+
+        def _thread():
+            try:
+                import urllib.request, ssl, os, tempfile, zipfile, shutil
+
+                sigs.progress_update.emit(5, TR("lbl_update_connecting"))
+
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+
+                tmp_dir  = tempfile.mkdtemp(prefix="sm_upd_")
+                zip_path = os.path.join(tmp_dir, "sm_new.zip")
+
+                req = urllib.request.Request(zip_url, headers={"User-Agent": "StockMonitor"})
+                with urllib.request.urlopen(req, timeout=120, context=ctx) as resp:
+                    total      = int(resp.headers.get("Content-Length", 0))
+                    downloaded = 0
+                    with open(zip_path, "wb") as f:
+                        while True:
+                            if _cancelled[0]:
+                                shutil.rmtree(tmp_dir, ignore_errors=True)
+                                return
+                            buf = resp.read(65536)
+                            if not buf:
+                                break
+                            f.write(buf)
+                            downloaded += len(buf)
+                            if total > 0:
+                                pct    = int(10 + (downloaded / total) * 55)
+                                mb_d   = downloaded / 1048576
+                                mb_t   = total / 1048576
+                                sigs.progress_update.emit(pct, f"Download: {mb_d:.1f} / {mb_t:.1f} MB")
+                            else:
+                                mb_d = downloaded / 1048576
+                                sigs.progress_update.emit(30, f"Download: {mb_d:.1f} MB…")
+
+                if _cancelled[0]:
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+                    return
+
+                sigs.progress_update.emit(68, "ZIP wird entpackt…")
+
+                extract_dir = os.path.join(tmp_dir, "x")
+                os.makedirs(extract_dir, exist_ok=True)
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    zf.extractall(extract_dir)
+                os.remove(zip_path)
+
+                new_files_dir = os.path.join(extract_dir, "stock_monitor")
+                if not os.path.isdir(new_files_dir):
+                    sigs.finished.emit("error",
+                        "Ungültige ZIP-Struktur: Ordner 'stock_monitor/' nicht gefunden.")
+                    return
+
+                sigs.progress_update.emit(80, "Update-Skript wird vorbereitet…")
+
+                app_dir  = os.path.dirname(os.path.abspath(sys.executable))
+                exe_path = os.path.abspath(sys.executable)
+                pid      = os.getpid()
+                cfg_dst  = os.path.join(app_dir, "_internal", ".stock_monitor_config.json")
+                cfg_bak  = os.path.join(tmp_dir, ".sm_cfg.bak")
+                vbs_path = os.path.join(app_dir, "_sm_updater.vbs")
+
+                def _q(p):
+                    return p.replace('"', '""')
+
+                vbs_lines = [
+                    "' Stock Monitor Auto-Updater",
+                    "Option Explicit",
+                    "On Error Resume Next",
+                    "",
+                    "Dim fso, shell",
+                    'Set fso   = CreateObject("Scripting.FileSystemObject")',
+                    'Set shell = CreateObject("WScript.Shell")',
+                    "",
+                    f"Dim appPID  : appPID  = {pid}",
+                    f'Dim appDir  : appDir  = "{_q(app_dir)}"',
+                    f'Dim newDir  : newDir  = "{_q(new_files_dir)}"',
+                    f'Dim exePath : exePath = "{_q(exe_path)}"',
+                    f'Dim tmpDir  : tmpDir  = "{_q(tmp_dir)}"',
+                    f'Dim cfgDst  : cfgDst  = "{_q(cfg_dst)}"',
+                    f'Dim cfgBak  : cfgBak  = "{_q(cfg_bak)}"',
+                    f'Dim vbsPath : vbsPath = "{_q(vbs_path)}"',
+                    "",
+                    "' 1. Warten bis Prozess beendet (max. 120 Sek.)",
+                    "Dim waited : waited = 0",
+                    "Do",
+                    "    WScript.Sleep 1000",
+                    "    waited = waited + 1",
+                    "    If waited >= 120 Then Exit Do",
+                    "    Dim procs",
+                    '    Set procs = GetObject("winmgmts:{impersonationLevel=impersonate}!//./root/cimv2"). _',
+                    '        ExecQuery("SELECT ProcessId FROM Win32_Process WHERE ProcessId=" & CStr(appPID))',
+                    "    If procs.Count = 0 Then Exit Do",
+                    "    Set procs = Nothing",
+                    "Loop",
+                    "",
+                    "WScript.Sleep 2000",
+                    "",
+                    "' 2. User-Config sichern",
+                    "If fso.FileExists(cfgDst) Then",
+                    "    fso.CopyFile cfgDst, cfgBak, True",
+                    "End If",
+                    "",
+                    "' 3. Neue Dateien kopieren (Portfolios + Config ausklammern)",
+                    'shell.Run "robocopy """ & newDir & """ """ & appDir & """ /E " & _',
+                    '    "/XD ""Portfolios"" " & _',
+                    '    "/XF "".stock_monitor_config.json"" " & _',
+                    '    "/XF ""stock_monitor.log"" " & _',
+                    '    "/NFL /NDL /NJH /NJS /NC /NS /NP", 0, True',
+                    "",
+                    "' 4. Config wiederherstellen falls nötig",
+                    "If fso.FileExists(cfgBak) Then",
+                    "    If Not fso.FileExists(cfgDst) Then",
+                    "        fso.CopyFile cfgBak, cfgDst, True",
+                    "    End If",
+                    "    fso.DeleteFile cfgBak",
+                    "End If",
+                    "",
+                    "' 5. Temp-Ordner löschen",
+                    "If fso.FolderExists(tmpDir) Then",
+                    "    fso.DeleteFolder tmpDir, True",
+                    "End If",
+                    "",
+                    "' 6. App neu starten",
+                    'shell.Run """" & exePath & """"',
+                    "",
+                    "' 7. Skript selbst löschen",
+                    "WScript.Sleep 500",
+                    "If fso.FileExists(vbsPath) Then",
+                    "    fso.DeleteFile vbsPath",
+                    "End If",
+                ]
+                vbs_content = "\r\n".join(vbs_lines)
+
+                with open(vbs_path, "w", encoding="utf-8") as f:
+                    f.write(vbs_content)
+
+                sigs.progress_update.emit(92, "Update wird gestartet…")
+
+                import subprocess
+                subprocess.Popen(
+                    ["wscript.exe", "/nologo", vbs_path],
+                    creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+                    close_fds=True,
+                )
+
+                sigs.progress_update.emit(100, "Fertig! App wird geschlossen…")
+                sigs.finished.emit("ready", "")
+
+            except Exception as e:
+                _log.exception("Self-Update fehlgeschlagen")
+                sigs.finished.emit("error", str(e))
+
+        t = threading.Thread(target=_thread, daemon=True)
+        t.start()
+
+        dlg.adjustSize()
+        _screen = self.screen() or QApplication.primaryScreen()
+        if _screen:
+            sg = _screen.availableGeometry()
+            dlg.move(sg.center().x() - dlg.width() // 2,
+                     sg.center().y() - dlg.height() // 2)
         dlg.exec()
 
     def _startup_update_checks(self):
