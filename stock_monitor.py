@@ -23843,7 +23843,9 @@ class StockMonitorApp(QMainWindow):
         if not self.charts:
             self._startup_target = 88.0
             self.loading_dialog.update_progress(65, TR("status_creating_charts"))
-            self.create_charts(4)
+            _sw = QApplication.primaryScreen().size().width() if QApplication.primaryScreen() else 1920
+            _default_charts = 16 if _sw >= 3840 else 12
+            self.create_charts(_default_charts)
         QTimer.singleShot(80, self._init_step5)
 
     def _init_step5(self):
