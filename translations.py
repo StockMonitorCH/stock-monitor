@@ -1631,9 +1631,13 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         # ── Self-Update (Windows EXE) ─────────────────────────────────────────
         "btn_auto_update":            "⬇ Automatisch updaten",
         "title_update_download":      "Update wird heruntergeladen",
-        "lbl_update_connecting":      "Verbinde mit GitHub…",
+        "lbl_update_connecting":      "Verbinde…",
         "lbl_update_warn_backup":     "ℹ Die App startet nach dem Update automatisch neu.\nIhre Portfolios werden nicht verändert. Eine Datensicherung wird trotzdem empfohlen.",
         "lbl_update_error_title":     "Update-Fehler",
+        "btn_yf_auto_update":         "⬇ yfinance automatisch aktualisieren",
+        "title_yf_update_download":   "yfinance wird aktualisiert",
+        "lbl_yf_toast_msg_exe":       "Version {latest} ist verfügbar (installiert: {installed}).\nDie App wird aktualisiert und automatisch neu gestartet.",
+        "lbl_yf_update_done":         "✅ yfinance {version} installiert! App wird neu gestartet…",
 
     },
 
@@ -3192,9 +3196,13 @@ more than enough for personal use.</p>
         # ── Self-Update (Windows EXE) ─────────────────────────────────────────
         "btn_auto_update":            "⬇ Auto Update",
         "title_update_download":      "Downloading Update",
-        "lbl_update_connecting":      "Connecting to GitHub…",
+        "lbl_update_connecting":      "Connecting…",
         "lbl_update_warn_backup":     "ℹ The app will restart automatically after the update.\nYour Portfolios will not be changed. A backup is still recommended.",
         "lbl_update_error_title":     "Update Error",
+        "btn_yf_auto_update":         "⬇ Auto-Update yfinance",
+        "title_yf_update_download":   "Updating yfinance",
+        "lbl_yf_toast_msg_exe":       "Version {latest} is available (installed: {installed}).\nThe app will update and restart automatically.",
+        "lbl_yf_update_done":         "✅ yfinance {version} installed! App will restart…",
 
     },
 }

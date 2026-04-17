@@ -20,7 +20,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.0.0"                            # beim Release anpassen
+APP_VERSION  = "5.0.1"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -26637,7 +26637,7 @@ class StockMonitorApp(QMainWindow):
             try:
                 installed = yf.__version__
             except Exception:
-                return "error", "", ""
+                return "error", "", "", ""
             try:
                 import urllib.request, json as _json, ssl
                 req = urllib.request.Request(
@@ -26652,7 +26652,12 @@ class StockMonitorApp(QMainWindow):
                     data = _json.loads(resp.read().decode())
                 latest = data.get("info", {}).get("version", "")
                 if not latest:
-                    return "error", installed, ""
+                    return "error", installed, "", ""
+                wheel_url = ""
+                for pkg in data.get("urls", []):
+                    if pkg.get("packagetype") == "bdist_wheel" and "none-any" in pkg.get("filename", ""):
+                        wheel_url = pkg.get("url", "")
+                        break
                 # Versions-Vergleich: tuple-basiert damit "0.2.50" > "0.2.9" korrekt
                 def _vtuple(v):
                     try:
@@ -26660,14 +26665,14 @@ class StockMonitorApp(QMainWindow):
                     except Exception:
                         return (0,)
                 if _vtuple(latest) > _vtuple(installed):
-                    return "update_available", installed, latest
-                return "current", installed, latest
+                    return "update_available", installed, latest, wheel_url
+                return "current", installed, latest, ""
             except Exception:
-                return "error", installed, ""
+                return "error", installed, "", ""
 
         def _on_result(result):
             try:
-                status, installed, latest = result
+                status, installed, latest, wheel_url = result
                 if status == "update_available":
                     if status_label:
                         status_label.setText(
@@ -26677,7 +26682,7 @@ class StockMonitorApp(QMainWindow):
                         )
                     elif silent:
                         # Toast-Notification (nicht-blockierend)
-                        self._show_yfinance_toast(installed, latest)
+                        self._show_yfinance_toast(installed, latest, wheel_url)
                 elif status == "current":
                     if status_label:
                         status_label.setText(
@@ -26697,12 +26702,12 @@ class StockMonitorApp(QMainWindow):
 
         self._start_update_worker(_do_check, _on_result)
 
-    def _show_yfinance_toast(self, installed, latest):
+    def _show_yfinance_toast(self, installed, latest, wheel_url=""):
         """Kleines nicht-modales Fenster als Toast-Notification für yfinance-Update."""
         toast = QDialog(self)
         toast.setWindowTitle(TR("lbl_yf_toast_title"))
         toast.setWindowFlags(Qt.WindowType.Tool)
-        toast.setFixedWidth(400)
+        toast.setFixedWidth(420)
         toast.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         lay = QVBoxLayout(toast)
@@ -26714,9 +26719,14 @@ class StockMonitorApp(QMainWindow):
         hdr.setStyleSheet("font-size:13px;")
         lay.addWidget(hdr)
 
-        msg_lbl = QLabel(
-            TR("lbl_yf_toast_msg", latest=latest, installed=installed)
-        )
+        _in_flatpak = os.path.exists('/.flatpak-info')
+        _is_exe     = getattr(sys, 'frozen', False) and sys.platform == "win32"
+
+        if _is_exe and wheel_url:
+            msg_text = TR("lbl_yf_toast_msg_exe", latest=latest, installed=installed)
+        else:
+            msg_text = TR("lbl_yf_toast_msg", latest=latest, installed=installed)
+        msg_lbl = QLabel(msg_text)
         msg_lbl.setWordWrap(True)
         msg_lbl.setStyleSheet("font-size:12px; color:#444;")
         lay.addWidget(msg_lbl)
@@ -26724,8 +26734,6 @@ class StockMonitorApp(QMainWindow):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        _in_flatpak = os.path.exists('/.flatpak-info')
-        _is_exe     = getattr(sys, 'frozen', False)
         if not _in_flatpak and not _is_exe:
             # Script-Modus: pip install möglich
             pip_btn = QPushButton(TR("btn_install_yfinance"))
@@ -26747,20 +26755,19 @@ class StockMonitorApp(QMainWindow):
                 toast.close()
             pip_btn.clicked.connect(_run_pip)
             btn_row.addWidget(pip_btn)
-        elif _is_exe:
-            # EXE-Modus: neue App-Version herunterladen
-            dl_btn = QPushButton("⬇ Neue App-Version laden")
-            dl_btn.setStyleSheet(
-                "QPushButton{background:#e67e00;color:white;font-weight:bold;"
+        elif _is_exe and wheel_url:
+            # EXE-Modus: yfinance direkt aktualisieren
+            upd_btn = QPushButton(TR("btn_yf_auto_update"))
+            upd_btn.setStyleSheet(
+                "QPushButton{background:#27ae60;color:white;font-weight:bold;"
                 "border-radius:5px;padding:3px 12px;}"
-                "QPushButton:hover{background:#cf6d00;}"
+                "QPushButton:hover{background:#1e8449;}"
             )
-            def _open_release(checked=False):
-                import webbrowser
-                webbrowser.open(f"https://github.com/{GITHUB_REPO}/releases/latest")
+            def _do_yf_upd(checked=False, _v=latest, _u=wheel_url):
                 toast.close()
-            dl_btn.clicked.connect(_open_release)
-            btn_row.addWidget(dl_btn)
+                self._do_yfinance_self_update(_v, _u)
+            upd_btn.clicked.connect(_do_yf_upd)
+            btn_row.addWidget(upd_btn)
 
         close_btn = QPushButton(TR("btn_close_plain"))
         close_btn.clicked.connect(lambda: toast.close())
@@ -26893,7 +26900,7 @@ class StockMonitorApp(QMainWindow):
                     )
 
             def _on_yf(result):
-                status, installed, latest = result
+                status, installed, latest, wheel_url = result
                 yf_install_btn.setVisible(False)
                 if status == "update_available":
                     yf_status_lbl.setText(
@@ -26926,19 +26933,19 @@ class StockMonitorApp(QMainWindow):
                             except Exception as e:
                                 QMessageBox.warning(dlg, "pip", str(e))
                         yf_install_btn.clicked.connect(_run_pip)
-                    elif _is_frozen:
-                        # EXE-Modus: neue App-Version herunterladen
-                        yf_install_btn.setText("⬇ Neue App-Version laden")
+                    elif _is_frozen and wheel_url:
+                        # EXE-Modus: yfinance direkt aktualisieren
+                        yf_install_btn.setText(TR("btn_yf_auto_update"))
                         yf_install_btn.setStyleSheet(
-                            "QPushButton{background:#e67e00;color:white;font-weight:bold;"
+                            "QPushButton{background:#27ae60;color:white;font-weight:bold;"
                             "border-radius:5px;padding:3px 12px;}"
-                            "QPushButton:hover{background:#cf6d00;}"
+                            "QPushButton:hover{background:#1e8449;}"
                         )
                         yf_install_btn.setVisible(True)
-                        def _open_release(checked=False):
-                            import webbrowser
-                            webbrowser.open(f"https://github.com/{GITHUB_REPO}/releases/latest")
-                        yf_install_btn.clicked.connect(_open_release)
+                        def _do_yf_upd(checked=False, _v=latest, _u=wheel_url):
+                            dlg.close()
+                            self._do_yfinance_self_update(_v, _u)
+                        yf_install_btn.clicked.connect(_do_yf_upd)
                 elif status == "current":
                     yf_status_lbl.setText(
                         f"<span style='color:#27ae60;'>"
@@ -26985,7 +26992,7 @@ class StockMonitorApp(QMainWindow):
                 try:
                     installed = yf.__version__
                 except Exception:
-                    return "error", "", ""
+                    return "error", "", "", ""
                 try:
                     import urllib.request, json as _json
                     req = urllib.request.Request(
@@ -26995,15 +27002,20 @@ class StockMonitorApp(QMainWindow):
                         data = _json.loads(resp.read().decode())
                     latest = data.get("info", {}).get("version", "")
                     if not latest:
-                        return "error", installed, ""
+                        return "error", installed, "", ""
+                    wheel_url = ""
+                    for pkg in data.get("urls", []):
+                        if pkg.get("packagetype") == "bdist_wheel" and "none-any" in pkg.get("filename", ""):
+                            wheel_url = pkg.get("url", "")
+                            break
                     def _vt(v):
                         try: return tuple(int(x) for x in v.split("."))
                         except: return (0,)
                     if _vt(latest) > _vt(installed):
-                        return "update_available", installed, latest
-                    return "current", installed, latest
+                        return "update_available", installed, latest, wheel_url
+                    return "current", installed, latest, ""
                 except Exception:
-                    return "error", installed, ""
+                    return "error", installed, "", ""
 
             self._start_update_worker(_check_app, _on_app)
             self._start_update_worker(_check_yf,  _on_yf)
@@ -27241,6 +27253,165 @@ class StockMonitorApp(QMainWindow):
 
             except Exception as e:
                 _log.exception("Self-Update fehlgeschlagen")
+                sigs.finished.emit("error", str(e))
+
+        t = threading.Thread(target=_thread, daemon=True)
+        t.start()
+
+        dlg.adjustSize()
+        _screen = self.screen() or QApplication.primaryScreen()
+        if _screen:
+            sg = _screen.availableGeometry()
+            dlg.move(sg.center().x() - dlg.width() // 2,
+                     sg.center().y() - dlg.height() // 2)
+        dlg.exec()
+
+    def _do_yfinance_self_update(self, version, wheel_url):
+        """Aktualisiert yfinance in-place: lädt das Wheel von PyPI, entpackt es und
+        ersetzt _internal/yfinance/ ohne die App-EXE oder Benutzerdaten anzufassen.
+        Danach Neustart der App.
+        """
+        import tempfile, zipfile, threading, shutil, glob
+        from PyQt6.QtCore import pyqtSignal, QObject
+        from PyQt6.QtWidgets import QProgressBar
+
+        class _Sigs(QObject):
+            progress_update = pyqtSignal(int, str)
+            finished        = pyqtSignal(str, str)
+
+        sigs = _Sigs(self)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(TR("title_yf_update_download"))
+        dlg.setFixedWidth(420)
+        dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(20, 16, 20, 16)
+        lay.setSpacing(10)
+
+        title_lbl = QLabel(f"<b>📦 yfinance {version}</b> wird aktualisiert…")
+        title_lbl.setStyleSheet("font-size:13px;")
+        lay.addWidget(title_lbl)
+
+        pbar = QProgressBar()
+        pbar.setRange(0, 100)
+        pbar.setValue(0)
+        lay.addWidget(pbar)
+
+        status_lbl = QLabel(TR("lbl_update_connecting"))
+        status_lbl.setStyleSheet("color:#555; font-size:11px;")
+        lay.addWidget(status_lbl)
+
+        cancel_btn = QPushButton(TR("btn_cancel"))
+        row = QHBoxLayout()
+        row.addStretch()
+        row.addWidget(cancel_btn)
+        lay.addLayout(row)
+
+        _cancelled = [False]
+        cancel_btn.clicked.connect(lambda: _cancelled.__setitem__(0, True) or dlg.reject())
+
+        sigs.progress_update.connect(
+            lambda v, t: (pbar.setValue(v), status_lbl.setText(t)),
+            Qt.ConnectionType.QueuedConnection
+        )
+
+        def _on_done(status, message):
+            dlg.close()
+            if status == "error":
+                QMessageBox.critical(self, TR("lbl_update_error_title"), message)
+            elif status == "ready":
+                QTimer.singleShot(300, self.close)
+
+        sigs.finished.connect(_on_done, Qt.ConnectionType.QueuedConnection)
+
+        def _thread():
+            try:
+                import urllib.request, ssl, os, tempfile, zipfile, shutil, glob
+
+                sigs.progress_update.emit(5, TR("lbl_update_connecting"))
+
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+
+                tmp_dir   = tempfile.mkdtemp(prefix="sm_yf_")
+                whl_path  = os.path.join(tmp_dir, "yfinance.whl")
+
+                req = urllib.request.Request(wheel_url, headers={"User-Agent": "StockMonitor"})
+                with urllib.request.urlopen(req, timeout=60, context=ctx) as resp:
+                    total      = int(resp.headers.get("Content-Length", 0))
+                    downloaded = 0
+                    with open(whl_path, "wb") as f:
+                        while True:
+                            if _cancelled[0]:
+                                shutil.rmtree(tmp_dir, ignore_errors=True)
+                                return
+                            buf = resp.read(65536)
+                            if not buf:
+                                break
+                            f.write(buf)
+                            downloaded += len(buf)
+                            if total > 0:
+                                pct  = int(5 + (downloaded / total) * 60)
+                                mb_d = downloaded / 1048576
+                                mb_t = total / 1048576
+                                sigs.progress_update.emit(pct, f"Download: {mb_d:.1f} / {mb_t:.1f} MB")
+                            else:
+                                mb_d = downloaded / 1048576
+                                sigs.progress_update.emit(30, f"Download: {mb_d:.1f} MB…")
+
+                if _cancelled[0]:
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+                    return
+
+                sigs.progress_update.emit(68, "Wheel wird entpackt…")
+
+                extract_dir = os.path.join(tmp_dir, "x")
+                os.makedirs(extract_dir, exist_ok=True)
+                with zipfile.ZipFile(whl_path, "r") as zf:
+                    zf.extractall(extract_dir)
+                os.remove(whl_path)
+
+                sigs.progress_update.emit(80, "yfinance wird installiert…")
+
+                app_dir      = os.path.dirname(os.path.abspath(sys.executable))
+                internal_dir = os.path.join(app_dir, "_internal")
+
+                # Alte yfinance-Dateien entfernen
+                old_yf = os.path.join(internal_dir, "yfinance")
+                if os.path.isdir(old_yf):
+                    shutil.rmtree(old_yf)
+                for old_di in glob.glob(os.path.join(internal_dir, "yfinance-*.dist-info")):
+                    shutil.rmtree(old_di, ignore_errors=True)
+
+                # Neue yfinance-Dateien kopieren
+                for item in os.listdir(extract_dir):
+                    src = os.path.join(extract_dir, item)
+                    dst = os.path.join(internal_dir, item)
+                    if os.path.isdir(src):
+                        if os.path.isdir(dst):
+                            shutil.rmtree(dst)
+                        shutil.copytree(src, dst)
+                    else:
+                        shutil.copy2(src, dst)
+
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+
+                sigs.progress_update.emit(100, TR("lbl_yf_update_done", version=version))
+
+                import subprocess
+                subprocess.Popen(
+                    [sys.executable],
+                    creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+                    close_fds=True,
+                )
+                sigs.finished.emit("ready", "")
+
+            except Exception as e:
+                _log.exception("yfinance Self-Update fehlgeschlagen")
                 sigs.finished.emit("error", str(e))
 
         t = threading.Thread(target=_thread, daemon=True)
