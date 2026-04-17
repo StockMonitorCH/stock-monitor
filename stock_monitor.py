@@ -26479,7 +26479,10 @@ class StockMonitorApp(QMainWindow):
                     if asset.get("name", "").lower() == "stock_monitor.zip":
                         zip_url = asset.get("browser_download_url", "")
                         break
-                if latest != APP_VERSION:
+                def _vtuple(v):
+                    try: return tuple(int(x) for x in v.split("."))
+                    except: return (0,)
+                if _vtuple(latest) > _vtuple(APP_VERSION):
                     return ("update_available", latest,
                             data.get("html_url") or "",
                             data.get("body") or "",
