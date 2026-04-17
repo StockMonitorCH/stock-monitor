@@ -10849,8 +10849,12 @@ class PortfolioDialog(QMainWindow):
                 embed_cb(wrapper)
                 # Admin-Fenster als normales nicht-modales Fenster zeigen
                 self.setWindowModality(Qt.WindowModality.NonModal)
-                self.move(100, 100)
                 self.resize(1500, 700)
+                _scr = QApplication.primaryScreen().availableGeometry()
+                self.move(
+                    _scr.x() + (_scr.width()  - self.width())  // 2,
+                    _scr.y() + (_scr.height() - self.height()) // 2
+                )
                 self.show()
                 self.raise_()
                 self.activateWindow()
