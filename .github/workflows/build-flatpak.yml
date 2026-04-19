@@ -2,7 +2,7 @@ name: Build and Publish Flatpak
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 
 permissions:
