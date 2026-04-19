@@ -8,29 +8,34 @@
 
   <description>
     <p>
-      Stock Monitor is a comprehensive desktop application for managing and
-      analyzing your investment portfolio. Track stocks, ETFs, cryptocurrencies
-      and commodities across all major global exchanges.
+      Stock Monitor is a free, open-source desktop application for managing and
+      analysing your investment portfolio. Track stocks, ETFs, cryptocurrencies
+      and commodities across all major global exchanges — no cloud, no subscription,
+      all data stays on your computer.
     </p>
     <p xml:lang="de">
-      Stock Monitor ist eine umfassende Desktop-Anwendung zur Verwaltung und
+      Stock Monitor ist eine kostenlose, quelloffene Desktop-Anwendung zur Verwaltung und
       Analyse deines Anlageportfolios. Verfolge Aktien, ETFs, Kryptowährungen
-      und Rohstoffe an allen wichtigen globalen Börsen.
+      und Rohstoffe an allen wichtigen globalen Börsen – keine Cloud, kein Abo,
+      alle Daten bleiben auf deinem Computer.
     </p>
     <ul>
+      <li>Up to 16 simultaneous live charts with MA 20/50/200, RSI, Bollinger Bands, Candlestick</li>
       <li>Real-time price data via Yahoo Finance</li>
-      <li>Interactive charts with technical indicators (MA, RSI, Bollinger Bands)</li>
-      <li>Monte Carlo simulation and ECY analysis</li>
-      <li>Tax reports for CH / DE / AT / UK / US</li>
       <li>AES-256-GCM encrypted portfolio files</li>
+      <li>Monte Carlo simulation, Sharpe Ratio, Alpha, Beta analysis</li>
+      <li>AI Balance – rebalancing weighted by analyst consensus and news sentiment</li>
+      <li>Tax reports for CH / DE / AT / UK / US</li>
       <li>Interactive world map of your holdings</li>
+      <li>Import from Swissquote and Generic CSV</li>
       <li>PDF, XLSX and ODS export</li>
       <li>Available in German and English</li>
     </ul>
   </description>
 
-  <url type="homepage">https://stock-monitor.ch</url>
-  <url type="bugtracker">https://stock-monitor.ch</url>
+  <url type="homepage">https://www.stock-monitor.ch</url>
+  <url type="bugtracker">https://github.com/StockMonitorCH/stock-monitor/issues</url>
+  <url type="vcs-browser">https://github.com/StockMonitorCH/stock-monitor</url>
 
   <launchable type="desktop-id">ch.stockmonitor.StockMonitor.desktop</launchable>
 
@@ -75,10 +80,35 @@
   </releases>
 
   <screenshots>
-    <!-- Ersetze mit echten Screenshots vor Flathub-Einreichung -->
     <screenshot type="default">
-      <caption>Portfolio overview</caption>
-      <image>https://stock-monitor.ch/screenshots/portfolio.png</image>
+      <caption>Main dashboard with 16 simultaneous live charts</caption>
+      <caption xml:lang="de">Hauptansicht mit 16 gleichzeitigen Live-Charts</caption>
+      <image>https://www.stock-monitor.ch/screenshots/dashboard_EN.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Portfolio overview with performance, sectors and P&amp;L</caption>
+      <caption xml:lang="de">Portfolio-Übersicht mit Performance, Sektoren und G&amp;V</caption>
+      <image>https://www.stock-monitor.ch/screenshots/portfolio_EN.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>AI Balance – rebalancing with analyst consensus and news sentiment</caption>
+      <caption xml:lang="de">AI Balance – Rebalancing mit Analysten-Konsens und News-Sentiment</caption>
+      <image>https://www.stock-monitor.ch/screenshots/ai-balance_EN.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Monte Carlo simulation – thousands of future portfolio scenarios</caption>
+      <caption xml:lang="de">Monte Carlo Simulation – Tausende mögliche Zukunftsszenarien</caption>
+      <image>https://www.stock-monitor.ch/screenshots/montecarlo_EN.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Interactive world map showing geographic distribution of holdings</caption>
+      <caption xml:lang="de">Interaktive Weltkarte mit geographischer Verteilung der Positionen</caption>
+      <image>https://www.stock-monitor.ch/screenshots/worldmap_EN.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Tax module for CH / DE / AT / UK / US</caption>
+      <caption xml:lang="de">Steuermodul für CH / DE / AT / UK / US</caption>
+      <image>https://www.stock-monitor.ch/screenshots/tax_EN.png</image>
     </screenshot>
   </screenshots>
 
