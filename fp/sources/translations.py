@@ -1628,6 +1628,21 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_yf_toast_title":         "yfinance Update verfügbar",
         "lbl_yf_toast_msg":           "Version {latest} ist verfügbar (installiert: {installed}).\nUpdate via: pip install --upgrade yfinance",
 
+        # ── Self-Update (Windows EXE) ─────────────────────────────────────────
+        "btn_auto_update":            "⬇ Automatisch updaten",
+        "title_update_download":      "Update wird heruntergeladen",
+        "lbl_update_connecting":      "Verbinde…",
+        "lbl_update_warn_backup":     "ℹ Die App startet nach dem Update automatisch neu.\nDeine Portfolios werden nicht verändert. Eine Datensicherung wird trotzdem empfohlen.",
+        "lbl_update_error_title":     "Update-Fehler",
+        "msg_update_ready":           "Stock Monitor v{version} wurde heruntergeladen und ist bereit zur Installation.\n\nMöchtest du die App jetzt neu starten?\nDas Update wird beim Schliessen der App automatisch ausgeführt.",
+        "btn_update_now":             "Jetzt neu starten",
+        "btn_update_later":           "Später",
+        "btn_yf_auto_update":         "⬇ yfinance automatisch aktualisieren",
+        "title_yf_update_download":   "yfinance wird aktualisiert",
+        "lbl_yf_toast_msg_exe":       "Version {latest} ist verfügbar (installiert: {installed}).\nDie App wird aktualisiert und automatisch neu gestartet.",
+        "lbl_yf_toast_msg_flatpak":   "Version {latest} ist verfügbar (installiert: {installed}).\nDas Update kommt automatisch mit dem nächsten Flatpak-Release.",
+        "lbl_yf_update_done":         "✅ yfinance {version} installiert! App wird neu gestartet…",
+
     },
 
 
@@ -3181,6 +3196,21 @@ more than enough for personal use.</p>
         "lbl_update_checking_yf":     "🔄 Checking yfinance…",
         "lbl_yf_toast_title":         "yfinance Update Available",
         "lbl_yf_toast_msg":           "Version {latest} is available (installed: {installed}).\nUpdate via: pip install --upgrade yfinance",
+
+        # ── Self-Update (Windows EXE) ─────────────────────────────────────────
+        "btn_auto_update":            "⬇ Auto Update",
+        "title_update_download":      "Downloading Update",
+        "lbl_update_connecting":      "Connecting…",
+        "lbl_update_warn_backup":     "ℹ The app will restart automatically after the update.\nYour portfolios will not be changed. A backup is still recommended.",
+        "lbl_update_error_title":     "Update Error",
+        "msg_update_ready":           "Stock Monitor v{version} has been downloaded and is ready to install.\n\nWould you like to restart the app now?\nThe update will run automatically when the app is closed.",
+        "btn_update_now":             "Restart Now",
+        "btn_update_later":           "Later",
+        "btn_yf_auto_update":         "⬇ Auto-Update yfinance",
+        "title_yf_update_download":   "Updating yfinance",
+        "lbl_yf_toast_msg_exe":       "Version {latest} is available (installed: {installed}).\nThe app will update and restart automatically.",
+        "lbl_yf_toast_msg_flatpak":   "Version {latest} is available (installed: {installed}).\nThe update will arrive automatically with the next Flatpak release.",
+        "lbl_yf_update_done":         "✅ yfinance {version} installed! App will restart…",
 
     },
 }

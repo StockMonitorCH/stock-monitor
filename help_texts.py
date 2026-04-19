@@ -88,7 +88,7 @@ _HTML_DE = """
 
         <div class="new">&#127381; <b>Demo-Portfolio vorgeladen</b><br>
         Stock Monitor wird mit einem Demo-Portfolio geliefert, damit du alle Funktionen sofort ausprobieren kannst.<br>
-        <b>Passwort:</b> <code>Stock-Monitor 5.0</code></div>
+        Das Demo-Portfolio ist ohne Passwort – einfach öffnen und loslegen.</div>
 
         <a name="quickstart"><h2>&#128640; Quickstart – In 5 Minuten loslegen</h2></a>
         <p>Noch nie mit Stock Monitor gearbeitet? Hier der schnellste Weg zum ersten Ergebnis:</p>
@@ -314,6 +314,21 @@ _HTML_DE = """
         <a name="auto-refresh"><h2>&#128260; Auto-Refresh</h2></a>
         <p>Automatische Aktualisierung: <b>Aus &bull; 30 Sek &bull; 1 Min &bull; 5 Min</b><br>
         Manuell: Alle-Button für sofortige Aktualisierung aller Charts.</p>
+
+        <a name="updates"><h2>&#128640; Updates</h2></a>
+        <p>Stock Monitor prüft beim Start automatisch im Hintergrund auf neue Versionen – sowohl die App selbst als auch die Datenbibliothek <b>yfinance</b>.</p>
+        <h3>Manuell prüfen</h3>
+        <p>Toolbar &rarr; <b>Nach Updates suchen</b>. Es öffnet sich ein Dialog mit dem aktuellen Stand beider Komponenten.</p>
+        <h3>App-Update (Stock Monitor)</h3>
+        <p>Bei einer neuen Version erscheint ein Dialog mit den Release-Notizen und einem Link zur GitHub-Seite, wo die neue Version heruntergeladen werden kann.</p>
+        <h3>yfinance-Update</h3>
+        <p>yfinance liefert die Börsendaten. Eine veraltete Version kann zu fehlenden Kursen oder Fehlermeldungen führen. Das Update-Verhalten hängt von der Installationsart ab:</p>
+        <ul>
+            <li><b>Script-Modus (.py):</b> Ein Klick auf <b>Installieren</b> startet <code>pip install</code> automatisch.</li>
+            <li><b>EXE (Windows):</b> Stock Monitor lädt die neue Version direkt herunter und tauscht sie beim nächsten Start aus – kein pip nötig.</li>
+            <li><b>Flatpak (Linux):</b> yfinance ist in der Flatpak-Version enthalten und wird mit dem nächsten Flatpak-Update aktualisiert.</li>
+        </ul>
+        <div class="tip"><b>Tipp:</b> Wenn Charts plötzlich keine Daten mehr laden, lohnt sich zuerst ein Blick auf das yfinance-Update – oft liegt es an einer veralteten Version.</div>
 
         <a name="favoriten"><h2>&#11088; Favoriten</h2></a>
         <p><b>Hinzufügen:</b> Favoriten hinzufügen im Header &bull;
@@ -838,7 +853,7 @@ _HTML_EN = """
 
         <div class="new">&#127381; <b>Demo portfolio pre-loaded</b><br>
         Stock Monitor ships with a demo portfolio so you can explore all features right away.<br>
-        <b>Password:</b> <code>Stock-Monitor 5.0</code></div>
+        The demo portfolio has no password – just open it and start exploring.</div>
 
         <a name="quickstart"><h2>&#128640; Quickstart – Up and Running in 5 Minutes</h2></a>
         <p>Never used Stock Monitor before? Here is the fastest way to get your first result:</p>
@@ -1061,6 +1076,21 @@ _HTML_EN = """
         <a name="auto-refresh"><h2>&#128260; Auto-Refresh</h2></a>
         <p>Automatic updates: <b>Off &bull; 30 sec &bull; 1 min &bull; 5 min</b><br>
         Manual: Refresh-All button for immediate update of all charts.</p>
+
+        <a name="updates"><h2>&#128640; Updates</h2></a>
+        <p>Stock Monitor automatically checks for new versions in the background at startup – both the app itself and the data library <b>yfinance</b>.</p>
+        <h3>Check manually</h3>
+        <p>Toolbar &rarr; <b>Check for updates</b>. A dialog opens showing the current status of both components.</p>
+        <h3>App update (Stock Monitor)</h3>
+        <p>When a new version is available, a dialog appears with release notes and a link to the GitHub page where the new version can be downloaded.</p>
+        <h3>yfinance update</h3>
+        <p>yfinance provides the market data. An outdated version can cause missing prices or error messages. The update behaviour depends on how Stock Monitor is installed:</p>
+        <ul>
+            <li><b>Script mode (.py):</b> Click <b>Install</b> to run <code>pip install</code> automatically.</li>
+            <li><b>EXE (Windows):</b> Stock Monitor downloads the new version directly and swaps it in at next launch – no pip required.</li>
+            <li><b>Flatpak (Linux):</b> yfinance is bundled with the Flatpak and updated with the next Flatpak release.</li>
+        </ul>
+        <div class="tip"><b>Tip:</b> If charts suddenly stop loading data, check the yfinance update first – an outdated version is often the cause.</div>
 
         <a name="favoriten"><h2>&#11088; Favourites</h2></a>
         <p><b>Add:</b> Add favourites in the header &bull;
@@ -1586,6 +1616,7 @@ _TOC_DE = [
     "Stop-Loss & Zielkurs",
     "Crosshair & Tooltip",
     "Auto-Refresh",
+    "Updates",
     "Favoriten",
     "Watchlist",
     "── 🔍 ANALYSE ──",
@@ -1659,6 +1690,7 @@ _TOC_EN = [
     "Stop-Loss & Target Price",
     "Crosshair & Tooltip",
     "Auto-Refresh",
+    "Updates",
     "Favourites",
     "Watchlist",
     "── 🔍 ANALYSIS ──",
@@ -1734,6 +1766,7 @@ _ANCHOR_DE = {
     "stop-loss & zielkurs":       "stop-loss__zielkurs",
     "crosshair & tooltip":        "zeiträume",
     "auto-refresh":               "auto-refresh",
+    "updates":                    "updates",
     "favoriten":                  "favoriten",
     "watchlist":                  "watchlist",
     # Analyse
@@ -1815,6 +1848,7 @@ _ANCHOR_EN = {
     "stop-loss & target price":   "stop-loss__zielkurs",
     "crosshair & tooltip":        "zeiträume",
     "auto-refresh":               "auto-refresh",
+    "updates":                    "updates",
     "favourites":                 "favoriten",
     "watchlist":                  "watchlist",
     # Analysis

@@ -13,14 +13,41 @@ Features:
 """
 
 import sys
+import os
 import traceback
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.0.0"                            # beim Release anpassen
+APP_VERSION  = "5.0.1"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
+
+# ── Portable-Modus ────────────────────────────────────────────────────────────
+# Windows: Daten immer neben der App (portable, keine Spuren auf Fremdrechner).
+#   Konfig/Cache → <app>/_internal/   Portfolio-Dateien → <app>/Portfolios/
+# Linux/Mac: weiterhin ~ (Flatpak/normale Installation)
+def _get_app_dir() -> str:
+    """Verzeichnis der laufenden EXE bzw. des Skripts."""
+    if sys.platform == "win32":
+        try:
+            if getattr(sys, 'frozen', False):
+                # PyInstaller EXE: sys.executable = Pfad zur .exe
+                return os.path.dirname(os.path.abspath(sys.executable))
+            else:
+                # Python-Script direkt gestartet: __file__ nutzen
+                return os.path.dirname(os.path.abspath(__file__))
+        except Exception:
+            pass
+    return os.path.expanduser("~")
+
+_APP_DIR        = _get_app_dir()
+_DATA_HOME      = os.path.join(_APP_DIR, "_internal") if sys.platform == "win32" else os.path.expanduser("~")
+_PORTFOLIO_HOME = os.path.join(_APP_DIR, "Portfolios") if sys.platform == "win32" else os.path.expanduser("~")
+
+if sys.platform == "win32":
+    os.makedirs(_DATA_HOME, exist_ok=True)
+    os.makedirs(_PORTFOLIO_HOME, exist_ok=True)
 
 # ── Sprach- und Konfigurationsmodul ───────────────────────────────────────────
 try:
@@ -79,7 +106,6 @@ import urllib.request
 import urllib.parse
 import webbrowser
 import pickle
-import os
 import matplotlib
 matplotlib.use('QtAgg')
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
@@ -256,7 +282,7 @@ except ImportError:
     _DB_IMPORT_OK = False
     CRYPTO_AVAILABLE = False
     FILE_EXT = ".smpf"
-    PORTFOLIO_DIR = os.path.expanduser("~/.stock_monitor_portfolios")
+    PORTFOLIO_DIR = os.path.join(_DATA_HOME, ".stock_monitor_portfolios")
 
 
 
@@ -7230,6 +7256,7 @@ class PortfolioPasswordDialog(QDialog):
         """
         super().__init__(parent)
         self.mode = mode
+        self._portfolio_name = portfolio_name
         self._password     = None
         self._old_password = None
         self._setup_ui(portfolio_name)
@@ -7427,7 +7454,7 @@ class PortfolioPasswordDialog(QDialog):
     def _accept(self):
         pw1 = self._pw1.text()
         if self.mode == "load":
-            if not pw1:
+            if not pw1 and self._portfolio_name != "Demo":
                 self._status.setText(TR("msg_enter_password"))
                 return
             self._password = pw1
@@ -7439,6 +7466,11 @@ class PortfolioPasswordDialog(QDialog):
                     self._status.setText(TR("msg_enter_current_password"))
                     return
                 self._old_password = pw0
+            # Demo-Portfolio darf ohne Passwort gespeichert werden
+            if self.mode == "save" and self._portfolio_name == "Demo" and not pw1:
+                self._password = ""
+                self.accept()
+                return
             pw2 = self._pw2.text()
             if len(pw1) < self.MIN_PW_LEN:
                 self._status.setText(TR("lbl_pw_too_short", n=self.MIN_PW_LEN))
@@ -7468,11 +7500,11 @@ class PortfolioPasswordDialog(QDialog):
 class PortfolioDialog(QMainWindow):
     """Portfolio-Ansicht: Übersicht + Admin in einem Fenster (QStackedWidget)"""
 
-    PORTFOLIO_FILE = os.path.expanduser("~/.stock_monitor_portfolio.json")
-    PORTFOLIO_DIR  = os.path.expanduser("~/.stock_monitor_portfolios")
-    CONFIG_FILE    = os.path.expanduser("~/.stock_monitor_portfolios/config.json")
-    LIMITS_FILE    = os.path.expanduser("~/.stock_monitor_limits.json")
-    SETTINGS_FILE  = os.path.expanduser("~/.stock_monitor_settings.json")
+    PORTFOLIO_FILE = os.path.join(_DATA_HOME, ".stock_monitor_portfolio.json")
+    PORTFOLIO_DIR  = os.path.join(_DATA_HOME, ".stock_monitor_portfolios")
+    CONFIG_FILE    = os.path.join(_DATA_HOME, ".stock_monitor_portfolios", "config.json")
+    LIMITS_FILE    = os.path.join(_DATA_HOME, ".stock_monitor_limits.json")
+    SETTINGS_FILE  = os.path.join(_DATA_HOME, ".stock_monitor_settings.json")
 
     # ── API-Key Defaults (leer = nicht konfiguriert) ──────────────────────
     _api_keys = {'finnhub': '', 'gemini': '', 'fmp': ''}
@@ -7486,7 +7518,7 @@ class PortfolioDialog(QMainWindow):
             return val
         # Direkt aus Datei lesen
         try:
-            sf = os.path.expanduser("~/.stock_monitor_settings.json")
+            sf = os.path.join(_DATA_HOME, ".stock_monitor_settings.json")
             if os.path.exists(sf):
                 with open(sf, 'r') as f:
                     data = json.load(f)
@@ -7545,8 +7577,8 @@ class PortfolioDialog(QMainWindow):
         self._CACHE_TTL          = 300   # 5 Minuten frisch genug
         self._OVERVIEW_CACHE_TTL = 300   # 5 Minuten für Übersicht
         # Sektor-Cache von Disk laden – alte deutsche Caches erkennen und löschen
-        _sc_path = os.path.expanduser('~/.stock_monitor_sectors.json')
-        _ic_path = os.path.expanduser('~/.stock_monitor_industries.json')
+        _sc_path = os.path.join(_DATA_HOME, ".stock_monitor_sectors.json")
+        _ic_path = os.path.join(_DATA_HOME, ".stock_monitor_industries.json")
 
         def _cache_is_old_format(d):
             """True wenn Cache deutsche/Emoji-Übersetzungen enthält (altes Format)."""
@@ -7597,7 +7629,7 @@ class PortfolioDialog(QMainWindow):
         # Firmenname-Cache von Disk laden
         try:
             import json as _json
-            _cn_path = os.path.expanduser('~/.stock_monitor_companies.json')
+            _cn_path = os.path.join(_DATA_HOME, ".stock_monitor_companies.json")
             if os.path.exists(_cn_path):
                 with open(_cn_path, 'r') as _f:
                     self._company_cache = _json.load(_f)
@@ -7606,9 +7638,12 @@ class PortfolioDialog(QMainWindow):
         except Exception:
             self._company_cache = {}
         self._time = _time_mod
+        # Demo-Portfolio beim ersten Start laden (kein Portfolio vorhanden)
+        if not self.portfolio_data and not self._get_active_portfolio_name():
+            self._auto_load_demo_portfolio()
         # AIBalance-Filter pro Portfolio: {portfolio_name: {'currencies': [...], 'sectors': [...]}}
         self._aib_filters = {}
-        self._aib_filters_file = os.path.expanduser('~/.stock_monitor_aib_filters.json')
+        self._aib_filters_file = os.path.join(_DATA_HOME, ".stock_monitor_aib_filters.json")
         try:
             import json as _json
             if os.path.exists(self._aib_filters_file):
@@ -8028,7 +8063,7 @@ class PortfolioDialog(QMainWindow):
             if successful_sectors:
                 try:
                     import json as _json
-                    _sc_path = os.path.expanduser('~/.stock_monitor_sectors.json')
+                    _sc_path = os.path.join(_DATA_HOME, ".stock_monitor_sectors.json")
                     with open(_sc_path, 'w') as _f:
                         _json.dump(successful_sectors, _f)
                 except Exception:
@@ -8039,7 +8074,7 @@ class PortfolioDialog(QMainWindow):
             if industry_result:
                 try:
                     import json as _json
-                    _ic_path = os.path.expanduser('~/.stock_monitor_industries.json')
+                    _ic_path = os.path.join(_DATA_HOME, ".stock_monitor_industries.json")
                     with open(_ic_path, 'w') as _f:
                         _json.dump(self._industry_cache, _f)
                 except Exception:
@@ -8049,7 +8084,7 @@ class PortfolioDialog(QMainWindow):
                 self._company_cache.update(worker._company_names)
                 try:
                     import json as _json
-                    _cn_path = os.path.expanduser('~/.stock_monitor_companies.json')
+                    _cn_path = os.path.join(_DATA_HOME, ".stock_monitor_companies.json")
                     with open(_cn_path, 'w') as _f:
                         _json.dump(self._company_cache, _f)
                 except Exception:
@@ -8137,9 +8172,26 @@ class PortfolioDialog(QMainWindow):
             pass
         return {}
 
+    def _auto_load_demo_portfolio(self):
+        """Lädt Demo-Portfolio beim ersten Start automatisch (leeres Passwort)."""
+        if not _DB_IMPORT_OK:
+            return
+        try:
+            demo_path = os.path.join(_pdb.PORTFOLIO_DIR, "Demo.smpf")
+            if not os.path.exists(demo_path):
+                return
+            data = _pdb.load_portfolio("Demo", "")
+            self.portfolio_data = self._migrate_crypto(data["positions"])
+            if data.get("sector_cache"):
+                self._sector_cache.update(data["sector_cache"])
+            self._set_active_portfolio_name("Demo")
+            self.save_portfolio()
+        except Exception:
+            pass  # Demo nicht ladbar (z.B. falsches Passwort) → kein Absturz
+
     def _get_active_portfolio_name(self) -> str:
         """Gibt den Namen des zuletzt aktiven Portfolios zurück (aus Meta-Datei)."""
-        meta_file = os.path.expanduser("~/.stock_monitor_active_portfolio")
+        meta_file = os.path.join(_DATA_HOME, ".stock_monitor_active_portfolio")
         try:
             if os.path.exists(meta_file):
                 with open(meta_file) as f:
@@ -8150,7 +8202,7 @@ class PortfolioDialog(QMainWindow):
 
     def _set_active_portfolio_name(self, name: str):
         """Merkt sich welches Portfolio zuletzt aktiv war."""
-        meta_file = os.path.expanduser("~/.stock_monitor_active_portfolio")
+        meta_file = os.path.join(_DATA_HOME, ".stock_monitor_active_portfolio")
         try:
             with open(meta_file, 'w') as f:
                 f.write(name)
@@ -8180,9 +8232,9 @@ class PortfolioDialog(QMainWindow):
         name = self._get_active_portfolio_name()
         safe = "".join(c for c in name if c.isalnum() or c in " _-").strip() if name else ""
         if safe:
-            return os.path.expanduser(f"~/.stock_monitor_limits_{safe}.json")
+            return os.path.join(_DATA_HOME, f".stock_monitor_limits_{safe}.json")
         # Kein Portfolio aktiv → feste Fallback-Datei (nicht dieselbe wie App-Charts)
-        return os.path.expanduser("~/.stock_monitor_portfolio_limits.json")
+        return os.path.join(_DATA_HOME, ".stock_monitor_portfolio_limits.json")
 
     def _load_limits(self):
         """Lädt Stop-Loss / eigene Zielkurse aus JSON (portfoliospezifisch)."""
@@ -8660,7 +8712,7 @@ class PortfolioDialog(QMainWindow):
         dest, _ = QFileDialog.getSaveFileName(
             self,
             TR("title_export_portfolio_location"),
-            os.path.join(os.path.expanduser("~"), f"{name}{FILE_EXT}"),
+            os.path.join(_PORTFOLIO_HOME, f"{name}{FILE_EXT}"),
             f"Stock Monitor Portfolio (*{FILE_EXT});;Alle Dateien (*)"
         )
         if not dest:
@@ -8756,7 +8808,7 @@ class PortfolioDialog(QMainWindow):
                     from PyQt6.QtWidgets import QFileDialog
                     dest, _ = QFileDialog.getSaveFileName(
                         dlg, "Portfolio exportieren",
-                        os.path.join(os.path.expanduser("~"), f"{name}{FILE_EXT}"),
+                        os.path.join(_PORTFOLIO_HOME, f"{name}{FILE_EXT}"),
                         f"Stock Monitor Portfolio (*{FILE_EXT})"
                     )
                     if not dest:
@@ -8787,7 +8839,7 @@ class PortfolioDialog(QMainWindow):
                 from PyQt6.QtWidgets import QFileDialog
                 filepath, _ = QFileDialog.getOpenFileName(
                     dlg, "Portfolio importieren",
-                    os.path.expanduser("~"),
+                    _PORTFOLIO_HOME,
                     f"Stock Monitor Portfolio (*{FILE_EXT});;Alle Dateien (*)"
                 )
                 if not filepath: return
@@ -10823,8 +10875,12 @@ class PortfolioDialog(QMainWindow):
                 embed_cb(wrapper)
                 # Admin-Fenster als normales nicht-modales Fenster zeigen
                 self.setWindowModality(Qt.WindowModality.NonModal)
-                self.move(100, 100)
                 self.resize(1500, 700)
+                _scr = QApplication.primaryScreen().availableGeometry()
+                self.move(
+                    _scr.x() + (_scr.width()  - self.width())  // 2,
+                    _scr.y() + (_scr.height() - self.height()) // 2
+                )
                 self.show()
                 self.raise_()
                 self.activateWindow()
@@ -23757,8 +23813,8 @@ class StockMonitorApp(QMainWindow):
         self.charts = []
         self.fullscreen_widget = None
         self.saved_states = []
-        self.config_file = os.path.expanduser("~/.stock_monitor_config.pkl")
-        self.favorites_file = os.path.expanduser("~/.stock_monitor_favorites.json")
+        self.config_file = os.path.join(_DATA_HOME, ".stock_monitor_config.pkl")
+        self.favorites_file = os.path.join(_DATA_HOME, ".stock_monitor_favorites.json")
         self._dollar_anim = None
         self.is_loading = True
         self._app_limits = self._load_limits_app()  # Stop-Loss/Zielkurs für Haupt-Charts
@@ -23813,7 +23869,9 @@ class StockMonitorApp(QMainWindow):
         if not self.charts:
             self._startup_target = 88.0
             self.loading_dialog.update_progress(65, TR("status_creating_charts"))
-            self.create_charts(4)
+            _sw = QApplication.primaryScreen().size().width() if QApplication.primaryScreen() else 1920
+            _default_charts = 16 if _sw >= 3840 else 12
+            self.create_charts(_default_charts)
         QTimer.singleShot(80, self._init_step5)
 
     def _init_step5(self):
@@ -23829,10 +23887,41 @@ class StockMonitorApp(QMainWindow):
         self._startup_timer.stop()
         self.loading_dialog.update_progress(100, TR("status_ready"))
         self.showMaximized()
+        self.raise_()
+        self.activateWindow()
         self._ready = True  # Ab jetzt: Custom-Zeitraum-Dialog erlaubt
         QTimer.singleShot(500, self.loading_dialog.close)
+        # Kurz WindowStaysOnTopHint setzen damit das Fenster nach Update-Neustart
+        # zuverlässig im Vordergrund erscheint (Windows Focus-Stealing-Prevention umgehen)
+        QTimer.singleShot(600, self._force_to_front)
         # Update-Checks im Hintergrund – erst nach 5 s starten damit die UI fertig ist
         QTimer.singleShot(5000, self._startup_update_checks)
+
+    def _force_to_front(self):
+        self.raise_()
+        self.activateWindow()
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                hwnd = int(self.winId())
+                ctypes.windll.user32.ShowWindow(hwnd, 9)   # SW_RESTORE
+                ctypes.windll.user32.SetForegroundWindow(hwnd)
+                ctypes.windll.user32.BringWindowToTop(hwnd)
+            except Exception:
+                pass
+        # Fallback: WindowStaysOnTopHint kurz setzen
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        self.show()
+        QTimer.singleShot(1500, self._unflag_on_top)
+
+    def _unflag_on_top(self):
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
+        self.show()
+
+    def closeEvent(self, event):
+        QApplication.instance().quit()
+        event.accept()
+
     def setup_ui(self):
         """UI initialisieren"""
         self.setWindowTitle(TR("title_app"))
@@ -25667,7 +25756,7 @@ class StockMonitorApp(QMainWindow):
         """Versuche beim Start die letzte Konfiguration zu laden (optional)"""
         # Alte Auto-Load Funktion - jetzt optional
         last_config = os.path.join(
-            os.path.expanduser("~/.stock_monitor_configs"),
+            os.path.join(_DATA_HOME, ".stock_monitor_configs"),
             "_last_session.pkl"
         )
         
@@ -25745,7 +25834,7 @@ class StockMonitorApp(QMainWindow):
             return
         
         try:
-            config_dir = os.path.join(os.path.expanduser("~"), ".stock_monitor_configs")
+            config_dir = os.path.join(_DATA_HOME, ".stock_monitor_configs")
             os.makedirs(config_dir, exist_ok=True)
             
             last_config = os.path.join(config_dir, "_last_session.pkl")
@@ -25807,7 +25896,7 @@ class StockMonitorApp(QMainWindow):
 
     def _limits_file_app(self) -> str:
         """Feste, portfoliounabhängige Limits-Datei für die Haupt-Charts der App."""
-        return os.path.expanduser("~/.stock_monitor_chart_limits.json")
+        return os.path.join(_DATA_HOME, ".stock_monitor_chart_limits.json")
 
     def _load_limits_app(self) -> dict:
         """Lädt Stop-Loss/Zielkurse für Haupt-Charts (portfoliospezifisch)."""
@@ -26410,7 +26499,10 @@ class StockMonitorApp(QMainWindow):
         class _W(QThread):
             done = _sig(object)
             def run(self):
-                self.done.emit(fn_check())
+                try:
+                    self.done.emit(fn_check())
+                except Exception:
+                    _log.exception("Update-Worker run() fehlgeschlagen")
 
         worker = _W(self)
         worker.done.connect(fn_result, Qt.ConnectionType.QueuedConnection)
@@ -26432,67 +26524,84 @@ class StockMonitorApp(QMainWindow):
 
         def _do_check():
             try:
-                import urllib.request, json as _json
+                import urllib.request, json as _json, ssl
                 url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
                 req = urllib.request.Request(url, headers={"User-Agent": "StockMonitor"})
-                with urllib.request.urlopen(req, timeout=8) as resp:
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+                with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
                     data = _json.loads(resp.read().decode())
                 latest = data.get("tag_name", "").lstrip("v")
                 if not latest:
-                    return "error", APP_VERSION, "", ""
-                if latest != APP_VERSION:
+                    return "error", APP_VERSION, "", "", ""
+                zip_url = ""
+                for asset in data.get("assets", []):
+                    if asset.get("name", "").lower() == "stock_monitor.zip":
+                        zip_url = asset.get("browser_download_url", "")
+                        break
+                def _vtuple(v):
+                    try: return tuple(int(x) for x in v.split("."))
+                    except: return (0,)
+                if _vtuple(latest) > _vtuple(APP_VERSION):
                     return ("update_available", latest,
-                            data.get("html_url", ""),
-                            data.get("body", ""))
-                return "current", APP_VERSION, "", ""
+                            data.get("html_url") or "",
+                            data.get("body") or "",
+                            zip_url)
+                return "current", APP_VERSION, "", "", ""
             except Exception:
-                return "error", APP_VERSION, "", ""
+                return "error", APP_VERSION, "", "", ""
 
         def _on_result(result):
-            status, version, url, notes = result
-            if status == "update_available":
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#e67e00;'>"
-                        + TR("lbl_app_update_available", version=version)
-                        + "</span>"
-                    )
-                if update_btn:
-                    update_btn.setText(f"⬇️ v{version} {TR('btn_update')}")
-                    update_btn.setEnabled(True)
-                    update_btn.setStyleSheet(
-                        "QPushButton { background-color: #e67e00; color: white; "
-                        "font-weight: bold; border-radius: 6px; padding: 4px 10px; }"
-                        "QPushButton:hover { background-color: #cf6d00; }"
-                    )
-                    try:
-                        update_btn.clicked.disconnect()
-                    except Exception:
-                        pass
-                    def _open_release(checked=False, _url=url):
-                        import webbrowser; webbrowser.open(_url)
-                    update_btn.clicked.connect(_open_release)
-                # Eigenständiger Dialog (kein status_label von aussen)
-                if not status_label:
-                    self._show_app_update_dialog(version, url, notes)
-            elif status == "current":
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#27ae60;'>"
-                        + TR("lbl_app_update_current", version=version)
-                        + "</span>"
-                    )
-                if update_btn:
-                    update_btn.setEnabled(False)
-            else:  # error
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#888;'>{TR('lbl_app_update_error')}</span>"
-                    )
+            try:
+                status, version, url, notes, zip_url = result
+                if status == "update_available":
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#e67e00;'>"
+                            + TR("lbl_app_update_available", version=version)
+                            + "</span>"
+                        )
+                    if update_btn:
+                        update_btn.setText(f"⬇️ v{version} {TR('btn_update')}")
+                        update_btn.setEnabled(True)
+                        update_btn.setStyleSheet(
+                            "QPushButton { background-color: #e67e00; color: white; "
+                            "font-weight: bold; border-radius: 6px; padding: 4px 10px; }"
+                            "QPushButton:hover { background-color: #cf6d00; }"
+                        )
+                        try:
+                            update_btn.clicked.disconnect()
+                        except Exception:
+                            pass
+                        def _open_release(checked=False, _url=url, _v=version, _n=notes, _z=zip_url):
+                            self._show_app_update_dialog(_v, _url, _n, _z)
+                        update_btn.clicked.connect(_open_release)
+                    # Eigenständiger Dialog (kein status_label von aussen)
+                    if not status_label:
+                        self._show_app_update_dialog(version, url, notes, zip_url)
+                elif status == "current":
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#27ae60;'>"
+                            + TR("lbl_app_update_current", version=version)
+                            + "</span>"
+                        )
+                    if update_btn:
+                        update_btn.setEnabled(False)
+                else:  # error
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#888;'>{TR('lbl_app_update_error')}</span>"
+                        )
+            except Exception:
+                _log.exception("Update-Check _on_result fehlgeschlagen")
 
         self._start_update_worker(_do_check, _on_result)
 
-    def _show_app_update_dialog(self, version, url, notes):
+    def _show_app_update_dialog(self, version, url, notes, zip_url=""):
         """Zeigt einen Nicht-Blocking-Dialog wenn eine neue App-Version verfügbar ist."""
         dlg = QDialog(self)
         dlg.setWindowTitle(TR("title_update_check"))
@@ -26518,6 +26627,19 @@ class StockMonitorApp(QMainWindow):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
+        _is_exe_win = getattr(sys, 'frozen', False) and sys.platform == "win32"
+        if _is_exe_win and zip_url:
+            auto_btn = QPushButton(TR("btn_auto_update"))
+            auto_btn.setStyleSheet(
+                "QPushButton{background:#27ae60;color:white;font-weight:bold;"
+                "border-radius:6px;padding:4px 14px;}"
+                "QPushButton:hover{background:#1e8449;}"
+            )
+            def _do_auto(checked=False, _v=version, _z=zip_url):
+                dlg.close()
+                self._do_self_update(_v, _z)
+            auto_btn.clicked.connect(_do_auto)
+            btn_row.addWidget(auto_btn)
         if url:
             open_btn = QPushButton(TR("btn_open_release_page"))
             open_btn.setStyleSheet(
@@ -26556,10 +26678,54 @@ class StockMonitorApp(QMainWindow):
         QTimer.singleShot(1000, _tick)
 
         dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        # Zentrieren: erst adjustSize damit Höhe bekannt, dann verschieben, dann anzeigen
+        dlg.adjustSize()
+        _screen = self.screen() or QApplication.primaryScreen()
+        if _screen:
+            _sg = _screen.availableGeometry()
+            dlg.move(
+                _sg.center().x() - dlg.width() // 2,
+                _sg.center().y() - dlg.height() // 2
+            )
         dlg.show()
         dlg.raise_()
         dlg.activateWindow()
         QApplication.setActiveWindow(dlg)
+
+    def _get_yfinance_installed_version(self) -> str:
+        """Gibt die tatsächlich installierte yfinance-Version zurück.
+        Im EXE-Modus: liest aus dist-info auf Disk (importlib.metadata ist eingefroren).
+        """
+        if getattr(sys, 'frozen', False):
+            try:
+                import glob as _glob
+                _internal = os.path.dirname(os.path.abspath(yf.__file__))
+                _internal = os.path.dirname(_internal)
+                _best = (0,)
+                _best_v = None
+                for _di in _glob.glob(os.path.join(_internal, "yfinance-*.dist-info")):
+                    _meta = os.path.join(_di, "METADATA")
+                    if os.path.exists(_meta):
+                        try:
+                            with open(_meta, "r", encoding="utf-8", errors="ignore") as _f:
+                                for _line in _f:
+                                    if _line.startswith("Version:"):
+                                        _v = _line.split(":", 1)[1].strip()
+                                        _vt = tuple(int(x) for x in _v.split(".") if x.isdigit())
+                                        if _vt > _best:
+                                            _best = _vt
+                                            _best_v = _v
+                                        break
+                        except Exception:
+                            pass
+                if _best_v:
+                    return _best_v
+            except Exception:
+                pass
+        try:
+            return yf.__version__
+        except Exception:
+            return "?"
 
     def check_yfinance_update(self, status_label=None, silent=True):
         """Prüft ob eine neuere yfinance-Version auf PyPI verfügbar ist.
@@ -26570,19 +26736,29 @@ class StockMonitorApp(QMainWindow):
 
         def _do_check():
             try:
-                installed = yf.__version__
+                installed = self._get_yfinance_installed_version()
             except Exception:
-                return "error", "", ""
+                return "error", "", "", ""
             try:
-                import urllib.request, json as _json
+                import urllib.request, json as _json, ssl
                 req = urllib.request.Request(
                     "https://pypi.org/pypi/yfinance/json",
                     headers={"User-Agent": "StockMonitor"})
-                with urllib.request.urlopen(req, timeout=8) as resp:
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+                with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
                     data = _json.loads(resp.read().decode())
                 latest = data.get("info", {}).get("version", "")
                 if not latest:
-                    return "error", installed, ""
+                    return "error", installed, "", ""
+                wheel_url = ""
+                for pkg in data.get("urls", []):
+                    if pkg.get("packagetype") == "bdist_wheel" and "none-any" in pkg.get("filename", ""):
+                        wheel_url = pkg.get("url", "")
+                        break
                 # Versions-Vergleich: tuple-basiert damit "0.2.50" > "0.2.9" korrekt
                 def _vtuple(v):
                     try:
@@ -26590,46 +26766,49 @@ class StockMonitorApp(QMainWindow):
                     except Exception:
                         return (0,)
                 if _vtuple(latest) > _vtuple(installed):
-                    return "update_available", installed, latest
-                return "current", installed, latest
+                    return "update_available", installed, latest, wheel_url
+                return "current", installed, latest, ""
             except Exception:
-                return "error", installed, ""
+                return "error", installed, "", ""
 
         def _on_result(result):
-            status, installed, latest = result
-            if status == "update_available":
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#e67e00;'>"
-                        + TR("lbl_yf_update_available", latest=latest, installed=installed)
-                        + "</span>"
-                    )
-                elif silent:
-                    # Toast-Notification (nicht-blockierend)
-                    self._show_yfinance_toast(installed, latest)
-            elif status == "current":
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#27ae60;'>"
-                        + TR("lbl_yf_update_current", version=installed)
-                        + "</span>"
-                    )
-                elif not silent:
-                    pass  # Keine Notification wenn alles aktuell ist
-            else:  # error
-                if status_label:
-                    status_label.setText(
-                        f"<span style='color:#888;'>{TR('lbl_yf_update_error')}</span>"
-                    )
+            try:
+                status, installed, latest, wheel_url = result
+                if status == "update_available":
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#e67e00;'>"
+                            + TR("lbl_yf_update_available", latest=latest, installed=installed)
+                            + "</span>"
+                        )
+                    elif silent:
+                        # Toast-Notification (nicht-blockierend)
+                        self._show_yfinance_toast(installed, latest, wheel_url)
+                elif status == "current":
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#27ae60;'>"
+                            + TR("lbl_yf_update_current", version=installed)
+                            + "</span>"
+                        )
+                    elif not silent:
+                        pass  # Keine Notification wenn alles aktuell ist
+                else:  # error
+                    if status_label:
+                        status_label.setText(
+                            f"<span style='color:#888;'>{TR('lbl_yf_update_error')}</span>"
+                        )
+            except Exception:
+                _log.exception("yfinance Update-Check _on_result fehlgeschlagen")
 
         self._start_update_worker(_do_check, _on_result)
 
-    def _show_yfinance_toast(self, installed, latest):
+    def _show_yfinance_toast(self, installed, latest, wheel_url=""):
         """Kleines nicht-modales Fenster als Toast-Notification für yfinance-Update."""
         toast = QDialog(self)
         toast.setWindowTitle(TR("lbl_yf_toast_title"))
         toast.setWindowFlags(Qt.WindowType.Tool)
-        toast.setFixedWidth(400)
+        toast.setFixedWidth(420)
         toast.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         lay = QVBoxLayout(toast)
@@ -26641,9 +26820,16 @@ class StockMonitorApp(QMainWindow):
         hdr.setStyleSheet("font-size:13px;")
         lay.addWidget(hdr)
 
-        msg_lbl = QLabel(
-            TR("lbl_yf_toast_msg", latest=latest, installed=installed)
-        )
+        _in_flatpak = os.path.exists('/.flatpak-info')
+        _is_exe     = getattr(sys, 'frozen', False) and sys.platform == "win32"
+
+        if _is_exe and wheel_url:
+            msg_text = TR("lbl_yf_toast_msg_exe", latest=latest, installed=installed)
+        elif _in_flatpak:
+            msg_text = TR("lbl_yf_toast_msg_flatpak", latest=latest, installed=installed)
+        else:
+            msg_text = TR("lbl_yf_toast_msg", latest=latest, installed=installed)
+        msg_lbl = QLabel(msg_text)
         msg_lbl.setWordWrap(True)
         msg_lbl.setStyleSheet("font-size:12px; color:#444;")
         lay.addWidget(msg_lbl)
@@ -26651,9 +26837,8 @@ class StockMonitorApp(QMainWindow):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        # Pip-Upgrade-Button – im Flatpak-Kontext nicht verfügbar
-        _in_flatpak = os.path.exists('/.flatpak-info')
-        if not _in_flatpak:
+        if not _in_flatpak and not _is_exe:
+            # Script-Modus: pip install möglich
             pip_btn = QPushButton(TR("btn_install_yfinance"))
             pip_btn.setToolTip(TR("tip_install_yfinance"))
             pip_btn.setStyleSheet(
@@ -26673,6 +26858,19 @@ class StockMonitorApp(QMainWindow):
                 toast.close()
             pip_btn.clicked.connect(_run_pip)
             btn_row.addWidget(pip_btn)
+        elif _is_exe and wheel_url:
+            # EXE-Modus: yfinance direkt aktualisieren
+            upd_btn = QPushButton(TR("btn_yf_auto_update"))
+            upd_btn.setStyleSheet(
+                "QPushButton{background:#27ae60;color:white;font-weight:bold;"
+                "border-radius:5px;padding:3px 12px;}"
+                "QPushButton:hover{background:#1e8449;}"
+            )
+            def _do_yf_upd(checked=False, _v=latest, _u=wheel_url):
+                toast.close()
+                self._do_yfinance_self_update(_v, _u)
+            upd_btn.clicked.connect(_do_yf_upd)
+            btn_row.addWidget(upd_btn)
 
         close_btn = QPushButton(TR("btn_close_plain"))
         close_btn.clicked.connect(lambda: toast.close())
@@ -26683,13 +26881,15 @@ class StockMonitorApp(QMainWindow):
             "QDialog{background:#fffbe6; border:2px solid #f0c040; border-radius:10px;}"
         )
 
-        # Positionierung: rechts unten im Hauptfenster
-        main_geo = self.geometry()
+        # Positionierung: Bildschirm-Mitte
         toast.adjustSize()
-        toast.move(
-            main_geo.right() - toast.width() - 20,
-            main_geo.bottom() - toast.height() - 20
-        )
+        _screen = self.screen() or QApplication.primaryScreen()
+        if _screen:
+            _sg = _screen.availableGeometry()
+            toast.move(
+                _sg.center().x() - toast.width() // 2,
+                _sg.center().y() - toast.height() // 2
+            )
         toast.show()
         # Auto-Close nach 15 Sekunden
         def _auto_close():
@@ -26741,7 +26941,7 @@ class StockMonitorApp(QMainWindow):
         yf_lay.setSpacing(6)
         yf_lay.setContentsMargins(12, 8, 12, 8)
         try:
-            _yf_installed = yf.__version__
+            _yf_installed = self._get_yfinance_installed_version()
         except Exception:
             _yf_installed = "?"
         yf_hdr = QLabel(f"<b>yfinance</b>  <span style='color:#888;'>(installiert: {_yf_installed})</span>")
@@ -26749,6 +26949,16 @@ class StockMonitorApp(QMainWindow):
         yf_status_lbl = QLabel(f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>")
         yf_status_lbl.setWordWrap(True)
         yf_lay.addWidget(yf_status_lbl)
+        _in_flatpak = os.path.exists('/.flatpak-info')
+        _is_frozen  = getattr(sys, 'frozen', False)
+        yf_install_btn = QPushButton(TR("btn_install_yfinance"))
+        yf_install_btn.setVisible(False)
+        yf_install_btn.setStyleSheet(
+            "QPushButton{background:#e67e00;color:white;font-weight:bold;"
+            "border-radius:5px;padding:3px 12px;}"
+            "QPushButton:hover{background:#cf6d00;}"
+        )
+        yf_lay.addWidget(yf_install_btn)
         lay.addWidget(yf_grp)
 
         btn_row = QHBoxLayout()
@@ -26764,7 +26974,7 @@ class StockMonitorApp(QMainWindow):
 
             # App-Check – mit eigenem on_result für den Dialog-Modus
             def _on_app(result):
-                status, version, url, notes = result
+                status, version, url, notes, zip_url = result
                 recheck_btn.setEnabled(True)
                 if status == "update_available":
                     app_status_lbl.setText(
@@ -26777,12 +26987,8 @@ class StockMonitorApp(QMainWindow):
                         app_update_btn.clicked.disconnect()
                     except Exception:
                         pass
-                    def _open(checked=False, _url=url, _v=version, _n=notes):
-                        import webbrowser
-                        if _n and _n.strip():
-                            self._show_app_update_dialog(_v, _url, _n)
-                        else:
-                            webbrowser.open(_url)
+                    def _open(checked=False, _url=url, _v=version, _n=notes, _z=zip_url):
+                        self._show_app_update_dialog(_v, _url, _n, _z)
                     app_update_btn.clicked.connect(_open)
                 elif status == "current":
                     app_status_lbl.setText(
@@ -26796,13 +27002,60 @@ class StockMonitorApp(QMainWindow):
                     )
 
             def _on_yf(result):
-                status, installed, latest = result
+                status, installed, latest, wheel_url = result
+                yf_install_btn.setVisible(False)
                 if status == "update_available":
                     yf_status_lbl.setText(
                         f"<span style='color:#e67e00;'>"
                         + TR("lbl_yf_update_available", latest=latest, installed=installed)
                         + "</span>"
                     )
+                    try:
+                        yf_install_btn.clicked.disconnect()
+                    except Exception:
+                        pass
+                    if _in_flatpak:
+                        yf_status_lbl.setText(
+                            f"<span style='color:#e67e00;'>"
+                            + TR("lbl_yf_update_available", latest=latest, installed=installed)
+                            + f"</span><br><span style='color:#888;font-size:11px;'>"
+                            + TR("lbl_yf_toast_msg_flatpak", latest=latest, installed=installed).split("\n")[1]
+                            + "</span>"
+                        )
+                    elif not _is_frozen:
+                        # Script-Modus: pip install
+                        yf_install_btn.setText(TR("btn_install_yfinance"))
+                        yf_install_btn.setStyleSheet(
+                            "QPushButton{background:#e67e00;color:white;font-weight:bold;"
+                            "border-radius:5px;padding:3px 12px;}"
+                            "QPushButton:hover{background:#cf6d00;}"
+                        )
+                        yf_install_btn.setVisible(True)
+                        def _run_pip(checked=False, _v=latest):
+                            import subprocess
+                            yf_install_btn.setEnabled(False)
+                            yf_status_lbl.setText(
+                                f"<span style='color:#888;'>⏳ yfinance=={_v} wird installiert...</span>"
+                            )
+                            try:
+                                subprocess.Popen([sys.executable, "-m", "pip", "install",
+                                                  "--upgrade", f"yfinance=={_v}"])
+                            except Exception as e:
+                                QMessageBox.warning(dlg, "pip", str(e))
+                        yf_install_btn.clicked.connect(_run_pip)
+                    elif _is_frozen and wheel_url:
+                        # EXE-Modus: yfinance direkt aktualisieren
+                        yf_install_btn.setText(TR("btn_yf_auto_update"))
+                        yf_install_btn.setStyleSheet(
+                            "QPushButton{background:#27ae60;color:white;font-weight:bold;"
+                            "border-radius:5px;padding:3px 12px;}"
+                            "QPushButton:hover{background:#1e8449;}"
+                        )
+                        yf_install_btn.setVisible(True)
+                        def _do_yf_upd(checked=False, _v=latest, _u=wheel_url):
+                            dlg.close()
+                            self._do_yfinance_self_update(_v, _u)
+                        yf_install_btn.clicked.connect(_do_yf_upd)
                 elif status == "current":
                     yf_status_lbl.setText(
                         f"<span style='color:#27ae60;'>"
@@ -26817,28 +27070,39 @@ class StockMonitorApp(QMainWindow):
             # ── App-Worker ────────────────────────────────────────────────────
             def _check_app():
                 try:
-                    import urllib.request, json as _json
+                    import urllib.request, json as _json, ssl
                     url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
                     req = urllib.request.Request(url, headers={"User-Agent": "StockMonitor"})
-                    with urllib.request.urlopen(req, timeout=8) as resp:
+                    try:
+                        import certifi
+                        ctx = ssl.create_default_context(cafile=certifi.where())
+                    except Exception:
+                        ctx = ssl.create_default_context()
+                    with urllib.request.urlopen(req, timeout=8, context=ctx) as resp:
                         data = _json.loads(resp.read().decode())
                     latest = data.get("tag_name", "").lstrip("v")
                     if not latest:
-                        return "error", APP_VERSION, "", ""
+                        return "error", APP_VERSION, "", "", ""
+                    zip_url = ""
+                    for asset in data.get("assets", []):
+                        if asset.get("name", "").lower() == "stock_monitor.zip":
+                            zip_url = asset.get("browser_download_url", "")
+                            break
                     if latest != APP_VERSION:
                         return ("update_available", latest,
-                                data.get("html_url", ""),
-                                data.get("body", ""))
-                    return "current", APP_VERSION, "", ""
+                                data.get("html_url") or "",
+                                data.get("body") or "",
+                                zip_url)
+                    return "current", APP_VERSION, "", "", ""
                 except Exception:
-                    return "error", APP_VERSION, "", ""
+                    return "error", APP_VERSION, "", "", ""
 
             # ── yfinance-Worker ───────────────────────────────────────────────
             def _check_yf():
                 try:
-                    installed = yf.__version__
+                    installed = self._get_yfinance_installed_version()
                 except Exception:
-                    return "error", "", ""
+                    return "error", "", "", ""
                 try:
                     import urllib.request, json as _json
                     req = urllib.request.Request(
@@ -26848,15 +27112,20 @@ class StockMonitorApp(QMainWindow):
                         data = _json.loads(resp.read().decode())
                     latest = data.get("info", {}).get("version", "")
                     if not latest:
-                        return "error", installed, ""
+                        return "error", installed, "", ""
+                    wheel_url = ""
+                    for pkg in data.get("urls", []):
+                        if pkg.get("packagetype") == "bdist_wheel" and "none-any" in pkg.get("filename", ""):
+                            wheel_url = pkg.get("url", "")
+                            break
                     def _vt(v):
                         try: return tuple(int(x) for x in v.split("."))
                         except: return (0,)
                     if _vt(latest) > _vt(installed):
-                        return "update_available", installed, latest
-                    return "current", installed, latest
+                        return "update_available", installed, latest, wheel_url
+                    return "current", installed, latest, ""
                 except Exception:
-                    return "error", installed, ""
+                    return "error", installed, "", ""
 
             self._start_update_worker(_check_app, _on_app)
             self._start_update_worker(_check_yf,  _on_yf)
@@ -26869,6 +27138,438 @@ class StockMonitorApp(QMainWindow):
         lay.addLayout(btn_row)
 
         _run_checks()
+        dlg.exec()
+
+    def _do_self_update(self, version, zip_url):
+        """Lädt die neue App-Version von GitHub herunter und startet den Update-Prozess.
+        Nur für Windows EXE (PyInstaller, sys.frozen=True).
+        Ablauf: ZIP herunterladen → entpacken → VBScript-Updater erstellen →
+                Updater starten → App schliessen → Updater wartet auf App-Ende
+                → Dateien ersetzen (Portfolios/Config bleiben unangetastet) → Neustart.
+        """
+        import tempfile, zipfile, threading
+        from PyQt6.QtCore import pyqtSignal, QObject
+        from PyQt6.QtWidgets import QProgressBar
+
+        class _Sigs(QObject):
+            progress_update = pyqtSignal(int, str)
+            finished        = pyqtSignal(str, str)
+
+        sigs = _Sigs(self)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(TR("title_update_download"))
+        dlg.setFixedWidth(450)
+        dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(20, 16, 20, 16)
+        lay.setSpacing(10)
+
+        title_lbl = QLabel(f"<b>Stock Monitor v{version}</b> wird heruntergeladen…")
+        title_lbl.setStyleSheet("font-size:13px;")
+        lay.addWidget(title_lbl)
+
+        pbar = QProgressBar()
+        pbar.setRange(0, 100)
+        pbar.setValue(0)
+        lay.addWidget(pbar)
+
+        status_lbl = QLabel(TR("lbl_update_connecting"))
+        status_lbl.setStyleSheet("color:#555; font-size:11px;")
+        lay.addWidget(status_lbl)
+
+        warn_lbl = QLabel(TR("lbl_update_warn_backup"))
+        warn_lbl.setWordWrap(True)
+        warn_lbl.setStyleSheet(
+            "color:#666; font-size:11px; background:#f5f5f5; "
+            "border-radius:5px; padding:6px;"
+        )
+        lay.addWidget(warn_lbl)
+
+        cancel_btn = QPushButton(TR("btn_cancel"))
+        row = QHBoxLayout()
+        row.addStretch()
+        row.addWidget(cancel_btn)
+        lay.addLayout(row)
+
+        _cancelled = [False]
+        cancel_btn.clicked.connect(lambda: _cancelled.__setitem__(0, True) or dlg.reject())
+
+        sigs.progress_update.connect(
+            lambda v, t: (pbar.setValue(v), status_lbl.setText(t)),
+            Qt.ConnectionType.QueuedConnection
+        )
+
+        def _on_done(status, ps_path_or_msg):
+            dlg.close()
+            if status == "error":
+                QMessageBox.critical(self, TR("lbl_update_error_title"), ps_path_or_msg)
+            elif status == "ready":
+                mb = QMessageBox(self)
+                mb.setWindowTitle("Stock Monitor Update")
+                mb.setText(TR("msg_update_ready").format(version=version))
+                now_btn   = mb.addButton(TR("btn_update_now"),   QMessageBox.ButtonRole.AcceptRole)
+                later_btn = mb.addButton(TR("btn_update_later"), QMessageBox.ButtonRole.RejectRole)
+                mb.setDefaultButton(now_btn)
+                mb.exec()
+
+                import subprocess as _sp
+                _sp.Popen(
+                    ["powershell.exe", "-ExecutionPolicy", "Bypass",
+                     "-WindowStyle", "Hidden", "-File", ps_path_or_msg],
+                    creationflags=_sp.CREATE_NO_WINDOW,
+                    close_fds=True,
+                )
+
+                if mb.clickedButton() is now_btn:
+                    QTimer.singleShot(300, QApplication.instance().quit)
+
+        sigs.finished.connect(_on_done, Qt.ConnectionType.QueuedConnection)
+
+        def _thread():
+            try:
+                import urllib.request, ssl, os, tempfile, zipfile, shutil
+
+                sigs.progress_update.emit(5, TR("lbl_update_connecting"))
+
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+
+                tmp_dir  = tempfile.mkdtemp(prefix="sm_upd_")
+                zip_path = os.path.join(tmp_dir, "sm_new.zip")
+
+                req = urllib.request.Request(zip_url, headers={"User-Agent": "StockMonitor"})
+                with urllib.request.urlopen(req, timeout=120, context=ctx) as resp:
+                    total      = int(resp.headers.get("Content-Length", 0))
+                    downloaded = 0
+                    with open(zip_path, "wb") as f:
+                        while True:
+                            if _cancelled[0]:
+                                shutil.rmtree(tmp_dir, ignore_errors=True)
+                                return
+                            buf = resp.read(65536)
+                            if not buf:
+                                break
+                            f.write(buf)
+                            downloaded += len(buf)
+                            if total > 0:
+                                pct    = int(10 + (downloaded / total) * 55)
+                                mb_d   = downloaded / 1048576
+                                mb_t   = total / 1048576
+                                sigs.progress_update.emit(pct, f"Download: {mb_d:.1f} / {mb_t:.1f} MB")
+                            else:
+                                mb_d = downloaded / 1048576
+                                sigs.progress_update.emit(30, f"Download: {mb_d:.1f} MB…")
+
+                if _cancelled[0]:
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+                    return
+
+                sigs.progress_update.emit(68, "ZIP wird entpackt…")
+
+                extract_dir = os.path.join(tmp_dir, "x")
+                os.makedirs(extract_dir, exist_ok=True)
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    zf.extractall(extract_dir)
+                os.remove(zip_path)
+
+                new_files_dir = os.path.join(extract_dir, "stock_monitor")
+                if not os.path.isdir(new_files_dir):
+                    sigs.finished.emit("error",
+                        "Ungültige ZIP-Struktur: Ordner 'stock_monitor/' nicht gefunden.")
+                    return
+
+                sigs.progress_update.emit(80, "Update-Skript wird vorbereitet…")
+
+                app_dir  = os.path.dirname(os.path.abspath(sys.executable))
+                exe_path = os.path.abspath(sys.executable)
+                pid      = os.getpid()
+                cfg_dst  = os.path.join(app_dir, "_internal", ".stock_monitor_config.json")
+                cfg_bak  = os.path.join(tmp_dir, "sm_cfg.bak")
+                ps_path  = os.path.join(app_dir, "_sm_updater.ps1")
+                log_path = os.path.join(app_dir, "_sm_update.log")
+
+                # Single-quoted PS strings avoid $-interpolation issues with Windows paths.
+                # Copy-Item avoids robocopy argument-quoting bugs in PowerShell 5.x.
+                ps_lines = [
+                    f'$appPid  = {pid}',
+                    f"$appDir  = '{app_dir}'",
+                    f"$newDir  = '{new_files_dir}'",
+                    f"$exePath = '{exe_path}'",
+                    f"$tmpDir  = '{tmp_dir}'",
+                    f"$logFile = '{log_path}'",
+                    "",
+                    "$ErrorActionPreference = 'Continue'",
+                    "function Log($m) { \"$(Get-Date -Format 'HH:mm:ss') $m\" | Out-File -FilePath $logFile -Append -Encoding UTF8 }",
+                    "",
+                    "Log 'Updater gestartet'",
+                    "",
+                    "# Warten bis App-Prozess beendet (kein Timeout – wartet bis User die App schliesst)",
+                    "$waited = 0",
+                    "while ($true) {",
+                    "    if (-not (Get-Process -Id $appPid -ErrorAction SilentlyContinue)) {",
+                    "        Log \"Prozess weg nach $waited Sek.\"; break",
+                    "    }",
+                    "    Start-Sleep -Seconds 1",
+                    "    $waited++",
+                    "}",
+                    "Start-Sleep -Seconds 2",
+                    "Log 'Starte Kopierprozess'",
+                    "",
+                    "# Benutzerdaten, die NICHT überschrieben werden",
+                    "$skipFiles = @('.stock_monitor_config.json','stock_monitor.log','.stock_monitor_active_portfolio')",
+                    "$skipDirPfx = @('_internal\\.stock_monitor_configs\\')",
+                    "",
+                    "Get-ChildItem -LiteralPath $newDir -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {",
+                    "    $rel = $_.FullName.Substring($newDir.Length).TrimStart('\\')",
+                    "    if ($skipFiles -contains $rel) { return }",
+                    "    foreach ($pfx in $skipDirPfx) { if ($rel.StartsWith($pfx)) { return } }",
+                    "    # Portfolios: nur Demo.smpf einspielen, bestehende User-Portfolios nicht überschreiben",
+                    "    if ($rel.StartsWith('_internal\\.stock_monitor_portfolios\\') -and ($rel -ne '_internal\\.stock_monitor_portfolios\\Demo.smpf')) { return }",
+                    "    $dst = Join-Path $appDir $rel",
+                    "    if ($_.PSIsContainer) {",
+                    "        New-Item -ItemType Directory -Path $dst -Force -ErrorAction SilentlyContinue | Out-Null",
+                    "    } else {",
+                    "        $par = Split-Path $dst -Parent",
+                    "        if (-not (Test-Path $par)) { New-Item -ItemType Directory -Path $par -Force | Out-Null }",
+                    "        try { Copy-Item -LiteralPath $_.FullName -Destination $dst -Force; Log \"OK: $rel\" }",
+                    "        catch { Log \"FEHLER $rel : $_\" }",
+                    "    }",
+                    "}",
+                    "Log 'Kopieren fertig'",
+                    "",
+                    "# Temp-Ordner löschen",
+                    "if (Test-Path $tmpDir) { Remove-Item -LiteralPath $tmpDir -Recurse -Force -ErrorAction SilentlyContinue }",
+                    "",
+                    "# App neu starten",
+                    "try { Start-Process -FilePath $exePath -WindowStyle Normal; Log 'App gestartet' }",
+                    "catch { Log \"Startfehler: $_\" }",
+                    "",
+                    "# Skript selbst löschen",
+                    "Start-Sleep -Seconds 1",
+                    "Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue",
+                ]
+                ps_content = "\r\n".join(ps_lines)
+
+                # utf-8-sig writes UTF-8 BOM so PowerShell 5.x reads encoding correctly
+                with open(ps_path, "w", encoding="utf-8-sig") as f:
+                    f.write(ps_content)
+
+                sigs.progress_update.emit(100, TR("lbl_update_connecting"))
+                sigs.finished.emit("ready", ps_path)
+
+            except Exception as e:
+                _log.exception("Self-Update fehlgeschlagen")
+                sigs.finished.emit("error", str(e))
+
+        t = threading.Thread(target=_thread, daemon=True)
+        t.start()
+
+        dlg.adjustSize()
+        _screen = self.screen() or QApplication.primaryScreen()
+        if _screen:
+            sg = _screen.availableGeometry()
+            dlg.move(sg.center().x() - dlg.width() // 2,
+                     sg.center().y() - dlg.height() // 2)
+        dlg.exec()
+
+    def _do_yfinance_self_update(self, version, wheel_url):
+        """Aktualisiert yfinance in-place: lädt das Wheel von PyPI, entpackt es und
+        ersetzt _internal/yfinance/ ohne die App-EXE oder Benutzerdaten anzufassen.
+        Danach Neustart der App.
+        """
+        import tempfile, zipfile, threading, shutil, glob
+        from PyQt6.QtCore import pyqtSignal, QObject
+        from PyQt6.QtWidgets import QProgressBar
+
+        class _Sigs(QObject):
+            progress_update = pyqtSignal(int, str)
+            finished        = pyqtSignal(str, str)
+
+        sigs = _Sigs(self)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(TR("title_yf_update_download"))
+        dlg.setFixedWidth(420)
+        dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(20, 16, 20, 16)
+        lay.setSpacing(10)
+
+        title_lbl = QLabel(f"<b>yfinance {version}</b> wird aktualisiert…")
+        title_lbl.setStyleSheet("font-size:13px;")
+        lay.addWidget(title_lbl)
+
+        pbar = QProgressBar()
+        pbar.setRange(0, 100)
+        pbar.setValue(0)
+        lay.addWidget(pbar)
+
+        status_lbl = QLabel(TR("lbl_update_connecting"))
+        status_lbl.setStyleSheet("color:#555; font-size:11px;")
+        lay.addWidget(status_lbl)
+
+        cancel_btn = QPushButton(TR("btn_cancel"))
+        row = QHBoxLayout()
+        row.addStretch()
+        row.addWidget(cancel_btn)
+        lay.addLayout(row)
+
+        _cancelled = [False]
+        cancel_btn.clicked.connect(lambda: _cancelled.__setitem__(0, True) or dlg.reject())
+
+        sigs.progress_update.connect(
+            lambda v, t: (pbar.setValue(v), status_lbl.setText(t)),
+            Qt.ConnectionType.QueuedConnection
+        )
+
+        def _on_done(status, message):
+            dlg.close()
+            if status == "error":
+                QMessageBox.critical(self, TR("lbl_update_error_title"), message)
+            elif status == "ready":
+                msg = QMessageBox(self)
+                msg.setWindowTitle("yfinance Update")
+                msg.setText(f"yfinance {version} wurde installiert.")
+                msg.setInformativeText("Jetzt neu starten?")
+                btn_now   = msg.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
+                msg.addButton("Später neu starten",            QMessageBox.ButtonRole.RejectRole)
+                msg.exec()
+                if msg.clickedButton() == btn_now:
+                    import subprocess
+                    subprocess.Popen(
+                        [sys.executable],
+                        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+                        close_fds=True,
+                    )
+                    QTimer.singleShot(300, QApplication.instance().quit)
+
+        sigs.finished.connect(_on_done, Qt.ConnectionType.QueuedConnection)
+
+        def _thread():
+            try:
+                import urllib.request, ssl, os, tempfile, zipfile, shutil, glob
+
+                sigs.progress_update.emit(5, TR("lbl_update_connecting"))
+
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+
+                tmp_dir   = tempfile.mkdtemp(prefix="sm_yf_")
+                whl_path  = os.path.join(tmp_dir, "yfinance.whl")
+
+                req = urllib.request.Request(wheel_url, headers={"User-Agent": "StockMonitor"})
+                with urllib.request.urlopen(req, timeout=60, context=ctx) as resp:
+                    total      = int(resp.headers.get("Content-Length", 0))
+                    downloaded = 0
+                    with open(whl_path, "wb") as f:
+                        while True:
+                            if _cancelled[0]:
+                                shutil.rmtree(tmp_dir, ignore_errors=True)
+                                return
+                            buf = resp.read(65536)
+                            if not buf:
+                                break
+                            f.write(buf)
+                            downloaded += len(buf)
+                            if total > 0:
+                                pct  = int(5 + (downloaded / total) * 60)
+                                mb_d = downloaded / 1048576
+                                mb_t = total / 1048576
+                                sigs.progress_update.emit(pct, f"Download: {mb_d:.1f} / {mb_t:.1f} MB")
+                            else:
+                                mb_d = downloaded / 1048576
+                                sigs.progress_update.emit(30, f"Download: {mb_d:.1f} MB…")
+
+                if _cancelled[0]:
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+                    return
+
+                sigs.progress_update.emit(68, "Wheel wird entpackt…")
+
+                extract_dir = os.path.join(tmp_dir, "x")
+                os.makedirs(extract_dir, exist_ok=True)
+                with zipfile.ZipFile(whl_path, "r") as zf:
+                    zf.extractall(extract_dir)
+                os.remove(whl_path)
+
+                sigs.progress_update.emit(80, "yfinance wird installiert…")
+
+                # Pfad zu _internal: yfinance selbst fragen wo es liegt
+                try:
+                    import yfinance as _yf_loc
+                    internal_dir = os.path.dirname(os.path.dirname(os.path.abspath(_yf_loc.__file__)))
+                except Exception:
+                    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                        internal_dir = sys._MEIPASS
+                    else:
+                        internal_dir = os.path.join(os.path.dirname(os.path.abspath(sys.executable)), "_internal")
+
+                # Alte yfinance-Dateien entfernen
+                old_yf = os.path.join(internal_dir, "yfinance")
+                if os.path.isdir(old_yf):
+                    shutil.rmtree(old_yf)
+                for old_di in glob.glob(os.path.join(internal_dir, "yfinance-*.dist-info")):
+                    shutil.rmtree(old_di, ignore_errors=True)
+
+                # Neue yfinance-Dateien kopieren
+                for item in os.listdir(extract_dir):
+                    src = os.path.join(extract_dir, item)
+                    dst = os.path.join(internal_dir, item)
+                    if os.path.isdir(src):
+                        if os.path.isdir(dst):
+                            shutil.rmtree(dst)
+                        shutil.copytree(src, dst)
+                    else:
+                        shutil.copy2(src, dst)
+
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+
+                # Verifizieren: neue Version aus dist-info lesen
+                verified_version = None
+                for _di in glob.glob(os.path.join(internal_dir, "yfinance-*.dist-info")):
+                    _meta = os.path.join(_di, "METADATA")
+                    if os.path.exists(_meta):
+                        try:
+                            with open(_meta, "r", encoding="utf-8", errors="ignore") as _f:
+                                for _line in _f:
+                                    if _line.startswith("Version:"):
+                                        verified_version = _line.split(":", 1)[1].strip()
+                                        break
+                        except Exception:
+                            pass
+                    if verified_version:
+                        break
+
+                if verified_version != version:
+                    sigs.finished.emit("error",
+                        f"Update auf yfinance {version} fehlgeschlagen\n"
+                        f"(installiert: {verified_version or 'unbekannt'}).\n"
+                        f"Bitte versuchen Sie es später erneut.")
+                    return
+
+                sigs.progress_update.emit(100, TR("lbl_yf_update_done", version=version))
+                sigs.finished.emit("ready", "")
+
+            except Exception as e:
+                _log.exception("yfinance Self-Update fehlgeschlagen")
+                sigs.finished.emit("error", str(e))
+
+        t = threading.Thread(target=_thread, daemon=True)
+        t.start()
+
+        dlg.adjustSize()
+        _screen = self.screen() or QApplication.primaryScreen()
+        if _screen:
+            sg = _screen.availableGeometry()
+            dlg.move(sg.center().x() - dlg.width() // 2,
+                     sg.center().y() - dlg.height() // 2)
         dlg.exec()
 
     def _startup_update_checks(self):
@@ -28543,7 +29244,7 @@ def main():
     if _sys_plat.platform == "win32":
         import ctypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-            u"StockMonitor.App.4.0"
+            u"StockMonitor.App.5.0"
         )
     def _get_icon_path():
         import os as _os

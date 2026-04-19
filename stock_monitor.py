@@ -7256,6 +7256,7 @@ class PortfolioPasswordDialog(QDialog):
         """
         super().__init__(parent)
         self.mode = mode
+        self._portfolio_name = portfolio_name
         self._password     = None
         self._old_password = None
         self._setup_ui(portfolio_name)
@@ -7453,7 +7454,7 @@ class PortfolioPasswordDialog(QDialog):
     def _accept(self):
         pw1 = self._pw1.text()
         if self.mode == "load":
-            if not pw1:
+            if not pw1 and self._portfolio_name != "Demo":
                 self._status.setText(TR("msg_enter_password"))
                 return
             self._password = pw1
@@ -7465,6 +7466,11 @@ class PortfolioPasswordDialog(QDialog):
                     self._status.setText(TR("msg_enter_current_password"))
                     return
                 self._old_password = pw0
+            # Demo-Portfolio darf ohne Passwort gespeichert werden
+            if self.mode == "save" and self._portfolio_name == "Demo" and not pw1:
+                self._password = ""
+                self.accept()
+                return
             pw2 = self._pw2.text()
             if len(pw1) < self.MIN_PW_LEN:
                 self._status.setText(TR("lbl_pw_too_short", n=self.MIN_PW_LEN))
@@ -7632,6 +7638,9 @@ class PortfolioDialog(QMainWindow):
         except Exception:
             self._company_cache = {}
         self._time = _time_mod
+        # Demo-Portfolio beim ersten Start laden (kein Portfolio vorhanden)
+        if not self.portfolio_data and not self._get_active_portfolio_name():
+            self._auto_load_demo_portfolio()
         # AIBalance-Filter pro Portfolio: {portfolio_name: {'currencies': [...], 'sectors': [...]}}
         self._aib_filters = {}
         self._aib_filters_file = os.path.join(_DATA_HOME, ".stock_monitor_aib_filters.json")
@@ -8162,6 +8171,23 @@ class PortfolioDialog(QMainWindow):
         except Exception:
             pass
         return {}
+
+    def _auto_load_demo_portfolio(self):
+        """Lädt Demo-Portfolio beim ersten Start automatisch (leeres Passwort)."""
+        if not _DB_IMPORT_OK:
+            return
+        try:
+            demo_path = os.path.join(_pdb.PORTFOLIO_DIR, "Demo.smpf")
+            if not os.path.exists(demo_path):
+                return
+            data = _pdb.load_portfolio("Demo", "")
+            self.portfolio_data = self._migrate_crypto(data["positions"])
+            if data.get("sector_cache"):
+                self._sector_cache.update(data["sector_cache"])
+            self._set_active_portfolio_name("Demo")
+            self.save_portfolio()
+        except Exception:
+            pass  # Demo nicht ladbar (z.B. falsches Passwort) → kein Absturz
 
     def _get_active_portfolio_name(self) -> str:
         """Gibt den Namen des zuletzt aktiven Portfolios zurück (aus Meta-Datei)."""
@@ -23861,10 +23887,41 @@ class StockMonitorApp(QMainWindow):
         self._startup_timer.stop()
         self.loading_dialog.update_progress(100, TR("status_ready"))
         self.showMaximized()
+        self.raise_()
+        self.activateWindow()
         self._ready = True  # Ab jetzt: Custom-Zeitraum-Dialog erlaubt
         QTimer.singleShot(500, self.loading_dialog.close)
+        # Kurz WindowStaysOnTopHint setzen damit das Fenster nach Update-Neustart
+        # zuverlässig im Vordergrund erscheint (Windows Focus-Stealing-Prevention umgehen)
+        QTimer.singleShot(600, self._force_to_front)
         # Update-Checks im Hintergrund – erst nach 5 s starten damit die UI fertig ist
         QTimer.singleShot(5000, self._startup_update_checks)
+
+    def _force_to_front(self):
+        self.raise_()
+        self.activateWindow()
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                hwnd = int(self.winId())
+                ctypes.windll.user32.ShowWindow(hwnd, 9)   # SW_RESTORE
+                ctypes.windll.user32.SetForegroundWindow(hwnd)
+                ctypes.windll.user32.BringWindowToTop(hwnd)
+            except Exception:
+                pass
+        # Fallback: WindowStaysOnTopHint kurz setzen
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        self.show()
+        QTimer.singleShot(1500, self._unflag_on_top)
+
+    def _unflag_on_top(self):
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
+        self.show()
+
+    def closeEvent(self, event):
+        QApplication.instance().quit()
+        event.accept()
+
     def setup_ui(self):
         """UI initialisieren"""
         self.setWindowTitle(TR("title_app"))
@@ -26635,6 +26692,41 @@ class StockMonitorApp(QMainWindow):
         dlg.activateWindow()
         QApplication.setActiveWindow(dlg)
 
+    def _get_yfinance_installed_version(self) -> str:
+        """Gibt die tatsächlich installierte yfinance-Version zurück.
+        Im EXE-Modus: liest aus dist-info auf Disk (importlib.metadata ist eingefroren).
+        """
+        if getattr(sys, 'frozen', False):
+            try:
+                import glob as _glob
+                _internal = os.path.dirname(os.path.abspath(yf.__file__))
+                _internal = os.path.dirname(_internal)
+                _best = (0,)
+                _best_v = None
+                for _di in _glob.glob(os.path.join(_internal, "yfinance-*.dist-info")):
+                    _meta = os.path.join(_di, "METADATA")
+                    if os.path.exists(_meta):
+                        try:
+                            with open(_meta, "r", encoding="utf-8", errors="ignore") as _f:
+                                for _line in _f:
+                                    if _line.startswith("Version:"):
+                                        _v = _line.split(":", 1)[1].strip()
+                                        _vt = tuple(int(x) for x in _v.split(".") if x.isdigit())
+                                        if _vt > _best:
+                                            _best = _vt
+                                            _best_v = _v
+                                        break
+                        except Exception:
+                            pass
+                if _best_v:
+                    return _best_v
+            except Exception:
+                pass
+        try:
+            return yf.__version__
+        except Exception:
+            return "?"
+
     def check_yfinance_update(self, status_label=None, silent=True):
         """Prüft ob eine neuere yfinance-Version auf PyPI verfügbar ist.
         silent=True → nur Toast-Notification bei Update; False → immer Statusmeldung.
@@ -26644,7 +26736,7 @@ class StockMonitorApp(QMainWindow):
 
         def _do_check():
             try:
-                installed = yf.__version__
+                installed = self._get_yfinance_installed_version()
             except Exception:
                 return "error", "", "", ""
             try:
@@ -26733,6 +26825,8 @@ class StockMonitorApp(QMainWindow):
 
         if _is_exe and wheel_url:
             msg_text = TR("lbl_yf_toast_msg_exe", latest=latest, installed=installed)
+        elif _in_flatpak:
+            msg_text = TR("lbl_yf_toast_msg_flatpak", latest=latest, installed=installed)
         else:
             msg_text = TR("lbl_yf_toast_msg", latest=latest, installed=installed)
         msg_lbl = QLabel(msg_text)
@@ -26847,7 +26941,7 @@ class StockMonitorApp(QMainWindow):
         yf_lay.setSpacing(6)
         yf_lay.setContentsMargins(12, 8, 12, 8)
         try:
-            _yf_installed = yf.__version__
+            _yf_installed = self._get_yfinance_installed_version()
         except Exception:
             _yf_installed = "?"
         yf_hdr = QLabel(f"<b>yfinance</b>  <span style='color:#888;'>(installiert: {_yf_installed})</span>")
@@ -26864,8 +26958,7 @@ class StockMonitorApp(QMainWindow):
             "border-radius:5px;padding:3px 12px;}"
             "QPushButton:hover{background:#cf6d00;}"
         )
-        if not _in_flatpak and not _is_frozen:
-            yf_lay.addWidget(yf_install_btn)
+        yf_lay.addWidget(yf_install_btn)
         lay.addWidget(yf_grp)
 
         btn_row = QHBoxLayout()
@@ -26921,7 +27014,15 @@ class StockMonitorApp(QMainWindow):
                         yf_install_btn.clicked.disconnect()
                     except Exception:
                         pass
-                    if not _in_flatpak and not _is_frozen:
+                    if _in_flatpak:
+                        yf_status_lbl.setText(
+                            f"<span style='color:#e67e00;'>"
+                            + TR("lbl_yf_update_available", latest=latest, installed=installed)
+                            + f"</span><br><span style='color:#888;font-size:11px;'>"
+                            + TR("lbl_yf_toast_msg_flatpak", latest=latest, installed=installed).split("\n")[1]
+                            + "</span>"
+                        )
+                    elif not _is_frozen:
                         # Script-Modus: pip install
                         yf_install_btn.setText(TR("btn_install_yfinance"))
                         yf_install_btn.setStyleSheet(
@@ -26999,7 +27100,7 @@ class StockMonitorApp(QMainWindow):
             # ── yfinance-Worker ───────────────────────────────────────────────
             def _check_yf():
                 try:
-                    installed = yf.__version__
+                    installed = self._get_yfinance_installed_version()
                 except Exception:
                     return "error", "", "", ""
                 try:
@@ -27064,7 +27165,7 @@ class StockMonitorApp(QMainWindow):
         lay.setContentsMargins(20, 16, 20, 16)
         lay.setSpacing(10)
 
-        title_lbl = QLabel(f"<b>Stock Monitor v{version}</b> {TR('lbl_update_connecting')[2:]}")
+        title_lbl = QLabel(f"<b>Stock Monitor v{version}</b> wird heruntergeladen…")
         title_lbl.setStyleSheet("font-size:13px;")
         lay.addWidget(title_lbl)
 
@@ -27099,12 +27200,29 @@ class StockMonitorApp(QMainWindow):
             Qt.ConnectionType.QueuedConnection
         )
 
-        def _on_done(status, message):
+        def _on_done(status, ps_path_or_msg):
             dlg.close()
             if status == "error":
-                QMessageBox.critical(self, TR("lbl_update_error_title"), message)
+                QMessageBox.critical(self, TR("lbl_update_error_title"), ps_path_or_msg)
             elif status == "ready":
-                QTimer.singleShot(300, self.close)
+                mb = QMessageBox(self)
+                mb.setWindowTitle("Stock Monitor Update")
+                mb.setText(TR("msg_update_ready").format(version=version))
+                now_btn   = mb.addButton(TR("btn_update_now"),   QMessageBox.ButtonRole.AcceptRole)
+                later_btn = mb.addButton(TR("btn_update_later"), QMessageBox.ButtonRole.RejectRole)
+                mb.setDefaultButton(now_btn)
+                mb.exec()
+
+                import subprocess as _sp
+                _sp.Popen(
+                    ["powershell.exe", "-ExecutionPolicy", "Bypass",
+                     "-WindowStyle", "Hidden", "-File", ps_path_or_msg],
+                    creationflags=_sp.CREATE_NO_WINDOW,
+                    close_fds=True,
+                )
+
+                if mb.clickedButton() is now_btn:
+                    QTimer.singleShot(300, QApplication.instance().quit)
 
         sigs.finished.connect(_on_done, Qt.ConnectionType.QueuedConnection)
 
@@ -27170,95 +27288,78 @@ class StockMonitorApp(QMainWindow):
                 exe_path = os.path.abspath(sys.executable)
                 pid      = os.getpid()
                 cfg_dst  = os.path.join(app_dir, "_internal", ".stock_monitor_config.json")
-                cfg_bak  = os.path.join(tmp_dir, ".sm_cfg.bak")
-                vbs_path = os.path.join(app_dir, "_sm_updater.vbs")
+                cfg_bak  = os.path.join(tmp_dir, "sm_cfg.bak")
+                ps_path  = os.path.join(app_dir, "_sm_updater.ps1")
+                log_path = os.path.join(app_dir, "_sm_update.log")
 
-                def _q(p):
-                    return p.replace('"', '""')
-
-                vbs_lines = [
-                    "' Stock Monitor Auto-Updater",
-                    "Option Explicit",
-                    "On Error Resume Next",
+                # Single-quoted PS strings avoid $-interpolation issues with Windows paths.
+                # Copy-Item avoids robocopy argument-quoting bugs in PowerShell 5.x.
+                ps_lines = [
+                    f'$appPid  = {pid}',
+                    f"$appDir  = '{app_dir}'",
+                    f"$newDir  = '{new_files_dir}'",
+                    f"$exePath = '{exe_path}'",
+                    f"$tmpDir  = '{tmp_dir}'",
+                    f"$logFile = '{log_path}'",
                     "",
-                    "Dim fso, shell",
-                    'Set fso   = CreateObject("Scripting.FileSystemObject")',
-                    'Set shell = CreateObject("WScript.Shell")',
+                    "$ErrorActionPreference = 'Continue'",
+                    "function Log($m) { \"$(Get-Date -Format 'HH:mm:ss') $m\" | Out-File -FilePath $logFile -Append -Encoding UTF8 }",
                     "",
-                    f"Dim appPID  : appPID  = {pid}",
-                    f'Dim appDir  : appDir  = "{_q(app_dir)}"',
-                    f'Dim newDir  : newDir  = "{_q(new_files_dir)}"',
-                    f'Dim exePath : exePath = "{_q(exe_path)}"',
-                    f'Dim tmpDir  : tmpDir  = "{_q(tmp_dir)}"',
-                    f'Dim cfgDst  : cfgDst  = "{_q(cfg_dst)}"',
-                    f'Dim cfgBak  : cfgBak  = "{_q(cfg_bak)}"',
-                    f'Dim vbsPath : vbsPath = "{_q(vbs_path)}"',
+                    "Log 'Updater gestartet'",
                     "",
-                    "' 1. Warten bis Prozess beendet (max. 120 Sek.)",
-                    "Dim waited : waited = 0",
-                    "Do",
-                    "    WScript.Sleep 1000",
-                    "    waited = waited + 1",
-                    "    If waited >= 120 Then Exit Do",
-                    "    Dim procs",
-                    '    Set procs = GetObject("winmgmts:{impersonationLevel=impersonate}!//./root/cimv2"). _',
-                    '        ExecQuery("SELECT ProcessId FROM Win32_Process WHERE ProcessId=" & CStr(appPID))',
-                    "    If procs.Count = 0 Then Exit Do",
-                    "    Set procs = Nothing",
-                    "Loop",
+                    "# Warten bis App-Prozess beendet (kein Timeout – wartet bis User die App schliesst)",
+                    "$waited = 0",
+                    "while ($true) {",
+                    "    if (-not (Get-Process -Id $appPid -ErrorAction SilentlyContinue)) {",
+                    "        Log \"Prozess weg nach $waited Sek.\"; break",
+                    "    }",
+                    "    Start-Sleep -Seconds 1",
+                    "    $waited++",
+                    "}",
+                    "Start-Sleep -Seconds 2",
+                    "Log 'Starte Kopierprozess'",
                     "",
-                    "WScript.Sleep 2000",
+                    "# Benutzerdaten, die NICHT überschrieben werden",
+                    "$skipFiles = @('.stock_monitor_config.json','stock_monitor.log','.stock_monitor_active_portfolio')",
+                    "$skipDirPfx = @('_internal\\.stock_monitor_configs\\')",
                     "",
-                    "' 2. User-Config sichern",
-                    "If fso.FileExists(cfgDst) Then",
-                    "    fso.CopyFile cfgDst, cfgBak, True",
-                    "End If",
+                    "Get-ChildItem -LiteralPath $newDir -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {",
+                    "    $rel = $_.FullName.Substring($newDir.Length).TrimStart('\\')",
+                    "    if ($skipFiles -contains $rel) { return }",
+                    "    foreach ($pfx in $skipDirPfx) { if ($rel.StartsWith($pfx)) { return } }",
+                    "    # Portfolios: nur Demo.smpf einspielen, bestehende User-Portfolios nicht überschreiben",
+                    "    if ($rel.StartsWith('_internal\\.stock_monitor_portfolios\\') -and ($rel -ne '_internal\\.stock_monitor_portfolios\\Demo.smpf')) { return }",
+                    "    $dst = Join-Path $appDir $rel",
+                    "    if ($_.PSIsContainer) {",
+                    "        New-Item -ItemType Directory -Path $dst -Force -ErrorAction SilentlyContinue | Out-Null",
+                    "    } else {",
+                    "        $par = Split-Path $dst -Parent",
+                    "        if (-not (Test-Path $par)) { New-Item -ItemType Directory -Path $par -Force | Out-Null }",
+                    "        try { Copy-Item -LiteralPath $_.FullName -Destination $dst -Force; Log \"OK: $rel\" }",
+                    "        catch { Log \"FEHLER $rel : $_\" }",
+                    "    }",
+                    "}",
+                    "Log 'Kopieren fertig'",
                     "",
-                    "' 3. Neue Dateien kopieren (Portfolios + Config ausklammern)",
-                    'shell.Run "robocopy """ & newDir & """ """ & appDir & """ /E " & _',
-                    '    "/XD ""Portfolios"" " & _',
-                    '    "/XF "".stock_monitor_config.json"" " & _',
-                    '    "/XF ""stock_monitor.log"" " & _',
-                    '    "/NFL /NDL /NJH /NJS /NC /NS /NP", 0, True',
+                    "# Temp-Ordner löschen",
+                    "if (Test-Path $tmpDir) { Remove-Item -LiteralPath $tmpDir -Recurse -Force -ErrorAction SilentlyContinue }",
                     "",
-                    "' 4. Config wiederherstellen falls nötig",
-                    "If fso.FileExists(cfgBak) Then",
-                    "    If Not fso.FileExists(cfgDst) Then",
-                    "        fso.CopyFile cfgBak, cfgDst, True",
-                    "    End If",
-                    "    fso.DeleteFile cfgBak",
-                    "End If",
+                    "# App neu starten",
+                    "try { Start-Process -FilePath $exePath -WindowStyle Normal; Log 'App gestartet' }",
+                    "catch { Log \"Startfehler: $_\" }",
                     "",
-                    "' 5. Temp-Ordner löschen",
-                    "If fso.FolderExists(tmpDir) Then",
-                    "    fso.DeleteFolder tmpDir, True",
-                    "End If",
-                    "",
-                    "' 6. App neu starten",
-                    'shell.Run """" & exePath & """"',
-                    "",
-                    "' 7. Skript selbst löschen",
-                    "WScript.Sleep 500",
-                    "If fso.FileExists(vbsPath) Then",
-                    "    fso.DeleteFile vbsPath",
-                    "End If",
+                    "# Skript selbst löschen",
+                    "Start-Sleep -Seconds 1",
+                    "Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue",
                 ]
-                vbs_content = "\r\n".join(vbs_lines)
+                ps_content = "\r\n".join(ps_lines)
 
-                with open(vbs_path, "w", encoding="utf-8") as f:
-                    f.write(vbs_content)
+                # utf-8-sig writes UTF-8 BOM so PowerShell 5.x reads encoding correctly
+                with open(ps_path, "w", encoding="utf-8-sig") as f:
+                    f.write(ps_content)
 
-                sigs.progress_update.emit(92, "Update wird gestartet…")
-
-                import subprocess
-                subprocess.Popen(
-                    ["wscript.exe", "/nologo", vbs_path],
-                    creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
-                    close_fds=True,
-                )
-
-                sigs.progress_update.emit(100, "Fertig! App wird geschlossen…")
-                sigs.finished.emit("ready", "")
+                sigs.progress_update.emit(100, TR("lbl_update_connecting"))
+                sigs.finished.emit("ready", ps_path)
 
             except Exception as e:
                 _log.exception("Self-Update fehlgeschlagen")
@@ -27298,7 +27399,7 @@ class StockMonitorApp(QMainWindow):
         lay.setContentsMargins(20, 16, 20, 16)
         lay.setSpacing(10)
 
-        title_lbl = QLabel(f"<b>📦 yfinance {version}</b> wird aktualisiert…")
+        title_lbl = QLabel(f"<b>yfinance {version}</b> wird aktualisiert…")
         title_lbl.setStyleSheet("font-size:13px;")
         lay.addWidget(title_lbl)
 
@@ -27330,7 +27431,21 @@ class StockMonitorApp(QMainWindow):
             if status == "error":
                 QMessageBox.critical(self, TR("lbl_update_error_title"), message)
             elif status == "ready":
-                QTimer.singleShot(300, self.close)
+                msg = QMessageBox(self)
+                msg.setWindowTitle("yfinance Update")
+                msg.setText(f"yfinance {version} wurde installiert.")
+                msg.setInformativeText("Jetzt neu starten?")
+                btn_now   = msg.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
+                msg.addButton("Später neu starten",            QMessageBox.ButtonRole.RejectRole)
+                msg.exec()
+                if msg.clickedButton() == btn_now:
+                    import subprocess
+                    subprocess.Popen(
+                        [sys.executable],
+                        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+                        close_fds=True,
+                    )
+                    QTimer.singleShot(300, QApplication.instance().quit)
 
         sigs.finished.connect(_on_done, Qt.ConnectionType.QueuedConnection)
 
@@ -27386,8 +27501,15 @@ class StockMonitorApp(QMainWindow):
 
                 sigs.progress_update.emit(80, "yfinance wird installiert…")
 
-                app_dir      = os.path.dirname(os.path.abspath(sys.executable))
-                internal_dir = os.path.join(app_dir, "_internal")
+                # Pfad zu _internal: yfinance selbst fragen wo es liegt
+                try:
+                    import yfinance as _yf_loc
+                    internal_dir = os.path.dirname(os.path.dirname(os.path.abspath(_yf_loc.__file__)))
+                except Exception:
+                    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                        internal_dir = sys._MEIPASS
+                    else:
+                        internal_dir = os.path.join(os.path.dirname(os.path.abspath(sys.executable)), "_internal")
 
                 # Alte yfinance-Dateien entfernen
                 old_yf = os.path.join(internal_dir, "yfinance")
@@ -27409,14 +27531,30 @@ class StockMonitorApp(QMainWindow):
 
                 shutil.rmtree(tmp_dir, ignore_errors=True)
 
-                sigs.progress_update.emit(100, TR("lbl_yf_update_done", version=version))
+                # Verifizieren: neue Version aus dist-info lesen
+                verified_version = None
+                for _di in glob.glob(os.path.join(internal_dir, "yfinance-*.dist-info")):
+                    _meta = os.path.join(_di, "METADATA")
+                    if os.path.exists(_meta):
+                        try:
+                            with open(_meta, "r", encoding="utf-8", errors="ignore") as _f:
+                                for _line in _f:
+                                    if _line.startswith("Version:"):
+                                        verified_version = _line.split(":", 1)[1].strip()
+                                        break
+                        except Exception:
+                            pass
+                    if verified_version:
+                        break
 
-                import subprocess
-                subprocess.Popen(
-                    [sys.executable],
-                    creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
-                    close_fds=True,
-                )
+                if verified_version != version:
+                    sigs.finished.emit("error",
+                        f"Update auf yfinance {version} fehlgeschlagen\n"
+                        f"(installiert: {verified_version or 'unbekannt'}).\n"
+                        f"Bitte versuchen Sie es später erneut.")
+                    return
+
+                sigs.progress_update.emit(100, TR("lbl_yf_update_done", version=version))
                 sigs.finished.emit("ready", "")
 
             except Exception as e:
