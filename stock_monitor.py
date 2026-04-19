@@ -11328,7 +11328,7 @@ class PortfolioDialog(QMainWindow):
             fx_map = self._ov_fx if hasattr(self, '_ov_fx') else {'USD': 1.0}
             cur    = self._ov_currency if hasattr(self, '_ov_currency') else 'USD'
             fx     = fx_map.get(cur, 1.0)
-            cur_sym = {"USD": "$", "CHF": "Fr.", "EUR": "€"}.get(cur, cur)
+            cur_sym = {"USD": "$", "CHF": "Fr.", "EUR": "€", "GBP": "£"}.get(cur, cur)
 
             def _is_crypto(s):
                 return s.endswith('-USD') or s.endswith('-EUR') or \
@@ -12205,7 +12205,7 @@ class PortfolioDialog(QMainWindow):
                     pct = pnl / c_usd * 100 if c_usd > 0 else 0
                 return v_usd, c_usd, pnl, pct
 
-            cur_sym = {"USD":"$","CHF":"Fr.","EUR":"€"}.get(cur, cur)
+            cur_sym = {"USD":"$","CHF":"Fr.","EUR":"€","GBP":"£"}.get(cur, cur)
 
             # Gesamt
             total_pnl = total_value_usd - total_cost_usd
@@ -17442,7 +17442,7 @@ class PortfolioDialog(QMainWindow):
             # ── Helper: Abschnitt mit Checkbox + SpinBox-Zeilen ───────────────
             from PyQt6.QtWidgets import QDoubleSpinBox, QGridLayout, QFrame
 
-            def _make_section(title, items, saved_map):
+            def _make_section(title, items, saved_map, display_map=None):
                 """Erstellt einen Abschnitt (Währungen oder Sektoren).
                 Gibt (frame, {name: (QCheckBox, QDoubleSpinBox)}, sum_label) zurück."""
                 frame = QFrame()
@@ -17475,7 +17475,7 @@ class PortfolioDialog(QMainWindow):
                     row_layout = QHBoxLayout()
                     row_layout.setSpacing(6)
 
-                    cb = QCheckBox(name)
+                    cb = QCheckBox(display_map.get(name, name) if display_map else name)
                     cb.setChecked(name in saved_map)
                     row_layout.addWidget(cb)
                     row_layout.addStretch()
@@ -17524,8 +17524,14 @@ class PortfolioDialog(QMainWindow):
                 _update_sum()
                 return frame, widgets, sum_lbl
 
+            _CUR_DISPLAY = {
+                'USD': '$ USD', 'EUR': '€ EUR', 'GBP': '£ GBP',
+                'JPY': '¥ JPY', 'KRW': '₩ KRW', 'CAD': 'C$ CAD',
+                'AUD': 'A$ AUD', 'HKD': 'HK$ HKD', 'CNY': '¥ CNY',
+            }
             cur_frame,  cur_widgets,  cur_sum_lbl  = _make_section(
-                TR("lbl_targeted_currencies"), sorted_currencies, saved_cur_map)
+                TR("lbl_targeted_currencies"), sorted_currencies, saved_cur_map,
+                display_map=_CUR_DISPLAY)
             sec_frame,  sec_widgets,  sec_sum_lbl  = _make_section(
                 TR("lbl_targeted_sectors"),    sorted_sectors,    saved_sec_map)
 
