@@ -74,3 +74,19 @@ jobs:
           publish_branch: gh-pages
           publish_dir: fp/repo-web
           keep_files: true
+
+      - name: Export Flatpak bundle
+        run: |
+          VERSION=$(grep -m1 'APP_VERSION' fp/sources/stock_monitor.py | grep -oP '"\K[^"]+')
+          flatpak build-bundle fp/repo \
+            "StockMonitor-${VERSION}.flatpak" \
+            ch.stockmonitor.StockMonitor
+          echo "FLATPAK_FILE=StockMonitor-${VERSION}.flatpak" >> $GITHUB_ENV
+          echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Upload Flatpak to latest release
+        run: |
+          TAG=$(gh release list --repo ${{ github.repository }} --limit 1 --json tagName -q '.[0].tagName')
+          gh release upload "$TAG" "$FLATPAK_FILE" --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
