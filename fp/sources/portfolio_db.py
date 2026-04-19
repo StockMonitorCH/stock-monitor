@@ -13,9 +13,27 @@ Abhängigkeiten (einmalig installieren):
 """
 
 import os
+import sys
 import json
 import time
 import shutil
+
+def _get_data_home() -> str:
+    if sys.platform == "win32":
+        try:
+            base = (os.path.dirname(os.path.abspath(sys.executable))
+                    if getattr(sys, 'frozen', False)
+                    else os.path.dirname(os.path.abspath(__file__)))
+            return os.path.join(base, "_internal")
+        except Exception:
+            pass
+    return os.path.expanduser("~")
+
+def _get_portfolio_dir() -> str:
+    if os.path.exists("/.flatpak-info"):
+        xdg = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+        return os.path.join(xdg, "stock-monitor", "portfolios")
+    return os.path.join(_get_data_home(), ".stock_monitor_portfolios")
 
 try:
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -26,7 +44,7 @@ except ImportError:
     CRYPTO_AVAILABLE = False
 
 # ── Konstanten ────────────────────────────────────────────────────────────────
-PORTFOLIO_DIR  = os.path.expanduser("~/.stock_monitor_portfolios")
+PORTFOLIO_DIR  = _get_portfolio_dir()
 PBKDF2_ITER    = 600_000       # OWASP-Empfehlung 2024
 SALT_LEN       = 32            # 256 Bit Salt
 NONCE_LEN      = 12            # 96 Bit GCM-Nonce
@@ -35,7 +53,7 @@ MAGIC          = b"SMPF\x01"  # Stock Monitor Portfolio File v1
 FILE_EXT       = ".smpf"
 PRICE_TTL      = 300           # 5 Minuten
 SECTOR_TTL     = 7 * 86400     # 7 Tage
-DB_PATH        = os.path.expanduser("~/.stock_monitor_db.enc")  # Legacy
+DB_PATH        = os.path.join(_get_data_home(), ".stock_monitor_db.enc")  # Legacy
 
 
 class WrongPasswordError(Exception):

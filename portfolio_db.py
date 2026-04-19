@@ -29,6 +29,12 @@ def _get_data_home() -> str:
             pass
     return os.path.expanduser("~")
 
+def _get_portfolio_dir() -> str:
+    if os.path.exists("/.flatpak-info"):
+        xdg = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+        return os.path.join(xdg, "stock-monitor", "portfolios")
+    return os.path.join(_get_data_home(), ".stock_monitor_portfolios")
+
 try:
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
     from cryptography.hazmat.primitives import hashes
@@ -38,7 +44,7 @@ except ImportError:
     CRYPTO_AVAILABLE = False
 
 # ── Konstanten ────────────────────────────────────────────────────────────────
-PORTFOLIO_DIR  = os.path.join(_get_data_home(), ".stock_monitor_portfolios")
+PORTFOLIO_DIR  = _get_portfolio_dir()
 PBKDF2_ITER    = 600_000       # OWASP-Empfehlung 2024
 SALT_LEN       = 32            # 256 Bit Salt
 NONCE_LEN      = 12            # 96 Bit GCM-Nonce
