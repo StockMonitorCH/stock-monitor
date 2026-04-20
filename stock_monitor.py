@@ -14713,8 +14713,11 @@ class PortfolioDialog(QMainWindow):
                                        .get("text", "Keine Antwort erhalten."))
                             self.done.emit(text)
                         except urllib.error.HTTPError as e:
-                            body = e.read().decode('utf-8', errors='replace')
-                            self.done.emit(f"<i>HTTP {e.code}: {body}</i>")
+                            if e.code == 503:
+                                self.done.emit(f"<i>{TR('lbl_gemini_unavailable')}</i>")
+                            else:
+                                body = e.read().decode('utf-8', errors='replace')
+                                self.done.emit(f"<i>HTTP {e.code}: {body}</i>")
                     except Exception as ex:
                         self.done.emit(f"<i>{TR("lbl_error_generic", e=ex)}</i>")
 

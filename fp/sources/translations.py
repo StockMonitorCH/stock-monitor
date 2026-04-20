@@ -1651,6 +1651,26 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_flatpak_install_done":    "✅ Stock Monitor v{version} wurde installiert!\n\nBitte starte die App neu, damit die neue Version aktiv wird.",
         "lbl_flatpak_install_error":   "❌ Installation fehlgeschlagen:",
 
+        # ── Börsenzeiten-Dialog ───────────────────────────────────────────────
+        "title_market_hours":          "Börsenzeiten – {exchange}",
+        "lbl_market_status_open":      "🟢 Geöffnet",
+        "lbl_market_status_closed":    "🔴 Geschlossen",
+        "lbl_market_status_pre":       "🟡 Pre-Market",
+        "lbl_market_status_after":     "🟡 After-Hours",
+        "lbl_market_local_time":       "Ortszeit Börse",
+        "lbl_market_your_time":        "Deine Ortszeit",
+        "lbl_market_timezone":         "Zeitzone",
+        "lbl_market_regular_hours":    "Reguläre Handelszeiten",
+        "lbl_market_pre_hours":        "Pre-Market",
+        "lbl_market_after_hours":      "After-Hours",
+        "lbl_market_holidays":         "Feiertage {year}",
+        "lbl_market_no_holidays":      "Keine weiteren Feiertage",
+        "lbl_market_next_open":        "Nächste Öffnung: {date}",
+        "lbl_market_unknown":          "Keine Börseninformationen für {sym}",
+
+        # ── Gemini 503 ────────────────────────────────────────────────────────
+        "lbl_gemini_unavailable":      "⏳ Gemini ist momentan ausgelastet. Bitte in einigen Sekunden erneut versuchen.",
+
     },
 
 
@@ -3227,6 +3247,26 @@ more than enough for personal use.</p>
         "lbl_flatpak_downloading":     "Downloading and installing version {version}…",
         "lbl_flatpak_install_done":    "✅ Stock Monitor v{version} has been installed!\n\nPlease restart the app for the new version to take effect.",
         "lbl_flatpak_install_error":   "❌ Installation failed:",
+
+        # ── Market Hours Dialog ───────────────────────────────────────────────
+        "title_market_hours":          "Market Hours – {exchange}",
+        "lbl_market_status_open":      "🟢 Open",
+        "lbl_market_status_closed":    "🔴 Closed",
+        "lbl_market_status_pre":       "🟡 Pre-Market",
+        "lbl_market_status_after":     "🟡 After-Hours",
+        "lbl_market_local_time":       "Exchange local time",
+        "lbl_market_your_time":        "Your local time",
+        "lbl_market_timezone":         "Timezone",
+        "lbl_market_regular_hours":    "Regular trading hours",
+        "lbl_market_pre_hours":        "Pre-Market",
+        "lbl_market_after_hours":      "After-Hours",
+        "lbl_market_holidays":         "Holidays {year}",
+        "lbl_market_no_holidays":      "No upcoming holidays",
+        "lbl_market_next_open":        "Next open: {date}",
+        "lbl_market_unknown":          "No exchange information for {sym}",
+
+        # ── Gemini 503 ────────────────────────────────────────────────────────
+        "lbl_gemini_unavailable":      "⏳ Gemini is currently overloaded. Please try again in a few seconds.",
 
     },
 }
