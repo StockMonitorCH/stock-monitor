@@ -26764,9 +26764,11 @@ class StockMonitorApp(QMainWindow):
                 if dl.returncode != 0:
                     QTimer.singleShot(0, lambda e=(dl.stderr or dl.stdout or "curl error").strip(): _on_error(e))
                     return
+                # DBUS_SESSION_BUS_ADDRESS leeren verhindert KDE-Discover-Start
+                cmd = (f"DBUS_SESSION_BUS_ADDRESS='' flatpak install"
+                       f" --user --bundle --assumeyes --noninteractive '{fpath}'")
                 result = subprocess.run(
-                    ['flatpak-spawn', '--host', 'flatpak', 'install',
-                     '--user', '--bundle', '--assumeyes', '--noninteractive', fpath],
+                    ['flatpak-spawn', '--host', 'bash', '-c', cmd],
                     capture_output=True, text=True, timeout=300
                 )
                 if result.returncode == 0:
