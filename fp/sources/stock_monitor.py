@@ -26766,7 +26766,7 @@ class StockMonitorApp(QMainWindow):
                     return
                 result = subprocess.run(
                     ['flatpak-spawn', '--host', 'flatpak', 'install',
-                     '--user', '--bundle', '--assumeyes', fpath],
+                     '--user', '--bundle', '--assumeyes', '--noninteractive', fpath],
                     capture_output=True, text=True, timeout=300
                 )
                 if result.returncode == 0:
