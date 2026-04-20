@@ -26731,7 +26731,7 @@ class StockMonitorApp(QMainWindow):
 
     def _do_flatpak_install(self, version, flatpak_url):
         """Lädt die .flatpak-Datei nach ~/Downloads und installiert sie direkt."""
-        import urllib.request, ssl, subprocess, threading
+        import subprocess, threading
 
         prog_dlg = QDialog(self)
         prog_dlg.setWindowTitle(TR("title_flatpak_install"))
@@ -26755,19 +26755,15 @@ class StockMonitorApp(QMainWindow):
                 os.makedirs(downloads, exist_ok=True)
                 fname = f"StockMonitor-{version}.flatpak"
                 fpath = os.path.join(downloads, fname)
-                try:
-                    import certifi
-                    ctx = ssl.create_default_context(cafile=certifi.where())
-                except Exception:
-                    ctx = ssl.create_default_context()
-                req = urllib.request.Request(flatpak_url, headers={"User-Agent": "StockMonitor"})
-                with urllib.request.urlopen(req, timeout=300, context=ctx) as resp:
-                    with open(fpath, 'wb') as f:
-                        while True:
-                            chunk = resp.read(65536)
-                            if not chunk:
-                                break
-                            f.write(chunk)
+                # Download via host curl (umgeht Sandbox-SSL-Probleme)
+                dl = subprocess.run(
+                    ['flatpak-spawn', '--host', 'curl', '-L', '--fail',
+                     '-o', fpath, flatpak_url],
+                    capture_output=True, text=True, timeout=600
+                )
+                if dl.returncode != 0:
+                    QTimer.singleShot(0, lambda e=(dl.stderr or dl.stdout or "curl error").strip(): _on_error(e))
+                    return
                 result = subprocess.run(
                     ['flatpak-spawn', '--host', 'flatpak', 'install',
                      '--user', '--bundle', '--assumeyes', fpath],
