@@ -26548,10 +26548,14 @@ class StockMonitorApp(QMainWindow):
                 if not latest:
                     return "error", APP_VERSION, "", "", ""
                 zip_url = ""
+                flatpak_url = ""
                 for asset in data.get("assets", []):
-                    if asset.get("name", "").lower() == "stock_monitor.zip":
-                        zip_url = asset.get("browser_download_url", "")
-                        break
+                    name = asset.get("name", "").lower()
+                    dl = asset.get("browser_download_url", "")
+                    if name == "stock_monitor.zip":
+                        zip_url = dl
+                    elif name.endswith(".flatpak"):
+                        flatpak_url = dl
                 def _vtuple(v):
                     try: return tuple(int(x) for x in v.split("."))
                     except: return (0,)
@@ -26559,14 +26563,14 @@ class StockMonitorApp(QMainWindow):
                     return ("update_available", latest,
                             data.get("html_url") or "",
                             data.get("body") or "",
-                            zip_url)
-                return "current", APP_VERSION, "", "", ""
+                            zip_url, flatpak_url)
+                return "current", APP_VERSION, "", "", "", ""
             except Exception:
-                return "error", APP_VERSION, "", "", ""
+                return "error", APP_VERSION, "", "", "", ""
 
         def _on_result(result):
             try:
-                status, version, url, notes, zip_url = result
+                status, version, url, notes, zip_url, flatpak_url = result
                 if status == "update_available":
                     if status_label:
                         status_label.setText(
@@ -26575,7 +26579,7 @@ class StockMonitorApp(QMainWindow):
                             + "</span>"
                         )
                     if update_btn:
-                        update_btn.setText(f"⬇️ v{version} {TR('btn_update')}")
+                        update_btn.setText(f"⬇️ v{version}")
                         update_btn.setEnabled(True)
                         update_btn.setStyleSheet(
                             "QPushButton { background-color: #e67e00; color: white; "
@@ -26586,12 +26590,12 @@ class StockMonitorApp(QMainWindow):
                             update_btn.clicked.disconnect()
                         except Exception:
                             pass
-                        def _open_release(checked=False, _url=url, _v=version, _n=notes, _z=zip_url):
-                            self._show_app_update_dialog(_v, _url, _n, _z)
+                        def _open_release(checked=False, _url=url, _v=version, _n=notes, _z=zip_url, _fz=flatpak_url):
+                            self._show_app_update_dialog(_v, _url, _n, _z, _fz)
                         update_btn.clicked.connect(_open_release)
                     # Eigenständiger Dialog (kein status_label von aussen)
                     if not status_label:
-                        self._show_app_update_dialog(version, url, notes, zip_url)
+                        self._show_app_update_dialog(version, url, notes, zip_url, flatpak_url)
                 elif status == "current":
                     if status_label:
                         status_label.setText(
@@ -26611,11 +26615,11 @@ class StockMonitorApp(QMainWindow):
 
         self._start_update_worker(_do_check, _on_result)
 
-    def _show_app_update_dialog(self, version, url, notes, zip_url=""):
+    def _show_app_update_dialog(self, version, url, notes, zip_url="", flatpak_url=""):
         """Zeigt einen Nicht-Blocking-Dialog wenn eine neue App-Version verfügbar ist."""
         dlg = QDialog(self)
         dlg.setWindowTitle(TR("title_update_check"))
-        dlg.setFixedWidth(520)
+        dlg.setFixedWidth(540)
         lay = QVBoxLayout(dlg)
         lay.setSpacing(10)
         lay.setContentsMargins(20, 16, 20, 14)
@@ -26635,9 +26639,20 @@ class StockMonitorApp(QMainWindow):
             te.setMaximumHeight(200)
             lay.addWidget(te)
 
+        _in_flatpak = os.path.exists('/.flatpak-info')
+        _is_exe_win = getattr(sys, 'frozen', False) and sys.platform == "win32"
+
+        if _in_flatpak:
+            hint_lbl = QLabel(TR("lbl_app_update_flatpak_hint"))
+            hint_lbl.setWordWrap(True)
+            hint_lbl.setStyleSheet(
+                "background:#fff3cd;color:#856404;border:1px solid #ffc107;"
+                "border-radius:6px;padding:8px;"
+            )
+            lay.addWidget(hint_lbl)
+
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        _is_exe_win = getattr(sys, 'frozen', False) and sys.platform == "win32"
         if _is_exe_win and zip_url:
             auto_btn = QPushButton(TR("btn_auto_update"))
             auto_btn.setStyleSheet(
@@ -26650,6 +26665,18 @@ class StockMonitorApp(QMainWindow):
                 self._do_self_update(_v, _z)
             auto_btn.clicked.connect(_do_auto)
             btn_row.addWidget(auto_btn)
+        if _in_flatpak and flatpak_url:
+            install_btn = QPushButton(TR("btn_flatpak_install"))
+            install_btn.setStyleSheet(
+                "QPushButton{background:#27ae60;color:white;font-weight:bold;"
+                "border-radius:6px;padding:4px 14px;}"
+                "QPushButton:hover{background:#1e8449;}"
+            )
+            def _do_flatpak(checked=False, _v=version, _fz=flatpak_url):
+                dlg.close()
+                self._do_flatpak_install(_v, _fz)
+            install_btn.clicked.connect(_do_flatpak)
+            btn_row.addWidget(install_btn)
         if url:
             open_btn = QPushButton(TR("btn_open_release_page"))
             open_btn.setStyleSheet(
@@ -26701,6 +26728,77 @@ class StockMonitorApp(QMainWindow):
         dlg.raise_()
         dlg.activateWindow()
         QApplication.setActiveWindow(dlg)
+
+    def _do_flatpak_install(self, version, flatpak_url):
+        """Lädt die neue .flatpak-Datei herunter und installiert sie via flatpak install --bundle."""
+        import tempfile, urllib.request, ssl, subprocess, threading
+
+        prog_dlg = QDialog(self)
+        prog_dlg.setWindowTitle(TR("title_flatpak_install"))
+        prog_dlg.setFixedWidth(420)
+        prog_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        lay = QVBoxLayout(prog_dlg)
+        lay.setContentsMargins(20, 16, 20, 14)
+        lay.setSpacing(10)
+        msg_lbl = QLabel(TR("lbl_flatpak_downloading", version=version))
+        msg_lbl.setWordWrap(True)
+        lay.addWidget(msg_lbl)
+        from PyQt6.QtWidgets import QProgressBar
+        prog = QProgressBar()
+        prog.setRange(0, 0)
+        lay.addWidget(prog)
+        prog_dlg.show()
+
+        def _run():
+            try:
+                tmpdir = tempfile.mkdtemp(prefix="stockmonitor_update_")
+                fname = f"StockMonitor-{version}.flatpak"
+                fpath = os.path.join(tmpdir, fname)
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+                req = urllib.request.Request(flatpak_url, headers={"User-Agent": "StockMonitor"})
+                with urllib.request.urlopen(req, timeout=120, context=ctx) as resp:
+                    with open(fpath, 'wb') as f:
+                        while True:
+                            chunk = resp.read(65536)
+                            if not chunk:
+                                break
+                            f.write(chunk)
+                result = subprocess.run(
+                    ['flatpak-spawn', '--host', 'flatpak', 'install',
+                     '--user', '--bundle', '--assumeyes', fpath],
+                    capture_output=True, text=True, timeout=120
+                )
+                if result.returncode == 0:
+                    QTimer.singleShot(0, lambda: _on_success())
+                else:
+                    err = (result.stderr or result.stdout or "").strip()
+                    QTimer.singleShot(0, lambda e=err: _on_error(e))
+            except Exception as e:
+                QTimer.singleShot(0, lambda e=str(e): _on_error(e))
+
+        def _on_success():
+            prog_dlg.close()
+            from PyQt6.QtWidgets import QMessageBox
+            mb = QMessageBox(self)
+            mb.setWindowTitle(TR("title_flatpak_install"))
+            mb.setText(TR("lbl_flatpak_install_done", version=version))
+            mb.setIcon(QMessageBox.Icon.Information)
+            mb.exec()
+
+        def _on_error(err):
+            prog_dlg.close()
+            from PyQt6.QtWidgets import QMessageBox
+            mb = QMessageBox(self)
+            mb.setWindowTitle(TR("title_flatpak_install"))
+            mb.setText(TR("lbl_flatpak_install_error") + f"\n\n{err}")
+            mb.setIcon(QMessageBox.Icon.Warning)
+            mb.exec()
+
+        threading.Thread(target=_run, daemon=True).start()
 
     def _get_yfinance_installed_version(self) -> str:
         """Gibt die tatsächlich installierte yfinance-Version zurück.
