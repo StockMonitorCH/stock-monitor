@@ -6865,9 +6865,21 @@ class StockChartWidget(QFrame):
         lay.setSpacing(8)
         lay.setContentsMargins(16, 14, 16, 14)
 
-        # Status
-        status_lbl = QLabel(TR(status_key))
-        status_lbl.setStyleSheet("font-size:16px; font-weight:bold; padding:6px 0;")
+        # Status mit farbigem Punkt
+        _status_colors = {
+            "lbl_market_status_open":   "#27ae60",
+            "lbl_market_status_closed": "#e74c3c",
+            "lbl_market_status_pre":    "#f39c12",
+            "lbl_market_status_after":  "#f39c12",
+        }
+        _dot_color = _status_colors.get(status_key, "#888888")
+        _label_text = TR(status_key)
+        status_lbl = QLabel(
+            f"<span style='color:{_dot_color}; font-size:22px; line-height:1;'>&#9679;</span>"
+            f"&nbsp;<span style='font-size:16px; font-weight:bold;'>{_label_text}</span>"
+        )
+        status_lbl.setTextFormat(Qt.TextFormat.RichText)
+        status_lbl.setStyleSheet("padding:6px 0;")
         lay.addWidget(status_lbl)
 
         if next_open_str:

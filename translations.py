@@ -1653,10 +1653,10 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
 
         # ── Börsenzeiten-Dialog ───────────────────────────────────────────────
         "title_market_hours":          "Börsenzeiten – {exchange}",
-        "lbl_market_status_open":      "🟢 Geöffnet",
-        "lbl_market_status_closed":    "🔴 Geschlossen",
-        "lbl_market_status_pre":       "🟡 Pre-Market",
-        "lbl_market_status_after":     "🟡 After-Hours",
+        "lbl_market_status_open":      "Geöffnet",
+        "lbl_market_status_closed":    "Geschlossen",
+        "lbl_market_status_pre":       "Pre-Market",
+        "lbl_market_status_after":     "After-Hours",
         "lbl_market_local_time":       "Ortszeit Börse",
         "lbl_market_your_time":        "Deine Ortszeit",
         "lbl_market_timezone":         "Zeitzone",
@@ -3250,10 +3250,10 @@ more than enough for personal use.</p>
 
         # ── Market Hours Dialog ───────────────────────────────────────────────
         "title_market_hours":          "Market Hours – {exchange}",
-        "lbl_market_status_open":      "🟢 Open",
-        "lbl_market_status_closed":    "🔴 Closed",
-        "lbl_market_status_pre":       "🟡 Pre-Market",
-        "lbl_market_status_after":     "🟡 After-Hours",
+        "lbl_market_status_open":      "Open",
+        "lbl_market_status_closed":    "Closed",
+        "lbl_market_status_pre":       "Pre-Market",
+        "lbl_market_status_after":     "After-Hours",
         "lbl_market_local_time":       "Exchange local time",
         "lbl_market_your_time":        "Your local time",
         "lbl_market_timezone":         "Timezone",
