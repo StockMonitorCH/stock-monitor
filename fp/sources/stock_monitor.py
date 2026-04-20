@@ -26730,8 +26730,8 @@ class StockMonitorApp(QMainWindow):
         QApplication.setActiveWindow(dlg)
 
     def _do_flatpak_install(self, version, flatpak_url):
-        """Lädt die neue .flatpak-Datei herunter und installiert sie via flatpak install --bundle."""
-        import tempfile, urllib.request, ssl, subprocess, threading
+        """Lädt die .flatpak-Datei nach ~/Downloads und installiert sie direkt."""
+        import urllib.request, ssl, subprocess, threading
 
         prog_dlg = QDialog(self)
         prog_dlg.setWindowTitle(TR("title_flatpak_install"))
@@ -26751,16 +26751,17 @@ class StockMonitorApp(QMainWindow):
 
         def _run():
             try:
-                tmpdir = tempfile.mkdtemp(prefix="stockmonitor_update_")
+                downloads = os.path.join(os.path.expanduser("~"), "Downloads")
+                os.makedirs(downloads, exist_ok=True)
                 fname = f"StockMonitor-{version}.flatpak"
-                fpath = os.path.join(tmpdir, fname)
+                fpath = os.path.join(downloads, fname)
                 try:
                     import certifi
                     ctx = ssl.create_default_context(cafile=certifi.where())
                 except Exception:
                     ctx = ssl.create_default_context()
                 req = urllib.request.Request(flatpak_url, headers={"User-Agent": "StockMonitor"})
-                with urllib.request.urlopen(req, timeout=120, context=ctx) as resp:
+                with urllib.request.urlopen(req, timeout=300, context=ctx) as resp:
                     with open(fpath, 'wb') as f:
                         while True:
                             chunk = resp.read(65536)
@@ -26770,13 +26771,13 @@ class StockMonitorApp(QMainWindow):
                 result = subprocess.run(
                     ['flatpak-spawn', '--host', 'flatpak', 'install',
                      '--user', '--bundle', '--assumeyes', fpath],
-                    capture_output=True, text=True, timeout=120
+                    capture_output=True, text=True, timeout=300
                 )
                 if result.returncode == 0:
                     QTimer.singleShot(0, lambda: _on_success())
                 else:
-                    err = (result.stderr or result.stdout or "").strip()
-                    QTimer.singleShot(0, lambda e=err: _on_error(e))
+                    QTimer.singleShot(0, lambda: _on_error(
+                        (result.stderr or result.stdout or "").strip()))
             except Exception as e:
                 QTimer.singleShot(0, lambda e=str(e): _on_error(e))
 
