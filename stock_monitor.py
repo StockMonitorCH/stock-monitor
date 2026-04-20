@@ -26751,10 +26751,10 @@ class StockMonitorApp(QMainWindow):
 
         def _run():
             try:
-                downloads = os.path.join(os.path.expanduser("~"), "Downloads")
-                os.makedirs(downloads, exist_ok=True)
+                tmpdir = os.path.join(os.path.expanduser("~"), ".cache", "stockmonitor-update")
+                os.makedirs(tmpdir, exist_ok=True)
                 fname = f"StockMonitor-{version}.flatpak"
-                fpath = os.path.join(downloads, fname)
+                fpath = os.path.join(tmpdir, fname)
                 # Download via host curl (umgeht Sandbox-SSL-Probleme)
                 dl = subprocess.run(
                     ['flatpak-spawn', '--host', 'curl', '-L', '--fail',
@@ -26764,31 +26764,16 @@ class StockMonitorApp(QMainWindow):
                 if dl.returncode != 0:
                     QTimer.singleShot(0, lambda e=(dl.stderr or dl.stdout or "curl error").strip(): _on_error(e))
                     return
-                # Terminal-Fenster öffnen – umgeht KDE-Discover komplett
-                install_cmd = (
-                    f"flatpak install --user --bundle --assumeyes '{fpath}'"
-                    f" && echo '✅ Installation erfolgreich – Fenster schliesst in 5s' && sleep 5"
-                    f" || (echo '❌ Fehler – Fenster schliesst in 10s' && sleep 10)"
+                result = subprocess.run(
+                    ['flatpak-spawn', '--host', 'flatpak', 'install',
+                     '--user', '--bundle', '--assumeyes', '--noninteractive', fpath],
+                    capture_output=True, text=True, timeout=300
                 )
-                # Konsole versuchen, sonst xterm als Fallback
-                for terminal in [
-                    ['flatpak-spawn', '--host', 'konsole', '--noclose', '-e', 'bash', '-c', install_cmd],
-                    ['flatpak-spawn', '--host', 'xterm', '-e', 'bash', '-c', install_cmd],
-                ]:
-                    try:
-                        proc = subprocess.Popen(terminal)
-                        proc.wait(timeout=300)
-                        if proc.returncode == 0:
-                            QTimer.singleShot(0, lambda: _on_success())
-                        else:
-                            QTimer.singleShot(0, lambda: _on_error("Installation abgebrochen oder fehlgeschlagen."))
-                        return
-                    except FileNotFoundError:
-                        continue
-                    except Exception as e:
-                        QTimer.singleShot(0, lambda e=str(e): _on_error(e))
-                        return
-                QTimer.singleShot(0, lambda: _on_error("Kein Terminal-Emulator gefunden (konsole/xterm)."))
+                if result.returncode == 0:
+                    QTimer.singleShot(0, lambda: _on_success())
+                else:
+                    QTimer.singleShot(0, lambda: _on_error(
+                        (result.stderr or result.stdout or "").strip()))
             except Exception as e:
                 QTimer.singleShot(0, lambda e=str(e): _on_error(e))
 
