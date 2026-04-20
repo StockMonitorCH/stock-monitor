@@ -224,8 +224,12 @@ def _show_log_hint():
             "Falls du den Fehler melden möchtest, schicke einfach die Logdatei mit:<br><br>"
             f"<code>{_LOG_PATH}</code>"
         )
-        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        open_btn = msg.addButton("Ordner öffnen", QMessageBox.ButtonRole.ActionRole)
+        msg.addButton(QMessageBox.StandardButton.Ok)
         msg.exec()
+        if msg.clickedButton() == open_btn:
+            import subprocess
+            subprocess.Popen(["xdg-open", os.path.dirname(_LOG_PATH)])
     except Exception:
         pass
 
