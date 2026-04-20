@@ -1644,7 +1644,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_yf_update_done":         "✅ yfinance {version} installiert! App wird neu gestartet…",
 
         # ── Flatpak App-Update ────────────────────────────────────────────────
-        "lbl_app_update_flatpak_hint": "ℹ Du verwendest die Flatpak-Version. Klicke auf „Flatpak installieren", um die neue Version direkt herunterzuladen und zu installieren.",
+        "lbl_app_update_flatpak_hint": "ℹ Du verwendest die Flatpak-Version. Klicke auf 'Flatpak installieren', um die neue Version direkt herunterzuladen und zu installieren.",
         "btn_flatpak_install":         "⬇ Flatpak installieren",
         "title_flatpak_install":       "Flatpak Update",
         "lbl_flatpak_downloading":     "Version {version} wird heruntergeladen und installiert…",
@@ -3221,7 +3221,7 @@ more than enough for personal use.</p>
         "lbl_yf_update_done":         "✅ yfinance {version} installed! App will restart…",
 
         # ── Flatpak App-Update ────────────────────────────────────────────────
-        "lbl_app_update_flatpak_hint": "ℹ You are using the Flatpak version. Click „Install Flatpak" to download and install the new version directly.",
+        "lbl_app_update_flatpak_hint": "ℹ You are using the Flatpak version. Click 'Install Flatpak' to download and install the new version directly.",
         "btn_flatpak_install":         "⬇ Install Flatpak",
         "title_flatpak_install":       "Flatpak Update",
         "lbl_flatpak_downloading":     "Downloading and installing version {version}…",
