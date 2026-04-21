@@ -77,7 +77,7 @@ jobs:
 
       - name: Export Flatpak bundle
         run: |
-          VERSION=$(grep -m1 'APP_VERSION' fp/sources/stock_monitor.py | grep -oP '"\K[^"]+')
+          VERSION=$(grep -m1 'APP_VERSION' fp/sources/stock_monitor.py | grep -oP '"\K\d+\.\d+\.\d+')
           flatpak build-bundle fp/repo \
             "StockMonitor-${VERSION}.flatpak" \
             ch.stockmonitor.StockMonitor
