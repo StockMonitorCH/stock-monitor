@@ -126,14 +126,16 @@ def _setup_logging():
     # Linux:         neben stock_monitor.py
     if sys.platform == "win32":
         _log_dir = os.path.dirname(sys.executable)
-    elif os.environ.get("FLATPAK_ID"):
-        # Im Flatpak-Sandbox ist /app schreibgeschützt → XDG_CACHE_HOME nutzen
-        _log_dir = os.path.join(
-            os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")),
-            "stock-monitor"
-        )
     else:
-        _log_dir = os.path.dirname(os.path.abspath(__file__))
+        _candidate = os.path.dirname(os.path.abspath(__file__))
+        if os.access(_candidate, os.W_OK):
+            _log_dir = _candidate
+        else:
+            # Flatpak-Sandbox: /app ist schreibgeschützt → XDG_CACHE_HOME
+            _log_dir = os.path.join(
+                os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")),
+                "stock-monitor"
+            )
     os.makedirs(_log_dir, exist_ok=True)
     _log_path = os.path.join(_log_dir, "stock_monitor.log")
     _logger = _logging.getLogger("StockMonitor")
@@ -23894,7 +23896,8 @@ class StockMonitorApp(QMainWindow):
         if not self.charts:
             self._startup_target = 88.0
             self.loading_dialog.update_progress(65, TR("status_creating_charts"))
-            _sw = QApplication.primaryScreen().size().width() if QApplication.primaryScreen() else 1920
+            _scr = QApplication.primaryScreen()
+            _sw = int((_scr.size().width() * _scr.devicePixelRatio()) if _scr else 1920)
             _default_charts = 16 if _sw >= 3840 else 12
             self.create_charts(_default_charts)
         QTimer.singleShot(80, self._init_step5)
@@ -23934,10 +23937,10 @@ class StockMonitorApp(QMainWindow):
                 ctypes.windll.user32.BringWindowToTop(hwnd)
             except Exception:
                 pass
-        # Fallback: WindowStaysOnTopHint kurz setzen
-        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
-        self.show()
-        QTimer.singleShot(1500, self._unflag_on_top)
+            # WindowStaysOnTopHint nur auf Windows (verursacht sonst Flackern auf Linux)
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+            self.show()
+            QTimer.singleShot(1500, self._unflag_on_top)
 
     def _unflag_on_top(self):
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
@@ -23970,9 +23973,11 @@ class StockMonitorApp(QMainWindow):
 
         self.main_layout = QVBoxLayout()
         
-        # Erkenne Full HD für 2-Zeilen-Layout
-        screen = QApplication.primaryScreen().geometry()
-        is_fullhd = screen.width() <= 1920
+        # Erkenne Full HD für 2-Zeilen-Layout (physische Pixel für HiDPI-Skalierung)
+        _scr0 = QApplication.primaryScreen()
+        _phys_w = int(_scr0.size().width() * _scr0.devicePixelRatio()) if _scr0 else 1920
+        screen = _scr0.geometry() if _scr0 else QApplication.primaryScreen().geometry()
+        is_fullhd = _phys_w <= 1920
         
         if is_fullhd:
             # === FULL HD: 2-ZEILEN HEADER ===
@@ -24979,9 +24984,10 @@ class StockMonitorApp(QMainWindow):
         
         print(f">>> {len(positions)} Positionen definiert")
         
-        # Bestimme ob compact_mode nötig (Full HD: immer kompakt)
-        screen = QApplication.primaryScreen().geometry()
-        is_fullhd = screen.width() <= 1920
+        # Bestimme ob compact_mode nötig (Full HD: immer kompakt, physische Pixel für HiDPI)
+        _scr1 = QApplication.primaryScreen()
+        _phys_w1 = int(_scr1.size().width() * _scr1.devicePixelRatio()) if _scr1 else 1920
+        is_fullhd = _phys_w1 <= 1920
         use_compact = is_fullhd  # Bei Full HD immer kompakt
         
         if use_compact:
@@ -27730,7 +27736,7 @@ class StockMonitorApp(QMainWindow):
         layout.addSpacing(20)
         
         # Credits
-        credits = QLabel("<i>Idea by T. Boner<br>Coding by Claude</i><br><br>&#128231; <a href='mailto:info@stock-monitor.ch'>info@stock-monitor.ch</a><br>&#127760; <a href='https://www.stock-monitor.ch'>www.stock-monitor.ch</a>")
+        credits = QLabel("<i>Developed by T. Boner</i><br><br>&#128231; <a href='mailto:info@stock-monitor.ch'>info@stock-monitor.ch</a><br>&#127760; <a href='https://www.stock-monitor.ch'>www.stock-monitor.ch</a>")
         credits.setOpenExternalLinks(True)
         credits.setAlignment(Qt.AlignmentFlag.AlignCenter)
         credits.setWordWrap(True)
@@ -29357,6 +29363,11 @@ def main():
         pass
 
     app = QApplication(sys.argv)
+    app.setApplicationName("Stock Monitor")
+    app.setApplicationVersion(APP_VERSION)
+    # Flatpak/Linux: Desktop-Dateiname setzen → korrektes Taskleisten-Symbol
+    if os.environ.get("FLATPAK_ID") or sys.platform != "win32":
+        app.setDesktopFileName("ch.stockmonitor.StockMonitor")
     app.setStyle('Fusion')  # KDE-freundlicher Style
 
     # ── Windows Taskleisten-Icon Fix ──────────────────────────────────────

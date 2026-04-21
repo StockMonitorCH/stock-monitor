@@ -126,14 +126,16 @@ def _setup_logging():
     # Linux:         neben stock_monitor.py
     if sys.platform == "win32":
         _log_dir = os.path.dirname(sys.executable)
-    elif os.environ.get("FLATPAK_ID"):
-        # Im Flatpak-Sandbox ist /app schreibgeschützt → XDG_CACHE_HOME nutzen
-        _log_dir = os.path.join(
-            os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")),
-            "stock-monitor"
-        )
     else:
-        _log_dir = os.path.dirname(os.path.abspath(__file__))
+        _candidate = os.path.dirname(os.path.abspath(__file__))
+        if os.access(_candidate, os.W_OK):
+            _log_dir = _candidate
+        else:
+            # Flatpak-Sandbox: /app ist schreibgeschützt → XDG_CACHE_HOME
+            _log_dir = os.path.join(
+                os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")),
+                "stock-monitor"
+            )
     os.makedirs(_log_dir, exist_ok=True)
     _log_path = os.path.join(_log_dir, "stock_monitor.log")
     _logger = _logging.getLogger("StockMonitor")
@@ -3193,7 +3195,7 @@ class CompareDialog(QDialog):
         layout = QVBoxLayout()
 
         from PyQt6.QtWidgets import QApplication as _QA
-        _is_fhd = _QA.primaryScreen().size().width() <= 1920
+        _is_fhd = _QA.primaryScreen().geometry().width() <= 1920
 
         from PyQt6.QtGui import QFontDatabase as _QFDB_cd
         _ef_cd = None
@@ -8492,25 +8494,29 @@ class PortfolioDialog(QMainWindow):
             if not e: return
             try:
                 if e["type"] == "smpf":
-                    # Passwort abfragen
-                    for attempt in range(3):
-                        pw_dlg = PortfolioPasswordDialog("load", e["name"], dlg)
-                        if attempt > 0:
-                            pw_dlg._status.setText(
-                                TR("lbl_wrong_pw_attempt", attempt=attempt+1)
-                            )
-                        if pw_dlg.exec() != QDialog.DialogCode.Accepted:
-                            return
-                        password = pw_dlg.get_password()
-                        try:
-                            data = _pdb.load_portfolio(e["name"], password)
-                            break
-                        except WrongPasswordError:
-                            if attempt == 2:
-                                QMessageBox.warning(dlg, TR("msg_title_locked"),
-                                    TR("msg_3_wrong_passwords2"))
+                    if e["name"] == "Demo":
+                        # Demo-Portfolio hat kein Passwort
+                        data = _pdb.load_portfolio("Demo", "")
+                    else:
+                        # Passwort abfragen
+                        for attempt in range(3):
+                            pw_dlg = PortfolioPasswordDialog("load", e["name"], dlg)
+                            if attempt > 0:
+                                pw_dlg._status.setText(
+                                    TR("lbl_wrong_pw_attempt", attempt=attempt+1)
+                                )
+                            if pw_dlg.exec() != QDialog.DialogCode.Accepted:
                                 return
-                            continue
+                            password = pw_dlg.get_password()
+                            try:
+                                data = _pdb.load_portfolio(e["name"], password)
+                                break
+                            except WrongPasswordError:
+                                if attempt == 2:
+                                    QMessageBox.warning(dlg, TR("msg_title_locked"),
+                                        TR("msg_3_wrong_passwords2"))
+                                    return
+                                continue
                 else:
                     # JSON
                     with open(e["path"]) as f:
@@ -23894,7 +23900,8 @@ class StockMonitorApp(QMainWindow):
         if not self.charts:
             self._startup_target = 88.0
             self.loading_dialog.update_progress(65, TR("status_creating_charts"))
-            _sw = QApplication.primaryScreen().size().width() if QApplication.primaryScreen() else 1920
+            _scr = QApplication.primaryScreen()
+            _sw = _scr.geometry().width() if _scr else 1920
             _default_charts = 16 if _sw >= 3840 else 12
             self.create_charts(_default_charts)
         QTimer.singleShot(80, self._init_step5)
@@ -23934,10 +23941,10 @@ class StockMonitorApp(QMainWindow):
                 ctypes.windll.user32.BringWindowToTop(hwnd)
             except Exception:
                 pass
-        # Fallback: WindowStaysOnTopHint kurz setzen
-        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
-        self.show()
-        QTimer.singleShot(1500, self._unflag_on_top)
+            # WindowStaysOnTopHint nur auf Windows (verursacht sonst Flackern auf Linux)
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+            self.show()
+            QTimer.singleShot(1500, self._unflag_on_top)
 
     def _unflag_on_top(self):
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
@@ -23971,7 +23978,10 @@ class StockMonitorApp(QMainWindow):
         self.main_layout = QVBoxLayout()
         
         # Erkenne Full HD für 2-Zeilen-Layout
-        screen = QApplication.primaryScreen().geometry()
+        # geometry().width() liefert logische Pixel (skalierungsunabhängig).
+        # Kein * devicePixelRatio() – das würde auf HiDPI-Systemen falsch 4K melden.
+        _scr0 = QApplication.primaryScreen()
+        screen = _scr0.geometry() if _scr0 else QApplication.primaryScreen().geometry()
         is_fullhd = screen.width() <= 1920
         
         if is_fullhd:
@@ -24979,9 +24989,8 @@ class StockMonitorApp(QMainWindow):
         
         print(f">>> {len(positions)} Positionen definiert")
         
-        # Bestimme ob compact_mode nötig (Full HD: immer kompakt)
-        screen = QApplication.primaryScreen().geometry()
-        is_fullhd = screen.width() <= 1920
+        _scr1 = QApplication.primaryScreen()
+        is_fullhd = (_scr1.geometry().width() if _scr1 else 1920) <= 1920
         use_compact = is_fullhd  # Bei Full HD immer kompakt
         
         if use_compact:
@@ -26133,6 +26142,23 @@ class StockMonitorApp(QMainWindow):
                 pass
         StockChartWidget._worker_registry.clear()
 
+        # 4. Alle verbleibenden QThread-Kinder stoppen (fängt alle nicht
+        #    explizit registrierten Worker ab – verhindert Qt-ABORT/Signal 6)
+        try:
+            from PyQt6.QtCore import QThread as _QThread
+            for _t in self.findChildren(_QThread):
+                try:
+                    if _t.isRunning():
+                        _t.quit()
+                        _t.wait(800)
+                        if _t.isRunning():
+                            _t.terminate()
+                            _t.wait(300)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         event.accept()
         
     def refresh_all(self):
@@ -26967,15 +26993,38 @@ class StockMonitorApp(QMainWindow):
                 "QPushButton:hover{background:#1557b0;}"
             )
             def _run_pip(checked=False, _v=latest):
-                import subprocess, sys as _sys
-                try:
-                    subprocess.Popen(
-                        [_sys.executable, "-m", "pip", "install",
-                         "--upgrade", f"yfinance=={_v}"]
-                    )
-                except Exception as e:
-                    QMessageBox.warning(self, "pip", str(e))
+                import subprocess, threading, sys as _sys
+                user_lib = os.path.join(
+                    os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")),
+                    "stock-monitor", "lib"
+                )
+                os.makedirs(user_lib, exist_ok=True)
+                pip_btn.setEnabled(False)
+                pip_btn.setText("⏳ Installiere...")
                 toast.close()
+                def _do():
+                    try:
+                        r = subprocess.run(
+                            [_sys.executable, "-m", "pip", "install",
+                             "--target", user_lib, "--upgrade",
+                             "--break-system-packages",
+                             f"yfinance=={_v}"],
+                            capture_output=True, text=True
+                        )
+                        if r.returncode == 0:
+                            QMessageBox.information(
+                                self, "yfinance",
+                                f"yfinance {_v} wurde installiert.\n"
+                                "Stock Monitor neu starten damit die neue Version aktiv wird."
+                            )
+                        else:
+                            QMessageBox.warning(
+                                self, "yfinance – Fehler",
+                                f"Installation fehlgeschlagen:\n\n{r.stderr[-800:] or r.stdout[-800:]}"
+                            )
+                    except Exception as e:
+                        QMessageBox.warning(self, "yfinance – Fehler", str(e))
+                threading.Thread(target=_do, daemon=True).start()
             pip_btn.clicked.connect(_run_pip)
             btn_row.addWidget(pip_btn)
         elif _is_exe and wheel_url:
@@ -27152,16 +27201,42 @@ class StockMonitorApp(QMainWindow):
                         )
                         yf_install_btn.setVisible(True)
                         def _run_pip(checked=False, _v=latest):
-                            import subprocess
+                            import subprocess, threading
+                            user_lib = os.path.join(
+                                os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")),
+                                "stock-monitor", "lib"
+                            )
+                            os.makedirs(user_lib, exist_ok=True)
                             yf_install_btn.setEnabled(False)
                             yf_status_lbl.setText(
                                 f"<span style='color:#888;'>⏳ yfinance=={_v} wird installiert...</span>"
                             )
-                            try:
-                                subprocess.Popen([sys.executable, "-m", "pip", "install",
-                                                  "--upgrade", f"yfinance=={_v}"])
-                            except Exception as e:
-                                QMessageBox.warning(dlg, "pip", str(e))
+                            def _do():
+                                try:
+                                    r = subprocess.run(
+                                        [sys.executable, "-m", "pip", "install",
+                                         "--target", user_lib, "--upgrade",
+                                         "--break-system-packages",
+                                         f"yfinance=={_v}"],
+                                        capture_output=True, text=True
+                                    )
+                                    if r.returncode == 0:
+                                        yf_status_lbl.setText(
+                                            f"<span style='color:#27ae60;'>"
+                                            f"✓ yfinance {_v} installiert – bitte neu starten.</span>"
+                                        )
+                                    else:
+                                        err = r.stderr[-600:] or r.stdout[-600:]
+                                        yf_status_lbl.setText(
+                                            f"<span style='color:#e74c3c;'>Fehler: {err}</span>"
+                                        )
+                                        yf_install_btn.setEnabled(True)
+                                except Exception as e:
+                                    yf_status_lbl.setText(
+                                        f"<span style='color:#e74c3c;'>Fehler: {e}</span>"
+                                    )
+                                    yf_install_btn.setEnabled(True)
+                            threading.Thread(target=_do, daemon=True).start()
                         yf_install_btn.clicked.connect(_run_pip)
                     elif _is_frozen and wheel_url:
                         # EXE-Modus: yfinance direkt aktualisieren
@@ -27695,7 +27770,8 @@ class StockMonitorApp(QMainWindow):
     def _startup_update_checks(self):
         """Wird beim App-Start (verzögert) aufgerufen – beide Checks im Hintergrund."""
         self.check_for_updates()          # App: Dialog nur bei Update (NonModal)
-        self.check_yfinance_update(silent=True)  # yfinance: Toast nur bei Update
+        if not os.path.exists('/.flatpak-info'):
+            self.check_yfinance_update(silent=True)  # yfinance: Toast nur bei Update
 
     def show_about(self):
         """Zeige About-Dialog"""
@@ -27730,7 +27806,7 @@ class StockMonitorApp(QMainWindow):
         layout.addSpacing(20)
         
         # Credits
-        credits = QLabel("<i>Idea by T. Boner<br>Coding by Claude</i><br><br>&#128231; <a href='mailto:info@stock-monitor.ch'>info@stock-monitor.ch</a><br>&#127760; <a href='https://www.stock-monitor.ch'>www.stock-monitor.ch</a>")
+        credits = QLabel("<i>Developed by T. Boner</i><br><br>&#128231; <a href='mailto:info@stock-monitor.ch'>info@stock-monitor.ch</a><br>&#127760; <a href='https://www.stock-monitor.ch'>www.stock-monitor.ch</a>")
         credits.setOpenExternalLinks(True)
         credits.setAlignment(Qt.AlignmentFlag.AlignCenter)
         credits.setWordWrap(True)
@@ -29357,6 +29433,11 @@ def main():
         pass
 
     app = QApplication(sys.argv)
+    app.setApplicationName("Stock Monitor")
+    app.setApplicationVersion(APP_VERSION)
+    # Flatpak/Linux: Desktop-Dateiname setzen → korrektes Taskleisten-Symbol
+    if os.environ.get("FLATPAK_ID") or sys.platform != "win32":
+        app.setDesktopFileName("ch.stockmonitor.StockMonitor")
     app.setStyle('Fusion')  # KDE-freundlicher Style
 
     # ── Windows Taskleisten-Icon Fix ──────────────────────────────────────
@@ -29425,7 +29506,6 @@ def main():
                 emoji_font = candidate
                 break
         if emoji_font:
-            import os
             fonts_conf_dir = os.path.expanduser('~/.config/fontconfig')
             fonts_conf_path = os.path.join(fonts_conf_dir, 'fonts.conf')
             os.makedirs(fonts_conf_dir, exist_ok=True)
