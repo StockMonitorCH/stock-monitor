@@ -23840,9 +23840,11 @@ def _make_flag_btn(b64, tooltip, lang_code=None):
 
 class StockMonitorApp(QMainWindow):
     """Hauptfenster mit 4 oder 6 Charts"""
-    
+    _thread_call = pyqtSignal(object)  # thread-safe call-on-main-thread
+
     def __init__(self):
         super().__init__()
+        self._thread_call.connect(lambda fn: fn())
         
         self.charts = []
         self.fullscreen_widget = None
@@ -27193,20 +27195,20 @@ class StockMonitorApp(QMainWindow):
                             capture_output=True, text=True
                         )
                         if r.returncode == 0:
-                            QTimer.singleShot(0, lambda: QMessageBox.information(
+                            self._thread_call.emit(lambda: QMessageBox.information(
                                 self, "yfinance",
                                 f"yfinance {_v} wurde installiert.\n"
                                 "Stock Monitor neu starten damit die neue Version aktiv wird."
                             ))
                         else:
                             _err = r.stderr[-800:] or r.stdout[-800:]
-                            QTimer.singleShot(0, lambda: QMessageBox.warning(
+                            self._thread_call.emit(lambda: QMessageBox.warning(
                                 self, "yfinance – Fehler",
                                 f"Installation fehlgeschlagen:\n\n{_err}"
                             ))
                     except Exception as e:
                         _msg = str(e)
-                        QTimer.singleShot(0, lambda: QMessageBox.warning(self, "yfinance – Fehler", _msg))
+                        self._thread_call.emit(lambda: QMessageBox.warning(self, "yfinance – Fehler", _msg))
                 threading.Thread(target=_do, daemon=True).start()
             pip_btn.clicked.connect(_run_pip)
             btn_row.addWidget(pip_btn)
@@ -27404,26 +27406,26 @@ class StockMonitorApp(QMainWindow):
                                         capture_output=True, text=True
                                     )
                                     if r.returncode == 0:
-                                        QTimer.singleShot(0, lambda: yf_status_lbl.setText(
+                                        self._thread_call.emit(lambda: yf_status_lbl.setText(
                                             f"<span style='color:#27ae60;'>"
                                             f"✓ yfinance {_v} installiert – bitte neu starten.</span>"
                                         ))
                                     else:
                                         _err = r.stderr[-600:] or r.stdout[-600:]
-                                        QTimer.singleShot(0, lambda: (
+                                        def _show_err():
                                             yf_status_lbl.setText(
                                                 f"<span style='color:#e74c3c;'>Fehler: {_err}</span>"
-                                            ),
+                                            )
                                             yf_install_btn.setEnabled(True)
-                                        ))
+                                        self._thread_call.emit(_show_err)
                                 except Exception as e:
                                     _msg = str(e)
-                                    QTimer.singleShot(0, lambda: (
+                                    def _show_exc():
                                         yf_status_lbl.setText(
                                             f"<span style='color:#e74c3c;'>Fehler: {_msg}</span>"
-                                        ),
+                                        )
                                         yf_install_btn.setEnabled(True)
-                                    ))
+                                    self._thread_call.emit(_show_exc)
                             threading.Thread(target=_do, daemon=True).start()
                         yf_install_btn.clicked.connect(_run_pip)
                     elif _is_frozen and wheel_url:
