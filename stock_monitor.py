@@ -15,6 +15,21 @@ Features:
 import sys
 import os
 import traceback
+
+# Wenn das Script via exec(open(...).read()) gestartet wird (z.B. Flatpak-Wrapper),
+# ist __file__ nicht automatisch gesetzt – hier als Fallback definieren.
+try:
+    __file__
+except NameError:
+    _fallback_paths = [
+        "/app/lib/stock-monitor/stock_monitor.py",   # Flatpak
+        "/opt/stock-monitor/app/stock_monitor.py",   # RPM / deb
+    ]
+    __file__ = next(
+        (_p for _p in _fallback_paths if os.path.exists(_p)),
+        sys.argv[0] if sys.argv else ""
+    )
+
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
