@@ -20,7 +20,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.0.1"                            # beim Release anpassen
+APP_VERSION  = "5.0.2"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -8990,6 +8990,9 @@ class PortfolioDialog(QMainWindow):
             country_code, pos_data, parent=self,
             number_format=globals().get('_NUMBER_FORMAT', 'CH')
         )
+        import sys as _sys_tax
+        if _sys_tax.platform == "win32":
+            dlg.finished.connect(lambda: (self.raise_(), self.activateWindow()))
         dlg.exec()
 
     @safe_slot
@@ -26587,9 +26590,11 @@ class StockMonitorApp(QMainWindow):
                     data = _json.loads(resp.read().decode())
                 latest = data.get("tag_name", "").lstrip("v")
                 if not latest:
-                    return "error", APP_VERSION, "", "", ""
+                    return "error", APP_VERSION, "", "", "", "", "", ""
                 zip_url = ""
                 flatpak_url = ""
+                deb_url = ""
+                rpm_url = ""
                 for asset in data.get("assets", []):
                     name = asset.get("name", "").lower()
                     dl = asset.get("browser_download_url", "")
@@ -26597,6 +26602,10 @@ class StockMonitorApp(QMainWindow):
                         zip_url = dl
                     elif name.endswith(".flatpak"):
                         flatpak_url = dl
+                    elif name.endswith(".deb"):
+                        deb_url = dl
+                    elif name.endswith(".rpm") and "src" not in name:
+                        rpm_url = dl
                 def _vtuple(v):
                     try: return tuple(int(x) for x in v.split("."))
                     except: return (0,)
@@ -26604,14 +26613,14 @@ class StockMonitorApp(QMainWindow):
                     return ("update_available", latest,
                             data.get("html_url") or "",
                             data.get("body") or "",
-                            zip_url, flatpak_url)
-                return "current", APP_VERSION, "", "", "", ""
+                            zip_url, flatpak_url, deb_url, rpm_url)
+                return "current", APP_VERSION, "", "", "", "", "", ""
             except Exception:
-                return "error", APP_VERSION, "", "", "", ""
+                return "error", APP_VERSION, "", "", "", "", "", ""
 
         def _on_result(result):
             try:
-                status, version, url, notes, zip_url, flatpak_url = result
+                status, version, url, notes, zip_url, flatpak_url, deb_url, rpm_url = result
                 if status == "update_available":
                     if status_label:
                         status_label.setText(
@@ -26631,12 +26640,12 @@ class StockMonitorApp(QMainWindow):
                             update_btn.clicked.disconnect()
                         except Exception:
                             pass
-                        def _open_release(checked=False, _url=url, _v=version, _n=notes, _z=zip_url, _fz=flatpak_url):
-                            self._show_app_update_dialog(_v, _url, _n, _z, _fz)
+                        def _open_release(checked=False, _url=url, _v=version, _n=notes, _z=zip_url, _fz=flatpak_url, _dz=deb_url, _rz=rpm_url):
+                            self._show_app_update_dialog(_v, _url, _n, _z, _fz, _dz, _rz)
                         update_btn.clicked.connect(_open_release)
                     # Eigenständiger Dialog (kein status_label von aussen)
                     if not status_label:
-                        self._show_app_update_dialog(version, url, notes, zip_url, flatpak_url)
+                        self._show_app_update_dialog(version, url, notes, zip_url, flatpak_url, deb_url, rpm_url)
                 elif status == "current":
                     if status_label:
                         status_label.setText(
@@ -26656,7 +26665,7 @@ class StockMonitorApp(QMainWindow):
 
         self._start_update_worker(_do_check, _on_result)
 
-    def _show_app_update_dialog(self, version, url, notes, zip_url="", flatpak_url=""):
+    def _show_app_update_dialog(self, version, url, notes, zip_url="", flatpak_url="", deb_url="", rpm_url=""):
         """Zeigt einen Nicht-Blocking-Dialog wenn eine neue App-Version verfügbar ist."""
         dlg = QDialog(self)
         dlg.setWindowTitle(TR("title_update_check"))
@@ -26682,6 +26691,12 @@ class StockMonitorApp(QMainWindow):
 
         _in_flatpak = os.path.exists('/.flatpak-info')
         _is_exe_win = getattr(sys, 'frozen', False) and sys.platform == "win32"
+        _is_opt_install = os.path.abspath(__file__).startswith('/opt/stock-monitor/')
+        _is_deb = _is_opt_install and os.path.exists('/etc/debian_version')
+        _is_rpm = (_is_opt_install and not _is_deb and (
+            os.path.exists('/etc/fedora-release') or os.path.exists('/etc/redhat-release')
+            or os.path.exists('/etc/suse-release')
+        ))
 
         if _in_flatpak:
             hint_lbl = QLabel(TR("lbl_app_update_flatpak_hint"))
@@ -26718,6 +26733,30 @@ class StockMonitorApp(QMainWindow):
                 self._do_flatpak_install(_v, _fz)
             install_btn.clicked.connect(_do_flatpak)
             btn_row.addWidget(install_btn)
+        if _is_deb and deb_url:
+            deb_btn = QPushButton(TR("btn_auto_update"))
+            deb_btn.setStyleSheet(
+                "QPushButton{background:#27ae60;color:white;font-weight:bold;"
+                "border-radius:6px;padding:4px 14px;}"
+                "QPushButton:hover{background:#1e8449;}"
+            )
+            def _do_deb(checked=False, _v=version, _dz=deb_url):
+                dlg.close()
+                self._do_deb_update(_v, _dz)
+            deb_btn.clicked.connect(_do_deb)
+            btn_row.addWidget(deb_btn)
+        if _is_rpm and rpm_url:
+            rpm_btn = QPushButton(TR("btn_auto_update"))
+            rpm_btn.setStyleSheet(
+                "QPushButton{background:#27ae60;color:white;font-weight:bold;"
+                "border-radius:6px;padding:4px 14px;}"
+                "QPushButton:hover{background:#1e8449;}"
+            )
+            def _do_rpm(checked=False, _v=version, _rz=rpm_url):
+                dlg.close()
+                self._do_rpm_update(_v, _rz)
+            rpm_btn.clicked.connect(_do_rpm)
+            btn_row.addWidget(rpm_btn)
         if url:
             open_btn = QPushButton(TR("btn_open_release_page"))
             open_btn.setStyleSheet(
@@ -26833,6 +26872,148 @@ class StockMonitorApp(QMainWindow):
             mb = QMessageBox(self)
             mb.setWindowTitle(TR("title_flatpak_install"))
             mb.setText(TR("lbl_flatpak_install_error") + f"\n\n{err}")
+            mb.setIcon(QMessageBox.Icon.Warning)
+            mb.exec()
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _do_deb_update(self, version, deb_url):
+        """Lädt das neue .deb herunter und installiert es via pkexec dpkg."""
+        import subprocess, threading, tempfile
+        from PyQt6.QtWidgets import QProgressBar, QMessageBox
+
+        prog_dlg = QDialog(self)
+        prog_dlg.setWindowTitle("Stock Monitor Update")
+        prog_dlg.setFixedWidth(420)
+        prog_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        lay = QVBoxLayout(prog_dlg)
+        lay.setContentsMargins(20, 16, 20, 14)
+        lay.setSpacing(10)
+        msg_lbl = QLabel(f"<b>Stock Monitor v{version}</b> wird heruntergeladen…")
+        msg_lbl.setWordWrap(True)
+        lay.addWidget(msg_lbl)
+        prog = QProgressBar()
+        prog.setRange(0, 0)
+        lay.addWidget(prog)
+        prog_dlg.show()
+
+        def _run():
+            try:
+                import urllib.request, ssl
+                tmpdir = tempfile.mkdtemp(prefix="sm_upd_")
+                fpath = os.path.join(tmpdir, f"stock-monitor_{version}_amd64.deb")
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+                req = urllib.request.Request(deb_url, headers={"User-Agent": "StockMonitor"})
+                with urllib.request.urlopen(req, timeout=600, context=ctx) as resp:
+                    with open(fpath, "wb") as f:
+                        while True:
+                            buf = resp.read(65536)
+                            if not buf:
+                                break
+                            f.write(buf)
+                result = subprocess.run(
+                    ["pkexec", "dpkg", "-i", fpath],
+                    capture_output=True, text=True, timeout=300
+                )
+                if result.returncode == 0:
+                    QTimer.singleShot(0, lambda: _on_success())
+                else:
+                    QTimer.singleShot(0, lambda e=(result.stderr or result.stdout or "").strip(): _on_error(e))
+            except Exception as e:
+                QTimer.singleShot(0, lambda e=str(e): _on_error(e))
+
+        def _on_success():
+            prog_dlg.close()
+            mb = QMessageBox(self)
+            mb.setWindowTitle("Stock Monitor Update")
+            mb.setText(f"Stock Monitor v{version} wurde erfolgreich installiert.\n\nBitte die App neu starten.")
+            mb.setIcon(QMessageBox.Icon.Information)
+            restart_btn = mb.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
+            mb.addButton("Später", QMessageBox.ButtonRole.RejectRole)
+            mb.exec()
+            if mb.clickedButton() is restart_btn:
+                QTimer.singleShot(300, QApplication.instance().quit)
+
+        def _on_error(err):
+            prog_dlg.close()
+            mb = QMessageBox(self)
+            mb.setWindowTitle("Update fehlgeschlagen")
+            mb.setText(f"Installation fehlgeschlagen:\n\n{err}")
+            mb.setIcon(QMessageBox.Icon.Warning)
+            mb.exec()
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _do_rpm_update(self, version, rpm_url):
+        """Lädt das neue .rpm herunter und installiert es via pkexec rpm."""
+        import subprocess, threading, tempfile
+        from PyQt6.QtWidgets import QProgressBar, QMessageBox
+
+        prog_dlg = QDialog(self)
+        prog_dlg.setWindowTitle("Stock Monitor Update")
+        prog_dlg.setFixedWidth(420)
+        prog_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        lay = QVBoxLayout(prog_dlg)
+        lay.setContentsMargins(20, 16, 20, 14)
+        lay.setSpacing(10)
+        msg_lbl = QLabel(f"<b>Stock Monitor v{version}</b> wird heruntergeladen…")
+        msg_lbl.setWordWrap(True)
+        lay.addWidget(msg_lbl)
+        prog = QProgressBar()
+        prog.setRange(0, 0)
+        lay.addWidget(prog)
+        prog_dlg.show()
+
+        def _run():
+            try:
+                import urllib.request, ssl
+                tmpdir = tempfile.mkdtemp(prefix="sm_upd_")
+                fpath = os.path.join(tmpdir, f"stock-monitor-{version}.x86_64.rpm")
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+                req = urllib.request.Request(rpm_url, headers={"User-Agent": "StockMonitor"})
+                with urllib.request.urlopen(req, timeout=600, context=ctx) as resp:
+                    with open(fpath, "wb") as f:
+                        while True:
+                            buf = resp.read(65536)
+                            if not buf:
+                                break
+                            f.write(buf)
+                result = subprocess.run(
+                    ["pkexec", "rpm", "-Uvh", fpath],
+                    capture_output=True, text=True, timeout=300
+                )
+                if result.returncode == 0:
+                    QTimer.singleShot(0, lambda: _on_success())
+                else:
+                    QTimer.singleShot(0, lambda e=(result.stderr or result.stdout or "").strip(): _on_error(e))
+            except Exception as e:
+                QTimer.singleShot(0, lambda e=str(e): _on_error(e))
+
+        def _on_success():
+            prog_dlg.close()
+            mb = QMessageBox(self)
+            mb.setWindowTitle("Stock Monitor Update")
+            mb.setText(f"Stock Monitor v{version} wurde erfolgreich installiert.\n\nBitte die App neu starten.")
+            mb.setIcon(QMessageBox.Icon.Information)
+            restart_btn = mb.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
+            mb.addButton("Später", QMessageBox.ButtonRole.RejectRole)
+            mb.exec()
+            if mb.clickedButton() is restart_btn:
+                QTimer.singleShot(300, QApplication.instance().quit)
+
+        def _on_error(err):
+            prog_dlg.close()
+            mb = QMessageBox(self)
+            mb.setWindowTitle("Update fehlgeschlagen")
+            mb.setText(f"Installation fehlgeschlagen:\n\n{err}")
             mb.setIcon(QMessageBox.Icon.Warning)
             mb.exec()
 
@@ -27012,18 +27193,20 @@ class StockMonitorApp(QMainWindow):
                             capture_output=True, text=True
                         )
                         if r.returncode == 0:
-                            QMessageBox.information(
+                            QTimer.singleShot(0, lambda: QMessageBox.information(
                                 self, "yfinance",
                                 f"yfinance {_v} wurde installiert.\n"
                                 "Stock Monitor neu starten damit die neue Version aktiv wird."
-                            )
+                            ))
                         else:
-                            QMessageBox.warning(
+                            _err = r.stderr[-800:] or r.stdout[-800:]
+                            QTimer.singleShot(0, lambda: QMessageBox.warning(
                                 self, "yfinance – Fehler",
-                                f"Installation fehlgeschlagen:\n\n{r.stderr[-800:] or r.stdout[-800:]}"
-                            )
+                                f"Installation fehlgeschlagen:\n\n{_err}"
+                            ))
                     except Exception as e:
-                        QMessageBox.warning(self, "yfinance – Fehler", str(e))
+                        _msg = str(e)
+                        QTimer.singleShot(0, lambda: QMessageBox.warning(self, "yfinance – Fehler", _msg))
                 threading.Thread(target=_do, daemon=True).start()
             pip_btn.clicked.connect(_run_pip)
             btn_row.addWidget(pip_btn)
@@ -27221,21 +27404,26 @@ class StockMonitorApp(QMainWindow):
                                         capture_output=True, text=True
                                     )
                                     if r.returncode == 0:
-                                        yf_status_lbl.setText(
+                                        QTimer.singleShot(0, lambda: yf_status_lbl.setText(
                                             f"<span style='color:#27ae60;'>"
                                             f"✓ yfinance {_v} installiert – bitte neu starten.</span>"
-                                        )
+                                        ))
                                     else:
-                                        err = r.stderr[-600:] or r.stdout[-600:]
-                                        yf_status_lbl.setText(
-                                            f"<span style='color:#e74c3c;'>Fehler: {err}</span>"
-                                        )
-                                        yf_install_btn.setEnabled(True)
+                                        _err = r.stderr[-600:] or r.stdout[-600:]
+                                        QTimer.singleShot(0, lambda: (
+                                            yf_status_lbl.setText(
+                                                f"<span style='color:#e74c3c;'>Fehler: {_err}</span>"
+                                            ),
+                                            yf_install_btn.setEnabled(True)
+                                        ))
                                 except Exception as e:
-                                    yf_status_lbl.setText(
-                                        f"<span style='color:#e74c3c;'>Fehler: {e}</span>"
-                                    )
-                                    yf_install_btn.setEnabled(True)
+                                    _msg = str(e)
+                                    QTimer.singleShot(0, lambda: (
+                                        yf_status_lbl.setText(
+                                            f"<span style='color:#e74c3c;'>Fehler: {_msg}</span>"
+                                        ),
+                                        yf_install_btn.setEnabled(True)
+                                    ))
                             threading.Thread(target=_do, daemon=True).start()
                         yf_install_btn.clicked.connect(_run_pip)
                     elif _is_frozen and wheel_url:
