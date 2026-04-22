@@ -23976,7 +23976,7 @@ class StockMonitorApp(QMainWindow):
 
     def setup_ui(self):
         """UI initialisieren"""
-        self.setWindowTitle(TR("title_app"))
+        self.setWindowTitle(TR("title_app", version=APP_VERSION))
         
         # Hole Bildschirmgröße (für spätere Berechnungen)
         screen = QApplication.primaryScreen().geometry()

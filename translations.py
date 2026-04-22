@@ -143,7 +143,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "btn_not_save":                 "Nicht speichern",
 
         # ── Fenster-Titel ─────────────────────────────────────────────────────
-        "title_app":                    "Stock Monitor v5.0.0 - Mit MA, Analysen & Auto-Speichern",
+        "title_app":                    "Stock Monitor v{version} - Mit MA, Analysen & Auto-Speichern",
         "title_app_loading":            "Stock Monitor wird geladen...",
         "title_help":                   "📖 Stock Monitor - Hilfe",
         "title_about":                  "ℹ️ Über Stock Monitor",
@@ -1755,7 +1755,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "btn_not_save":                 "Don't Save",
 
         # ── Window Titles ─────────────────────────────────────────────────────
-        "title_app":                    "Stock Monitor v5.0.0 - With MA, Analysis & Auto-Save",
+        "title_app":                    "Stock Monitor v{version} - With MA, Analysis & Auto-Save",
         "title_app_loading":            "Stock Monitor loading...",
         "title_help":                   "📖 Stock Monitor - Help",
         "title_about":                  "ℹ️ About Stock Monitor",
