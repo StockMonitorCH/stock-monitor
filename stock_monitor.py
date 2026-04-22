@@ -27226,11 +27226,25 @@ class StockMonitorApp(QMainWindow):
                             capture_output=True, text=True
                         )
                         if r.returncode == 0:
-                            self._thread_call.emit(lambda: QMessageBox.information(
-                                self, "yfinance",
-                                f"yfinance {_v} wurde installiert.\n"
-                                "Stock Monitor neu starten damit die neue Version aktiv wird."
-                            ))
+                            def _show_ok():
+                                mb = QMessageBox(self)
+                                mb.setWindowTitle("yfinance Update")
+                                mb.setText(f"yfinance {_v} wurde installiert.")
+                                mb.setInformativeText("Jetzt neu starten?")
+                                mb.setIcon(QMessageBox.Icon.Information)
+                                _rb = mb.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
+                                mb.addButton("Später neu starten", QMessageBox.ButtonRole.RejectRole)
+                                mb.exec()
+                                if mb.clickedButton() is _rb:
+                                    _launcher = "/usr/bin/stock-monitor"
+                                    if os.path.exists(_launcher):
+                                        import subprocess as _sp
+                                        _sp.Popen([_launcher])
+                                    else:
+                                        import subprocess as _sp
+                                        _sp.Popen([sys.executable, os.path.abspath(__file__)])
+                                    QTimer.singleShot(300, QApplication.instance().quit)
+                            self._thread_call.emit(_show_ok)
                         else:
                             _err = r.stderr[-800:] or r.stdout[-800:]
                             self._thread_call.emit(lambda: QMessageBox.warning(
@@ -27437,10 +27451,30 @@ class StockMonitorApp(QMainWindow):
                                         capture_output=True, text=True
                                     )
                                     if r.returncode == 0:
-                                        self._thread_call.emit(lambda: yf_status_lbl.setText(
-                                            f"<span style='color:#27ae60;'>"
-                                            f"✓ yfinance {_v} installiert – bitte neu starten.</span>"
-                                        ))
+                                        def _show_ok():
+                                            yf_status_lbl.setText(
+                                                f"<span style='color:#27ae60;'>"
+                                                f"✓ yfinance {_v} installiert.</span>"
+                                            )
+                                            dlg.close()
+                                            mb = QMessageBox(self)
+                                            mb.setWindowTitle("yfinance Update")
+                                            mb.setText(f"yfinance {_v} wurde installiert.")
+                                            mb.setInformativeText("Jetzt neu starten?")
+                                            mb.setIcon(QMessageBox.Icon.Information)
+                                            _rb = mb.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
+                                            mb.addButton("Später neu starten", QMessageBox.ButtonRole.RejectRole)
+                                            mb.exec()
+                                            if mb.clickedButton() is _rb:
+                                                _launcher = "/usr/bin/stock-monitor"
+                                                if os.path.exists(_launcher):
+                                                    import subprocess as _sp
+                                                    _sp.Popen([_launcher])
+                                                else:
+                                                    import subprocess as _sp
+                                                    _sp.Popen([sys.executable, os.path.abspath(__file__)])
+                                                QTimer.singleShot(300, QApplication.instance().quit)
+                                        self._thread_call.emit(_show_ok)
                                     else:
                                         _err = r.stderr[-600:] or r.stdout[-600:]
                                         def _show_err():
