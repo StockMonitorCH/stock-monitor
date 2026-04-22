@@ -26947,12 +26947,20 @@ class StockMonitorApp(QMainWindow):
             prog_dlg.close()
             mb = QMessageBox(self)
             mb.setWindowTitle("Stock Monitor Update")
-            mb.setText(f"Stock Monitor v{version} wurde erfolgreich installiert.\n\nBitte die App neu starten.")
+            mb.setText(f"Stock Monitor v{version} wurde erfolgreich installiert.")
+            mb.setInformativeText("Jetzt neu starten?")
             mb.setIcon(QMessageBox.Icon.Information)
             restart_btn = mb.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
-            mb.addButton("Später", QMessageBox.ButtonRole.RejectRole)
+            mb.addButton("Später neu starten", QMessageBox.ButtonRole.RejectRole)
             mb.exec()
             if mb.clickedButton() is restart_btn:
+                _launcher = "/usr/bin/stock-monitor"
+                if os.path.exists(_launcher):
+                    import subprocess
+                    subprocess.Popen([_launcher])
+                else:
+                    import subprocess
+                    subprocess.Popen([sys.executable, os.path.abspath(__file__)])
                 QTimer.singleShot(300, QApplication.instance().quit)
 
         def _on_error(err):
@@ -27018,12 +27026,20 @@ class StockMonitorApp(QMainWindow):
             prog_dlg.close()
             mb = QMessageBox(self)
             mb.setWindowTitle("Stock Monitor Update")
-            mb.setText(f"Stock Monitor v{version} wurde erfolgreich installiert.\n\nBitte die App neu starten.")
+            mb.setText(f"Stock Monitor v{version} wurde erfolgreich installiert.")
+            mb.setInformativeText("Jetzt neu starten?")
             mb.setIcon(QMessageBox.Icon.Information)
             restart_btn = mb.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
-            mb.addButton("Später", QMessageBox.ButtonRole.RejectRole)
+            mb.addButton("Später neu starten", QMessageBox.ButtonRole.RejectRole)
             mb.exec()
             if mb.clickedButton() is restart_btn:
+                _launcher = "/usr/bin/stock-monitor"
+                if os.path.exists(_launcher):
+                    import subprocess
+                    subprocess.Popen([_launcher])
+                else:
+                    import subprocess
+                    subprocess.Popen([sys.executable, os.path.abspath(__file__)])
                 QTimer.singleShot(300, QApplication.instance().quit)
 
         def _on_error(err):
