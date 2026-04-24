@@ -25,14 +25,14 @@ install_data('dividend_lists.json',
 
 install_data('stock-monitor-256.png',
   install_dir: get_option('prefix') / 'share' / 'icons' / 'hicolor' / '256x256' / 'apps',
-  rename: 'ch.stock-monitor.StockMonitor.png',
+  rename: 'ch.stockmonitor.StockMonitor.png',
 )
 
-install_data('ch.stock-monitor.StockMonitor.desktop',
+install_data('ch.stockmonitor.StockMonitor.desktop',
   install_dir: get_option('prefix') / 'share' / 'applications',
 )
 
-install_data('ch.stock-monitor.StockMonitor.metainfo.xml',
+install_data('ch.stockmonitor.StockMonitor.metainfo.xml',
   install_dir: get_option('prefix') / 'share' / 'metainfo',
 )
 
