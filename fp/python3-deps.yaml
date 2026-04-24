@@ -10,8 +10,8 @@ modules:
   sources:
   - &id001
     type: file
-    url: https://files.pythonhosted.org/packages/76/21/7d2a95e4bba9dc13d043ee156a356c0a8f0c6309dff6b21b4d71a073b8a8/numpy-2.2.6.tar.gz
-    sha256: e29554e2bef54a90aa5cc07da6ce955accb83f21ab5de01a62c8478897b264fd
+    url: https://files.pythonhosted.org/packages/19/49/4df9123aafa7b539317bf6d342cb6d227e49f7a35b99c287a6109b13dd93/numpy-2.2.6-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+    sha256: 1bc23a79bfabc5d056d106f9befb8d50c31ced2fbc70eedb8155aec74a45798f
 - name: python3-pandas
   buildsystem: simple
   build-commands:
@@ -21,8 +21,8 @@ modules:
   - *id001
   - &id016
     type: file
-    url: https://files.pythonhosted.org/packages/79/8e/0e90233ac205ad182bd6b422532695d2b9414944a280488105d598c70023/pandas-2.3.2.tar.gz
-    sha256: ab7b58f8f82706890924ccdfb5f48002b83d2b5a3845976a9fb705d36c34dcdb
+    url: https://files.pythonhosted.org/packages/8f/52/0634adaace9be2d8cac9ef78f05c47f3a675882e068438b9d7ec7ef0c13f/pandas-2.3.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+    sha256: 4ac8c320bded4718b298281339c1a50fb00a6ba78cb2a63521c39bec95b0209b
   - &id002
     type: file
     url: https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl
@@ -47,28 +47,28 @@ modules:
   sources:
   - &id007
     type: file
-    url: https://files.pythonhosted.org/packages/66/54/eb9bfc647b19f2009dd5c7f5ec51c4e6ca831725f1aea7a993034f483147/contourpy-1.3.2.tar.gz
-    sha256: b6945942715a034c671b7fc54f9588126b0b8bf23db2696e3ca8328f3ff0ab54
+    url: https://files.pythonhosted.org/packages/c8/65/5245ce8c548a8422236c13ffcdcdada6a2a812c361e9e0c70548bb40b661/contourpy-1.3.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+    sha256: 434f0adf84911c924519d2b08fc10491dd282b20bdd3fa8f60fd816ea0b48841
   - &id008
     type: file
     url: https://files.pythonhosted.org/packages/e7/05/c19819d5e3d95294a6f5947fb9b9629efb316b96de511b418c53d245aae6/cycler-0.12.1-py3-none-any.whl
     sha256: 85cef7cff222d8644161529808465972e51340599459b8ac3ccbac5a854e0d30
   - &id009
     type: file
-    url: https://files.pythonhosted.org/packages/9a/08/7012b00a9a5874311b639c3920270c36ee0c445b69d9989a85e5c92ebcb0/fonttools-4.62.1.tar.gz
-    sha256: e54c75fd6041f1122476776880f7c3c3295ffa31962dc6ebe2543c00dca58b5d
+    url: https://files.pythonhosted.org/packages/e2/98/8b1e801939839d405f1f122e7d175cebe9aeb4e114f95bfc45e3152af9a7/fonttools-4.62.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+    sha256: 6706d1cb1d5e6251a97ad3c1b9347505c5615c112e66047abbef0f8545fa30d1
   - &id010
     type: file
-    url: https://files.pythonhosted.org/packages/d0/67/9c61eccb13f0bdca9307614e782fec49ffdde0f7a2314935d489fa93cd9c/kiwisolver-1.5.0.tar.gz
-    sha256: d4193f3d9dc3f6f79aaed0e5637f45d98850ebf01f7ca20e69457f3e8946b66a
+    url: https://files.pythonhosted.org/packages/2b/0a/7b98e1e119878a27ba8618ca1e18b14f992ff1eda40f47bccccf4de44121/kiwisolver-1.5.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+    sha256: 332b4f0145c30b5f5ad9374881133e5aa64320428a57c2c2b61e9d891a51c2f3
   - type: file
-    url: https://files.pythonhosted.org/packages/8a/76/d3c6e3a13fe484ebe7718d14e269c9569c4eb0020a968a327acb3b9a8fe6/matplotlib-3.10.8.tar.gz
-    sha256: 2299372c19d56bcd35cf05a2738308758d32b9eaed2371898d8f5bd33f084aa3
+    url: https://files.pythonhosted.org/packages/75/97/a471f1c3eb1fd6f6c24a31a5858f443891d5127e63a7788678d14e249aea/matplotlib-3.10.8-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+    sha256: a0a7f52498f72f13d4a25ea70f35f4cb60642b466cbb0a9be951b5bc3f45a486
   - *id001
   - &id004
     type: file
-    url: https://files.pythonhosted.org/packages/8c/21/c2bcdd5906101a30244eaffc1b6e6ce71a31bd0742a01eb89e660ebfac2d/pillow-12.2.0.tar.gz
-    sha256: a830b1a40919539d07806aa58e1b114df53ddd43213d9c8b75847eee6c0182b5
+    url: https://files.pythonhosted.org/packages/a8/68/b93e09e5e8549019e61acf49f65b1a8530765a7f812c77a7461bca7e4494/pillow-12.2.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+    sha256: 03f6fab9219220f041c74aeaa2939ff0062bd5c364ba9ce037197f4c6d498cd9
   - &id011
     type: file
     url: https://files.pythonhosted.org/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl
@@ -83,8 +83,8 @@ modules:
   sources:
   - &id014
     type: file
-    url: https://files.pythonhosted.org/packages/e7/a1/67fe25fac3c7642725500a3f6cfe5821ad557c3abb11c9d20d12c7008d3e/charset_normalizer-3.4.7.tar.gz
-    sha256: ae89db9e5f98a11a4bf50407d4363e7b09b31e55bc117b4f7d80aab97ba009e5
+    url: https://files.pythonhosted.org/packages/fa/07/330e3a0dda4c404d6da83b327270906e9654a24f6c546dc886a0eb0ffb23/charset_normalizer-3.4.7-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+    sha256: e044c39e41b92c845bc815e5ae4230804e8e7bc29e399b0437d64222d92809dd
   - *id004
   - type: file
     url: https://files.pythonhosted.org/packages/8a/2e/e1798b8b248e1517e74c6cdf10dd6edd485044e7edf46b5f11ffcc5a0add/reportlab-4.4.10-py3-none-any.whl
@@ -110,11 +110,11 @@ modules:
   sources:
   - &id005
     type: file
-    url: https://files.pythonhosted.org/packages/eb/56/b1ba7935a17738ae8453301356628e8147c79dbb825bcbc73dc7401f9846/cffi-2.0.0.tar.gz
-    sha256: 44d1b5909021139fe36001ae048dbdde8214afa20200eda0f64c068cac5d5529
+    url: https://files.pythonhosted.org/packages/98/df/0a1755e750013a2081e863e7cd37e0cdd02664372c754e5560099eb7aa44/cffi-2.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+    sha256: c8d3b5532fc71b7a77c09192b4a5a200ea992702734a2e9279a37f2478236f26
   - type: file
-    url: https://files.pythonhosted.org/packages/a4/ba/04b1bd4218cbc58dc90ce967106d51582371b898690f3ae0402876cc4f34/cryptography-46.0.6.tar.gz
-    sha256: 27550628a518c5c6c903d84f637fbecf287f6cb9ced3804838a1295dc1fd0759
+    url: https://files.pythonhosted.org/packages/19/69/732a736d12c2631e140be2348b4ad3d226302df63ef64d30dfdb8db7ad1c/cryptography-46.0.6-cp311-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+    sha256: 9a693028b9cbe51b5a1136232ee8f2bc242e4e19d456ded3fa7c86e43c713b4a
   - &id006
     type: file
     url: https://files.pythonhosted.org/packages/0c/c3/44f3fbbfa403ea2a7c779186dc20772604442dde72947e7d01069cbe98e3/pycparser-3.0-py3-none-any.whl
@@ -238,8 +238,8 @@ modules:
   - *id014
   - &id018
     type: file
-    url: https://files.pythonhosted.org/packages/48/5b/89fcfebd3e5e85134147ac99e9f2b2271165fd4d71984fc65da5f17819b7/curl_cffi-0.15.0.tar.gz
-    sha256: ea0c67652bf6893d34ee0f82c944f37e488f6147e9421bef1771cc6545b02ded
+    url: https://files.pythonhosted.org/packages/5c/12/c70b835487ace3b9ba1502631912e3440082b8ae3a162f60b59cb0b6444d/curl_cffi-0.15.0-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+    sha256: 2b6c847d86283b07ae69bb72c82eb8a59242277142aa35b89850f89e792a02fc
   - &id026
     type: file
     url: https://files.pythonhosted.org/packages/38/74/f94141b38a51a553efef7f510fc213894161ae49b88bffd037f8d2a7cb2f/frozendict-2.4.7-py3-none-any.whl
@@ -272,8 +272,8 @@ modules:
     sha256: 68a9a4619a666ea6439f2ff250c12a853cd1cbd5158d258bd824a7df6be2f868
   - &id030
     type: file
-    url: https://files.pythonhosted.org/packages/6b/6b/a0e95cad1ad7cc3f2c6821fcab91671bd5b78bd42afb357bb4765f29bc41/protobuf-7.34.1.tar.gz
-    sha256: 9ce42245e704cc5027be797c1db1eb93184d44d1cdd71811fb2d9b25ad541280
+    url: https://files.pythonhosted.org/packages/88/95/608f665226bca68b736b79e457fded9a2a38c4f4379a4a7614303d9db3bc/protobuf-7.34.1-py3-none-any.whl
+    sha256: bb3812cd53aefea2b028ef42bd780f5b96407247f20c6ef7c679807e9d188f11
   - *id006
   - &id021
     type: file
@@ -304,8 +304,8 @@ modules:
     sha256: bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4
   - &id034
     type: file
-    url: https://files.pythonhosted.org/packages/04/24/4b2031d72e840ce4c1ccb255f693b15c334757fc50023e4db9537080b8c4/websockets-16.0.tar.gz
-    sha256: 5f6261a5e56e8d5c42a4497b364ea24d94d9563e8fbd44e78ac40879c60179b5
+    url: https://files.pythonhosted.org/packages/6f/28/258ebab549c2bf3e64d2b0217b973467394a9cea8c42f70418ca2c5d0d2e/websockets-16.0-py3-none-any.whl
+    sha256: 1637db62fad1dc833276dded54215f2c7fa46912301a24bd94d45d46a011ceec
   - type: file
     url: https://files.pythonhosted.org/packages/f7/db/c26791912c20b07c52849a651837e639eccfeb62a764f51cb6707901c601/yfinance-1.2.2-py2.py3-none-any.whl
     sha256: 3b292f609e5ff27a8c2d850f5a3c6f10d7290f3b403346705d8d33524ff5745b
