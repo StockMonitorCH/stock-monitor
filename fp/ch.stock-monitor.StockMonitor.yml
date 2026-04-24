@@ -12,10 +12,8 @@ finish-args:
   - --share=ipc
   - --device=dri
   - --share=network
-  - --talk-name=org.freedesktop.Flatpak
-
 cleanup-commands:
-  - chmod +x /app/cleanup-BaseApp.sh && /app/cleanup-BaseApp.sh || true
+  - /app/cleanup-BaseApp.sh
 
 modules:
 
@@ -32,32 +30,9 @@ modules:
         sha256: 7754edbefb6c367fa0dfb176e2d0610da3ada20aa7a5318516c74af5fb72bf7a
 
   - name: stock-monitor
-    buildsystem: simple
-    build-commands:
-      - install -Dm755 stock_monitor.py    /app/lib/stock-monitor/stock_monitor.py
-      - install -Dm644 tax_module.py       /app/lib/stock-monitor/tax_module.py
-      - install -Dm644 translations.py     /app/lib/stock-monitor/translations.py
-      - install -Dm644 tax_translations.py /app/lib/stock-monitor/tax_translations.py
-      - install -Dm644 help_texts.py       /app/lib/stock-monitor/help_texts.py
-      - install -Dm644 world_map.py        /app/lib/stock-monitor/world_map.py
-      - install -Dm644 config.py           /app/lib/stock-monitor/config.py
-      - install -Dm644 market_data.py      /app/lib/stock-monitor/market_data.py
-      - install -Dm644 portfolio_db.py     /app/lib/stock-monitor/portfolio_db.py
-      - install -Dm644 dividend_lists.json /app/lib/stock-monitor/dividend_lists.json
-      - install -Dm644 stock-monitor-256.png /app/share/icons/hicolor/256x256/apps/ch.stock-monitor.StockMonitor.png
-      - install -Dm755 stock-monitor.sh    /app/bin/stock-monitor
-      - install -Dm644 ch.stock-monitor.StockMonitor.desktop /app/share/applications/ch.stock-monitor.StockMonitor.desktop
-      - install -Dm644 ch.stock-monitor.StockMonitor.metainfo.xml /app/share/metainfo/ch.stock-monitor.StockMonitor.metainfo.xml
+    buildsystem: meson
     sources:
       - type: git
         url: https://github.com/StockMonitorCH/stock-monitor.git
-        tag: v5.0.1
-        commit: 7655b1c02506abbad91138c855c90a1341dc8097
-      - type: file
-        path: stock-monitor.sh
-      - type: file
-        path: stock-monitor-256.png
-      - type: file
-        path: ch.stock-monitor.StockMonitor.desktop
-      - type: file
-        path: ch.stock-monitor.StockMonitor.metainfo.xml
+        tag: v5.0.3
+        commit: COMMIT_PLACEHOLDER

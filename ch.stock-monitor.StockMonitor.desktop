@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=Stock Monitor
+Name[de]=Stock Monitor
+GenericName=Portfolio Manager
+GenericName[de]=Portfolio-Verwaltung
+Comment=Monitor and manage your stock portfolio
+Comment[de]=Aktien-Portfolio überwachen und verwalten
+Exec=stock-monitor
+Icon=ch.stockmonitor.StockMonitor
+Terminal=false
+Type=Application
+Categories=Finance;Office;
+Keywords=stocks;portfolio;finance;aktien;investments;
+StartupNotify=true
+StartupWMClass=stock_monitor
