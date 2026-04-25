@@ -60,6 +60,12 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.0.7" date="2026-04-25">
+      <description>
+        <p>Demo portfolio with legal disclaimer, live data, watermark. Flatpak fixes: persistent settings, world map, tax module stability, Finment opens in system browser.</p>
+        <p xml:lang="de">Demo-Portfolio mit Haftungsausschluss, Live-Daten und Wasserzeichen. Flatpak-Korrekturen: persistente Einstellungen, Weltkarte, Steuermodul-Stabilität, Finment öffnet im System-Browser.</p>
+      </description>
+    </release>
     <release version="5.0.1" date="2026-04-19">
       <description>
         <p>Version 5.0.1: Flatpak-aware update notifications, improved help (update section, demo portfolio without password).</p>

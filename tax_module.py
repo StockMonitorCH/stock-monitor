@@ -162,20 +162,30 @@ def _fetch_real_dividends(ticker_sym, year, positions_for_sym=None):
     total_dividends_gesamt = Summe aller Dividenden × Bestand am Ex-Day
     """
     import yfinance as yf
+    import threading as _threading
     from datetime import date as _date, datetime as _dt
-    try:
-        t = yf.Ticker(ticker_sym)
-        divs = t.dividends  # pandas Series mit DatetimeIndex
-        if divs is None or divs.empty:
-            return 0.0, []
 
-        # Nur das angegebene Steuerjahr
+    # ticker.history() mit actions=True statt ticker.dividends — selber Code-Pfad
+    # wie die Chart-Worker (curl_cffi-sicher auf dem Qt-Haupt-Thread)
+    _hist_result = [None]
+    def _fetch_in_thread():
         try:
-            year_divs = divs[divs.index.year == year]
+            t = yf.Ticker(ticker_sym)
+            data = t.history(start=f"{year}-01-01", end=f"{year+1}-01-01",
+                             interval="1d", actions=True)
+            if data is not None and not data.empty and 'Dividends' in data.columns:
+                _hist_result[0] = data['Dividends'][data['Dividends'] > 0]
+            else:
+                _hist_result[0] = None
         except Exception:
-            return 0.0, []
+            _hist_result[0] = None
+    _th = _threading.Thread(target=_fetch_in_thread, daemon=True)
+    _th.start()
+    _th.join(timeout=15)
 
-        if year_divs.empty:
+    try:
+        year_divs = _hist_result[0]
+        if year_divs is None or (hasattr(year_divs, 'empty') and year_divs.empty):
             return 0.0, []
 
         total = 0.0
@@ -768,7 +778,6 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
 
     # Update-Button (Platzhalter – Funktion folgt nach Homepage-Launch)
     update_btn = QPushButton(TRT("tax_btn_update"))
-    update_btn.setToolTip(TRT("tax_tip_update"))
     update_btn.setEnabled(False)   # Platzhalter – noch nicht aktiv
     update_btn.setStyleSheet("padding:4px 10px; color: gray;")
     if _ef:

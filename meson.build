@@ -1,5 +1,5 @@
 project('stock-monitor',
-  version: '5.0.3',
+  version: '5.0.7',
   meson_version: '>= 0.59.0',
 )
 
@@ -20,6 +20,10 @@ install_data(py_sources,
 )
 
 install_data('dividend_lists.json',
+  install_dir: get_option('prefix') / 'lib' / 'stock-monitor',
+)
+
+install_data('Demo.smpf',
   install_dir: get_option('prefix') / 'lib' / 'stock-monitor',
 )
 

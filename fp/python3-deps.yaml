@@ -224,7 +224,7 @@ modules:
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "yfinance==1.2.2" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "yfinance==1.3.0" --no-build-isolation
   sources:
   - &id023
     type: file
@@ -307,8 +307,8 @@ modules:
     url: https://files.pythonhosted.org/packages/6f/28/258ebab549c2bf3e64d2b0217b973467394a9cea8c42f70418ca2c5d0d2e/websockets-16.0-py3-none-any.whl
     sha256: 1637db62fad1dc833276dded54215f2c7fa46912301a24bd94d45d46a011ceec
   - type: file
-    url: https://files.pythonhosted.org/packages/f7/db/c26791912c20b07c52849a651837e639eccfeb62a764f51cb6707901c601/yfinance-1.2.2-py2.py3-none-any.whl
-    sha256: 3b292f609e5ff27a8c2d850f5a3c6f10d7290f3b403346705d8d33524ff5745b
+    path: sources/yfinance-1.3.0-py2.py3-none-any.whl
+    sha256: c89539f0cf6af026d570131189bd659a962e8fb942376ef8ff8913e77c9fca75
 - name: python3-curl-cffi
   buildsystem: simple
   build-commands:

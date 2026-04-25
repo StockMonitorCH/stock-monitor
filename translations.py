@@ -1236,7 +1236,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_alpha_explanation":                   "<b>Alpha {val} p.a.</b> bedeutet: {desc} erzielte im gewählten Zeitraum eine annualisierte Rendite von <b>{pct:.2f}%</b> {sign} der risikobereinigten Marktrendite (S&P 500).",
         "lbl_alpha_jensens_explanation":           "Jensen's Alpha misst die Überrendite gegenüber dem, was aufgrund des eingegangenen Marktrisikos (Beta) zu erwarten gewesen wäre. Ein <b>positives Alpha</b> deutet auf eine Mehrrendite hin, ein <b>negatives Alpha</b> auf eine Minderrendite. Risikofreier Zinssatz: 5% p.a. (US-Staatsanleihen).",
         "msg_alpha_not_calculated":                "Alpha konnte nicht berechnet werden (zu wenig Daten oder kein Marktbezug).",
-        "lbl_sharpe_explanation":                  "<b>Sharpe-Ratio {val}</b>: {desc} erzielte im gewählten Zeitraum <b>{units:.2f} Einheiten Rendite</b> pro Einheit eingegangenes Risiko (Volatilität).",
+        "lbl_sharpe_explanation":                  "<b>Sharpe-Ratio {val}</b>: {desc} erzielte im gewählten Zeitraum <b>{units:.2f} Einheiten Mehrrendite über den risikofreien Zins</b> pro Einheit eingegangenes Risiko (Volatilität).",
         "lbl_sharpe_jensens_explanation":          "Die Sharpe-Ratio setzt die Überrendite über den risikofreien Zinssatz ins Verhältnis zur Standardabweichung der Renditen (Volatilität). Je höher der Wert, desto besser wurde das eingegangene Risiko entlohnt. Faustregel: <b>&gt; 1.0 = gut, &gt; 2.0 = sehr gut, &lt; 0 = unter risikofreiem Zins</b>. Risikofreier Zinssatz: 5% p.a.",
         "msg_sharpe_not_calculated":               "Sharpe-Ratio konnte nicht berechnet werden (zu wenig Daten).",
         "sharpe_negative_full":                    "Negativ (Rendite unter risikofreiem Zins)",
@@ -1642,6 +1642,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_yf_toast_msg_exe":       "Version {latest} ist verfügbar (installiert: {installed}).\nDie App wird aktualisiert und automatisch neu gestartet.",
         "lbl_yf_toast_msg_flatpak":   "Version {latest} ist verfügbar (installiert: {installed}).\nDas Update kommt automatisch mit dem nächsten Flatpak-Release.",
         "lbl_yf_update_done":         "✅ yfinance {version} installiert! App wird neu gestartet…",
+        "lbl_yf_flatpak_managed":     "✅ yfinance wird über den Flatpak Store aktualisiert.",
 
         # ── Flatpak App-Update ────────────────────────────────────────────────
         "lbl_app_update_flatpak_hint": "ℹ Du verwendest die Flatpak-Version. Klicke auf 'Flatpak installieren', um die neue Version direkt herunterzuladen und zu installieren.",
@@ -1670,6 +1671,21 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
 
         # ── Gemini 503 ────────────────────────────────────────────────────────
         "lbl_gemini_unavailable":      "⏳ Gemini ist momentan ausgelastet. Bitte in einigen Sekunden erneut versuchen.",
+
+        # ── Demo-Portfolio Wasserzeichen & Disclaimer ─────────────────────────
+        "lbl_demo_watermark":          "Musterdepot · Fiktive Positionen · Keine Anlageberatung",
+        "title_demo_disclaimer":       "Musterdepot – Haftungsausschluss",
+        "lbl_demo_disclaimer_title":   "Dies ist kein echtes Portfolio",
+        "lbl_demo_disclaimer_body":    (
+            "Dieses Musterdepot dient ausschliesslich zu Demonstrationszwecken.\n\n"
+            "• Die gezeigten Positionen sind fiktiv und stellen keine Anlageempfehlung dar.\n"
+            "• Alle Analysen, Prognosen und Kennzahlen sind unverbindlich.\n"
+            "• Investitionsentscheidungen sollten ausschliesslich auf Basis "
+            "professioneller Beratung getroffen werden.\n\n"
+            "Der Anbieter übernimmt keinerlei Haftung für Verluste, die durch "
+            "die Nutzung dieser Demo entstehen."
+        ),
+        "btn_demo_disclaimer_accept":  "✓  Ich habe den Hinweis gelesen und verstanden",
 
     },
 
@@ -2847,7 +2863,7 @@ more than enough for personal use.</p>
         "lbl_alpha_explanation":                   "<b>Alpha {val} p.a.</b> means: {desc} achieved an annualized return of <b>{pct:.2f}%</b> {sign} the risk-adjusted market return (S&P 500) over the selected period.",
         "lbl_alpha_jensens_explanation":           "Jensen's Alpha measures excess return relative to what would be expected based on the market risk (Beta) taken. A <b>positive Alpha</b> indicates outperformance, a <b>negative Alpha</b> indicates underperformance. Risk-free rate: 5% p.a. (US Treasuries).",
         "msg_alpha_not_calculated":                "Alpha could not be calculated (insufficient data or no market reference).",
-        "lbl_sharpe_explanation":                  "<b>Sharpe Ratio {val}</b>: {desc} achieved <b>{units:.2f} units of return</b> per unit of risk taken (volatility) over the selected period.",
+        "lbl_sharpe_explanation":                  "<b>Sharpe Ratio {val}</b>: {desc} achieved <b>{units:.2f} units of excess return above the risk-free rate</b> per unit of risk taken (volatility) over the selected period.",
         "lbl_sharpe_jensens_explanation":          "The Sharpe Ratio relates excess return over the risk-free rate to the standard deviation of returns (volatility). The higher the value, the better the risk was rewarded. Rule of thumb: <b>&gt; 1.0 = good, &gt; 2.0 = excellent, &lt; 0 = below risk-free rate</b>. Risk-free rate: 5% p.a.",
         "msg_sharpe_not_calculated":               "Sharpe Ratio could not be calculated (insufficient data).",
         "sharpe_negative_full":                    "Negative (return below risk-free rate)",
@@ -3239,6 +3255,7 @@ more than enough for personal use.</p>
         "lbl_yf_toast_msg_exe":       "Version {latest} is available (installed: {installed}).\nThe app will update and restart automatically.",
         "lbl_yf_toast_msg_flatpak":   "Version {latest} is available (installed: {installed}).\nThe update will arrive automatically with the next Flatpak release.",
         "lbl_yf_update_done":         "✅ yfinance {version} installed! App will restart…",
+        "lbl_yf_flatpak_managed":     "✅ yfinance is updated via the Flatpak Store.",
 
         # ── Flatpak App-Update ────────────────────────────────────────────────
         "lbl_app_update_flatpak_hint": "ℹ You are using the Flatpak version. Click 'Install Flatpak' to download and install the new version directly.",
@@ -3267,6 +3284,21 @@ more than enough for personal use.</p>
 
         # ── Gemini 503 ────────────────────────────────────────────────────────
         "lbl_gemini_unavailable":      "⏳ Gemini is currently overloaded. Please try again in a few seconds.",
+
+        # ── Demo portfolio watermark & disclaimer ─────────────────────────────
+        "lbl_demo_watermark":          "Demo Portfolio · Fictional positions · Not financial advice",
+        "title_demo_disclaimer":       "Demo Portfolio – Disclaimer",
+        "lbl_demo_disclaimer_title":   "This is not a real portfolio",
+        "lbl_demo_disclaimer_body":    (
+            "This demo portfolio is for demonstration purposes only.\n\n"
+            "• The positions shown are fictional and do not constitute investment advice.\n"
+            "• All analyses, forecasts and metrics are non-binding.\n"
+            "• Investment decisions should only be made on the basis of "
+            "professional advice.\n\n"
+            "The provider accepts no liability for losses arising from "
+            "the use of this demo."
+        ),
+        "btn_demo_disclaimer_accept":  "✓  I have read and understood this notice",
 
     },
 }

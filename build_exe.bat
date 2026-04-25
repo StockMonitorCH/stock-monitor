@@ -104,7 +104,7 @@ if exist "stock_monitor.ico" (
 echo.
 echo [BUILD] Alte Build-Artefakte werden entfernt...
 if exist "build"                    rmdir /s /q "build"
-if exist "dist\StockMonitor_Portable" rmdir /s /q "dist\StockMonitor_Portable"
+if exist "dist\stock_monitor"       rmdir /s /q "dist\stock_monitor"
 if exist "stock_monitor.spec"       del /q "stock_monitor.spec"
 
 :: ── PyInstaller-Aufruf ───────────────────────────────────────
@@ -120,7 +120,7 @@ python -m PyInstaller ^
     --name "stock_monitor" ^
     %ICO_ARG% ^
     %ICO_DATA_ARG% ^
-    --distpath "dist\StockMonitor_Portable" ^
+    --distpath "dist" ^
     --add-data "portfolio_db.py;." ^
     --add-data "config.py;." ^
     --add-data "translations.py;." ^
@@ -185,28 +185,28 @@ if errorlevel 1 (
 
 :: ── Icon ins Dist-Verzeichnis kopieren (für Laufzeit) ────────
 if exist "stock_monitor.ico" (
-    copy /y "stock_monitor.ico" "dist\StockMonitor_Portable\stock_monitor\" >nul
+    copy /y "stock_monitor.ico" "dist\stock_monitor\" >nul
     echo [OK]  Icon in EXE-Ordner kopiert
 )
 
 :: ── Optionale Extra-Dateien kopieren ─────────────────────────
 :: Splash-Screen falls vorhanden
-if exist "splash.png"  copy /y "splash.png"  "dist\StockMonitor_Portable\stock_monitor\" >nul
-if exist "splash.jpg"  copy /y "splash.jpg"  "dist\StockMonitor_Portable\stock_monitor\" >nul
+if exist "splash.png"  copy /y "splash.png"  "dist\stock_monitor\" >nul
+if exist "splash.jpg"  copy /y "splash.jpg"  "dist\stock_monitor\" >nul
 
 :: README falls vorhanden
-if exist "README.md"   copy /y "README.md"   "dist\StockMonitor_Portable\stock_monitor\" >nul
-if exist "README.txt"  copy /y "README.txt"  "dist\StockMonitor_Portable\stock_monitor\" >nul
+if exist "README.md"   copy /y "README.md"   "dist\stock_monitor\" >nul
+if exist "README.txt"  copy /y "README.txt"  "dist\stock_monitor\" >nul
 
 :: Changelog falls vorhanden
-if exist "CHANGELOG.md" copy /y "CHANGELOG.md" "dist\StockMonitor_Portable\stock_monitor\" >nul
+if exist "CHANGELOG.md" copy /y "CHANGELOG.md" "dist\stock_monitor\" >nul
 
 :: ── Demo-Portfolio für Erstbenutzer ──────────────────────────
 if exist "Demo.smpf" (
-    if not exist "dist\StockMonitor_Portable\stock_monitor\Portfolios" (
-        mkdir "dist\StockMonitor_Portable\stock_monitor\Portfolios"
+    if not exist "dist\stock_monitor\_internal\.stock_monitor_portfolios" (
+        mkdir "dist\stock_monitor\_internal\.stock_monitor_portfolios"
     )
-    copy /y "Demo.smpf" "dist\StockMonitor_Portable\stock_monitor\Portfolios\Demo.smpf" >nul
+    copy /y "Demo.smpf" "dist\stock_monitor\_internal\.stock_monitor_portfolios\Demo.smpf" >nul
     echo [OK]  Demo-Portfolio kopiert
 )
 
@@ -215,7 +215,7 @@ if exist "Demo.smpf" (
 echo @echo off
 echo cd /d "%%~dp0"
 echo start "" "stock_monitor.exe"
-) > "dist\StockMonitor_Portable\stock_monitor\Start Stock Monitor.bat"
+) > "dist\stock_monitor\Start Stock Monitor.bat"
 
 :: ── Ergebnis ─────────────────────────────────────────────────
 echo.
@@ -224,7 +224,7 @@ echo   BUILD ERFOLGREICH!
 echo ============================================================
 echo.
 echo   Portabler Ordner:
-echo   %~dp0dist\StockMonitor_Portable\stock_monitor\
+echo   %~dp0dist\stock_monitor\
 echo.
 echo   Zum Verteilen:
 echo   Den gesamten Ordner  "stock_monitor"  auf USB/SSD kopieren.

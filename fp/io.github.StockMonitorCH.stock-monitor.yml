@@ -10,8 +10,12 @@ finish-args:
   - --socket=wayland
   - --socket=fallback-x11
   - --share=ipc
-  - --device=dri
+  - --device=all
   - --share=network
+  - --talk-name=org.freedesktop.Flatpak
+  - --filesystem=xdg-download
+separate-debuginfo: false
+
 cleanup-commands:
   - /app/cleanup-BaseApp.sh
 
@@ -31,8 +35,9 @@ modules:
 
   - name: stock-monitor
     buildsystem: meson
+    post-install:
+      - chmod -R a-w /app/lib/stock-monitor/*.py || true
+      - chmod 644 /app/lib/stock-monitor/*.py || true
     sources:
-      - type: git
-        url: https://github.com/StockMonitorCH/stock-monitor.git
-        tag: v5.0.6
-        commit: 5c7d5c692fec26d83c97f1c32b5d161c2ee1be04
+      - type: dir
+        path: /home/tboner/Stock Monitor Releas

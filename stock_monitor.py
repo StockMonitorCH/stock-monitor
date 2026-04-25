@@ -34,8 +34,15 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
 
+# ── Demo-Portfolio Einfrierung ────────────────────────────────────────────────
+_DEMO_CUTOFF: str | None = None  # wird auf "2026-03-31" gesetzt wenn Demo-Portfolio aktiv
+
+def _set_demo_cutoff(active: bool) -> None:
+    global _DEMO_CUTOFF
+    _DEMO_CUTOFF = "2026-03-31" if active else None
+
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.0.2"                            # beim Release anpassen
+APP_VERSION  = "5.0.3"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -57,8 +64,10 @@ def _get_app_dir() -> str:
     return os.path.expanduser("~")
 
 _APP_DIR        = _get_app_dir()
-_DATA_HOME      = os.path.join(_APP_DIR, "_internal") if sys.platform == "win32" else os.path.expanduser("~")
-_PORTFOLIO_HOME = os.path.join(_APP_DIR, "Portfolios") if sys.platform == "win32" else os.path.expanduser("~")
+_in_flatpak     = os.path.exists('/.flatpak-info')
+_xdg_data       = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~")) if _in_flatpak else os.path.expanduser("~")
+_DATA_HOME      = os.path.join(_APP_DIR, "_internal") if sys.platform == "win32" else _xdg_data
+_PORTFOLIO_HOME = os.path.join(_APP_DIR, "Portfolios") if sys.platform == "win32" else _xdg_data
 
 if sys.platform == "win32":
     os.makedirs(_DATA_HOME, exist_ok=True)
@@ -103,12 +112,20 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QLineEdit, QFrame, QCheckBox, QDialog, QDialogButtonBox, 
                              QMessageBox, QListWidget, QDateEdit, QScrollArea, QTabWidget, QProgressBar,
                              QStackedWidget)
-from PyQt6.QtCore import QTimer, Qt, pyqtSignal, QThread, QUrl, QDate
+from PyQt6.QtCore import QTimer, Qt, pyqtSignal, QThread, QUrl, QDate, QEvent
 from PyQt6.QtGui import QFont, QIcon
 try:
     from PyQt6.QtWebEngineWidgets import QWebEngineView
     from PyQt6.QtWebEngineCore import QWebEnginePage
-    _WEBENGINE_AVAILABLE = True
+    import os as _os_we
+    # Im Flatpak crasht Chromium (SIGABRT) wegen verschachtelter Sandbox.
+    # Fallback-Modus: Seiten im System-Browser öffnen.
+    if _os_we.path.exists('/.flatpak-info'):
+        _WEBENGINE_AVAILABLE = False
+        QWebEngineView = None
+        QWebEnginePage = None
+    else:
+        _WEBENGINE_AVAILABLE = True
 except ImportError:
     _WEBENGINE_AVAILABLE = False
     QWebEngineView = None
@@ -4644,6 +4661,54 @@ class FavoritesDialog(QDialog):
         return self.favorites
 
 
+_DEMO_BANNER_STYLE_TOP    = (
+    "color: #7a2900; font-style: italic; font-size: 13px; font-weight: bold;"
+    "padding: 4px 8px; background-color: #ffe0b2; border-bottom: 2px solid #e65100;")
+_DEMO_BANNER_STYLE_BOTTOM = (
+    "color: #7a2900; font-style: italic; font-size: 13px; font-weight: bold;"
+    "padding: 4px 8px; background-color: #ffe0b2; border-top: 2px solid #e65100;")
+
+def _make_demo_banner(top: bool) -> 'QLabel':
+    lbl = QLabel(TR("lbl_demo_watermark"))
+    lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    lbl.setStyleSheet(_DEMO_BANNER_STYLE_TOP if top else _DEMO_BANNER_STYLE_BOTTOM)
+    return lbl
+
+
+class _DemoWatermark(QWidget):
+    """Halbtransparenter Wasserzeichen-Overlay für Demo-Portfolio."""
+    def __init__(self, parent: QWidget):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self.raise_()
+        parent.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if obj is self.parent() and event.type() == QEvent.Type.Resize:
+            self.setGeometry(self.parent().rect())
+            self.raise_()
+        return False
+
+    def showEvent(self, event):
+        self.setGeometry(self.parent().rect())
+        self.raise_()
+
+    def paintEvent(self, event):
+        from PyQt6.QtGui import QPainter, QFont, QColor
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        text = TR("lbl_demo_watermark")
+        font = QFont("Arial", 13, QFont.Weight.Bold)
+        painter.setFont(font)
+        painter.setPen(QColor(120, 120, 120, 55))
+        rect = self.rect()
+        painter.drawText(rect.adjusted(0, 0, 0, -8),
+                         Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
+                         text)
+        painter.end()
+
+
 class StockChartWidget(QFrame):
     """Widget für einen einzelnen Aktien-Chart"""
     
@@ -4664,8 +4729,9 @@ class StockChartWidget(QFrame):
         TR('lbl_custom_period_entry'): ('custom', '1d')  # Custom Date Range
     }
     
-    def __init__(self, default_symbol='AAPL', compact_mode=False, zoom_mode=False, avg_buy_price=None):
+    def __init__(self, default_symbol='AAPL', compact_mode=False, zoom_mode=False, avg_buy_price=None, demo_watermark=False):
         super().__init__()
+        self._demo_watermark = demo_watermark
         self.symbol = default_symbol
         self.company_name = ""
         self.data = None
@@ -4704,7 +4770,10 @@ class StockChartWidget(QFrame):
         self.setMinimumSize(300, 250)  # Minimum damit Chart lesbar bleibt
         
         layout = QVBoxLayout()
-        
+
+        if getattr(self, '_demo_watermark', False):
+            layout.addWidget(_make_demo_banner(top=True))
+
         # Kopfzeile mit Symbol-Eingabe und Zeitrahmen
         header = QHBoxLayout()
         
@@ -5066,9 +5135,12 @@ class StockChartWidget(QFrame):
         layout.addWidget(self.plot_widget)
         layout.addWidget(self.rsi_plot_widget)
         layout.addWidget(self.dd_plot_widget)
-        
+
+        if getattr(self, '_demo_watermark', False):
+            layout.addWidget(_make_demo_banner(top=False))
+
         self.setLayout(layout)
-        
+
         # Initial laden
         self.update_chart()
         if self.zoom_mode or getattr(self, 'portfolio_mode', False):
@@ -5686,7 +5758,7 @@ class StockChartWidget(QFrame):
         # Neuen Worker erstellen und in Registry aufnehmen
         worker = DataFetchWorker(
             self.symbol, period, interval,
-            self.custom_start, self.custom_end
+            self.custom_start, self.custom_end,
         )
         self._fetch_worker = worker
         StockChartWidget._worker_registry.append(worker)
@@ -6006,27 +6078,34 @@ class StockChartWidget(QFrame):
                 else:
                     candle_w = 3600.0
 
-                for i in range(len(times_clean)):
-                    t = times_clean[i]
-                    o, h, l, c = opens[i], highs[i], lows[i], closes[i]
-                    if any(np.isnan([o, h, l, c])):
-                        continue
-                    is_up = c >= o
-                    body_color = (0, 180, 0) if is_up else (200, 0, 0)
-                    # Docht (High-Low)
-                    self.plot_widget.plot(
-                        [t, t], [l, h],
-                        pen=pg.mkPen(color=body_color, width=1)
-                    )
-                    # Körper (Open-Close)
-                    body_lo = min(o, c); body_hi = max(o, c)
-                    body_item = pg.BarGraphItem(
-                        x=[t], height=[body_hi - body_lo],
-                        width=candle_w, y0=body_lo,
-                        brush=pg.mkBrush(body_color),
-                        pen=pg.mkPen(color=body_color, width=1)
-                    )
-                    self.plot_widget.addItem(body_item)
+                valid = ~np.isnan(opens) & ~np.isnan(highs) & ~np.isnan(lows) & ~np.isnan(closes)
+                t_v = times_clean[valid]; o_v = opens[valid]; h_v = highs[valid]
+                l_v = lows[valid]; c_v = closes[valid]
+
+                # Alle Dochte in einem einzigen Plot (NaN als Trenner)
+                wick_x = np.empty(len(t_v) * 3); wick_x[2::3] = np.nan
+                wick_y = np.empty(len(t_v) * 3); wick_y[2::3] = np.nan
+                wick_x[0::3] = t_v; wick_x[1::3] = t_v
+                wick_y[0::3] = l_v; wick_y[1::3] = h_v
+                self.plot_widget.plot(wick_x, wick_y, pen=pg.mkPen(color=(150, 150, 150), width=1), connect='finite')
+
+                # Körper: grüne und rote Kerzen je als ein BarGraphItem
+                up   = c_v >= o_v
+                down = ~up
+                body_lo = np.minimum(o_v, c_v)
+                body_hi = np.maximum(o_v, c_v)
+                heights = np.where(body_hi - body_lo < 1e-10, candle_w * 0.05, body_hi - body_lo)
+
+                if up.any():
+                    self.plot_widget.addItem(pg.BarGraphItem(
+                        x=t_v[up], height=heights[up], width=candle_w,
+                        y0=body_lo[up], brush=pg.mkBrush(0, 180, 0),
+                        pen=pg.mkPen(color=(0, 150, 0), width=1)))
+                if down.any():
+                    self.plot_widget.addItem(pg.BarGraphItem(
+                        x=t_v[down], height=heights[down], width=candle_w,
+                        y0=body_lo[down], brush=pg.mkBrush(200, 0, 0),
+                        pen=pg.mkPen(color=(160, 0, 0), width=1)))
             else:
                 self.plot_widget.plot(times_clean, prices_clean, pen=pg.mkPen(color=pen_color, width=2), name=self.symbol)
 
@@ -7674,6 +7753,9 @@ class PortfolioDialog(QMainWindow):
         # Demo-Portfolio beim ersten Start laden (kein Portfolio vorhanden)
         if not self.portfolio_data and not self._get_active_portfolio_name():
             self._auto_load_demo_portfolio()
+        elif self._get_active_portfolio_name() == "Demo":
+            _set_demo_cutoff(True)
+            QTimer.singleShot(1000, self._show_demo_disclaimer)
         # AIBalance-Filter pro Portfolio: {portfolio_name: {'currencies': [...], 'sectors': [...]}}
         self._aib_filters = {}
         self._aib_filters_file = os.path.join(_DATA_HOME, ".stock_monitor_aib_filters.json")
@@ -8205,6 +8287,44 @@ class PortfolioDialog(QMainWindow):
             pass
         return {}
 
+    def _show_demo_disclaimer(self):
+        """Zeigt Haftungsausschluss-Dialog für das Demo-Portfolio."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle(TR("title_demo_disclaimer"))
+        dlg.setFixedWidth(520)
+        dlg.setWindowFlags(dlg.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        lay = QVBoxLayout(dlg)
+        lay.setSpacing(14)
+        lay.setContentsMargins(24, 20, 24, 20)
+
+        icon_lbl = QLabel("⚠️")
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_lbl.setStyleSheet("font-size: 36px;")
+        lay.addWidget(icon_lbl)
+
+        title_lbl = QLabel(TR("lbl_demo_disclaimer_title"))
+        title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #b71c1c;")
+        title_lbl.setWordWrap(True)
+        lay.addWidget(title_lbl)
+
+        text_lbl = QLabel(TR("lbl_demo_disclaimer_body"))
+        text_lbl.setWordWrap(True)
+        text_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        text_lbl.setStyleSheet(
+            "font-size: 12px; padding: 10px; background: #fff8e1; "
+            "border: 1px solid #e65100; border-radius: 4px;")
+        lay.addWidget(text_lbl)
+
+        btn = QPushButton(TR("btn_demo_disclaimer_accept"))
+        btn.setStyleSheet(
+            "background-color: #e65100; color: white; font-weight: bold; "
+            "font-size: 13px; padding: 8px 20px; border-radius: 4px;")
+        btn.clicked.connect(dlg.accept)
+        lay.addWidget(btn, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        dlg.exec()
+
     def _auto_load_demo_portfolio(self):
         """Lädt Demo-Portfolio beim ersten Start automatisch (leeres Passwort)."""
         if not _DB_IMPORT_OK:
@@ -8212,13 +8332,22 @@ class PortfolioDialog(QMainWindow):
         try:
             demo_path = os.path.join(_pdb.PORTFOLIO_DIR, "Demo.smpf")
             if not os.path.exists(demo_path):
-                return
+                # Im Flatpak: Demo.smpf aus App-Verzeichnis kopieren
+                app_demo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Demo.smpf")
+                if os.path.exists(app_demo):
+                    import shutil
+                    os.makedirs(_pdb.PORTFOLIO_DIR, exist_ok=True)
+                    shutil.copy2(app_demo, demo_path)
+                else:
+                    return
             data = _pdb.load_portfolio("Demo", "")
             self.portfolio_data = self._migrate_crypto(data["positions"])
             if data.get("sector_cache"):
                 self._sector_cache.update(data["sector_cache"])
             self._set_active_portfolio_name("Demo")
             self.save_portfolio()
+            _set_demo_cutoff(True)
+            QTimer.singleShot(800, self._show_demo_disclaimer)
         except Exception:
             pass  # Demo nicht ladbar (z.B. falsches Passwort) → kein Absturz
 
@@ -8639,11 +8768,14 @@ class PortfolioDialog(QMainWindow):
                 if new_sectors:
                     self._sector_cache.update(new_sectors)
                 self._set_active_portfolio_name(e["name"])
+                _set_demo_cutoff(e["name"] == "Demo")
                 self._limits = self._load_limits()  # Limits portfoliospezifisch neu laden
                 self.save_portfolio()
                 self._invalidate_cache()
                 self._update_portfolio_name_label(e["name"])
                 dlg.accept()
+                if e["name"] == "Demo":
+                    QTimer.singleShot(200, self._show_demo_disclaimer)
                 # Dollarnote zeigen während das neue Portfolio geladen wird
                 main_win = self.parent()
                 if main_win and hasattr(main_win, 'show_dollar'):
@@ -8956,6 +9088,15 @@ class PortfolioDialog(QMainWindow):
         Das Steuermodul ist in tax_module.py ausgelagert, damit Steuerregeln
         (jährliche Änderungen) unabhängig vom Hauptprogramm aktualisiert werden.
         """
+        # Alle laufenden Chart-Worker stoppen: curl_cffi ist nicht thread-sicher
+        # für gleichzeitige yfinance-Sessions aus verschiedenen Threads.
+        for _w in list(StockChartWidget._worker_registry):
+            try:
+                _w.quit()
+                _w.wait(1500)
+            except Exception:
+                pass
+        StockChartWidget._worker_registry.clear()
         try:
             import tax_module
         except ImportError:
@@ -10969,6 +11110,9 @@ class PortfolioDialog(QMainWindow):
         dlg_layout = QVBoxLayout(dlg)
         dlg_layout.setSpacing(4)
 
+        if _DEMO_CUTOFF:
+            dlg_layout.addWidget(_make_demo_banner(top=True))
+
         # Bildschirmgrösse ermitteln für adaptive Button-Beschriftungen
         _ov_screen = QApplication.primaryScreen().geometry()
         _ov_is_fullhd = _ov_screen.width() <= 1920
@@ -12168,7 +12312,8 @@ class PortfolioDialog(QMainWindow):
                         close_btn.clicked.connect(chart_win.close)
                         layout_cw.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignLeft)
                         chart_widget = StockChartWidget(sym, zoom_mode=True,
-                            avg_buy_price=avg_usd if price_usd else None)
+                            avg_buy_price=avg_usd if price_usd else None,
+                            demo_watermark=bool(_DEMO_CUTOFF))
                         _sym_lim = getattr(self, '_limits', {}).get(sym, {})
                         chart_widget.own_stop    = _sym_lim.get('stop')
                         chart_widget.own_target  = _sym_lim.get('target')
@@ -12587,6 +12732,8 @@ class PortfolioDialog(QMainWindow):
             worker.progress.connect(on_progress, Qt.ConnectionType.QueuedConnection)
             worker.data_ready.connect(on_data,    Qt.ConnectionType.QueuedConnection)
             worker.start()
+        if _DEMO_CUTOFF:
+            dlg_layout.addWidget(_make_demo_banner(top=False))
         # Fenster bereits oben konfiguriert
 
 
@@ -20462,7 +20609,7 @@ class PortfolioDialog(QMainWindow):
             else:                   desc = TR("lbl_scope_crypto")
             interp, color = _interp(s)
             lines = [
-                TR("lbl_sharpe_explanation", val=_fmt(s), desc=desc, units=abs(s)),
+                TR("lbl_sharpe_explanation", val=_fmt(s), desc=desc, units=s),
                 "",
                 TR("lbl_sharpe_jensens_explanation"),
                 "",
@@ -23621,13 +23768,14 @@ class BatchDataFetchWorker(QThread):
 
     MAX_PARALLEL = 4   # Yahoo toleriert ~4 gleichzeitige Requests zuverlässig
 
-    def __init__(self, symbols, period, interval, custom_start=None, custom_end=None):
+    def __init__(self, symbols, period, interval, custom_start=None, custom_end=None, demo_cutoff=None):
         super().__init__()
         self.symbols      = list(symbols)
         self.period       = period
         self.interval     = interval
         self.custom_start = custom_start
         self.custom_end   = custom_end
+        self.demo_cutoff  = demo_cutoff
 
     def run(self):
         import pandas as pd
@@ -23637,16 +23785,25 @@ class BatchDataFetchWorker(QThread):
             """Lädt Daten für ein Symbol – identisch zu DataFetchWorker.run()."""
             try:
                 ticker = yf.Ticker(sym)
-                if self.custom_start and self.custom_end:
-                    data = ticker.history(
-                        start=self.custom_start, end=self.custom_end,
-                        interval=self.interval, auto_adjust=True)
+                _end   = self.demo_cutoff or (str(self.custom_end) if self.custom_end else None)
+                _start = str(self.custom_start) if self.custom_start else None
+                if _start and _end:
+                    data = ticker.history(start=_start, end=_end,
+                                          interval=self.interval, auto_adjust=True)
+                elif self.demo_cutoff:
+                    from datetime import datetime as _ddt, timedelta as _dtd
+                    _days = {'1d':2,'5d':7,'1mo':35,'3mo':95,'6mo':185,
+                             '1y':370,'2y':740,'5y':1830,'max':7300,'ytd':370}.get(self.period, 370)
+                    _cutoff = _ddt.strptime(self.demo_cutoff, "%Y-%m-%d")
+                    _s = (_cutoff - _dtd(days=_days)).strftime("%Y-%m-%d")
+                    data = ticker.history(start=_s, end=self.demo_cutoff,
+                                          interval=self.interval, auto_adjust=True)
                 else:
                     data = ticker.history(
                         period=self.period, interval=self.interval,
                         auto_adjust=True)
                 # Fallback wenn zu wenig Daten
-                if len(data) < 5 and self.period not in ('1d', '5d'):
+                if len(data) < 5 and self.period not in ('1d', '5d') and not self.demo_cutoff:
                     data = self._fallback(ticker)
                 cur = getattr(ticker.fast_info, 'currency', None) or 'USD'
                 return sym, data, cur
@@ -23691,13 +23848,14 @@ class DataFetchWorker(QThread):
     data_ready = pyqtSignal(object, str, object, object, str)  # data, currency, target_price, beta_value, company_name
     error = pyqtSignal(str)
     
-    def __init__(self, symbol, period, interval, custom_start=None, custom_end=None):
+    def __init__(self, symbol, period, interval, custom_start=None, custom_end=None, demo_cutoff=None):
         super().__init__()
         self.symbol = symbol
         self.period = period
         self.interval = interval
         self.custom_start = custom_start
-        self.custom_end = custom_end
+        self.custom_end   = custom_end
+        self.demo_cutoff  = demo_cutoff
     
     def run(self):
         try:
@@ -23715,13 +23873,24 @@ class DataFetchWorker(QThread):
                         continue
 
             ticker = yf.Ticker(fetch_symbol)
-            if self.custom_start and self.custom_end:
+            _end = self.demo_cutoff or (str(self.custom_end) if self.custom_end else None)
+            _start = str(self.custom_start) if self.custom_start else None
+            if _start and _end:
                 data = ticker.history(
-                    start=self.custom_start,
-                    end=self.custom_end,
+                    start=_start,
+                    end=_end,
                     interval=self.interval,
                     auto_adjust=True
                 )
+            elif self.demo_cutoff:
+                from datetime import datetime as _ddt, timedelta as _dtd
+                _period_days = {'1d':2,'5d':7,'1mo':35,'3mo':95,'6mo':185,
+                                '1y':370,'2y':740,'5y':1830,'max':7300,'ytd':370}
+                _days = _period_days.get(self.period, 370)
+                _cutoff = _ddt.strptime(self.demo_cutoff, "%Y-%m-%d")
+                _s = (_cutoff - _dtd(days=_days)).strftime("%Y-%m-%d")
+                data = ticker.history(start=_s, end=self.demo_cutoff,
+                                      interval=self.interval, auto_adjust=True)
             else:
                 data = ticker.history(
                     period=self.period,
@@ -23921,9 +24090,13 @@ class StockMonitorApp(QMainWindow):
             self._startup_target = 88.0
             self.loading_dialog.update_progress(65, TR("status_creating_charts"))
             _scr = QApplication.primaryScreen()
-            _sw = _scr.geometry().width() if _scr else 1920
+            _sw = (_scr.geometry().width() * _scr.devicePixelRatio()) if _scr else 1920
             _default_charts = 16 if _sw >= 3840 else 12
             self.create_charts(_default_charts)
+            if hasattr(self, 'view_combo'):
+                self.view_combo.blockSignals(True)
+                self.view_combo.setCurrentText('16 (4x4)' if _default_charts == 16 else '12 (3x4)')
+                self.view_combo.blockSignals(False)
         QTimer.singleShot(80, self._init_step5)
 
     def _init_step5(self):
@@ -26910,28 +27083,39 @@ class StockMonitorApp(QMainWindow):
         msg_lbl.setWordWrap(True)
         lay.addWidget(msg_lbl)
         prog = QProgressBar()
-        prog.setRange(0, 0)
+        prog.setRange(0, 100)
+        prog.setValue(0)
         lay.addWidget(prog)
+        size_lbl = QLabel("")
+        size_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        size_lbl.setStyleSheet("color: #666; font-size: 10px;")
+        lay.addWidget(size_lbl)
         prog_dlg.show()
 
         def _run():
             try:
-                import urllib.request, ssl
+                import requests as _req, tempfile
                 tmpdir = tempfile.mkdtemp(prefix="sm_upd_")
                 fpath = os.path.join(tmpdir, f"stock-monitor_{version}_amd64.deb")
-                try:
-                    import certifi
-                    ctx = ssl.create_default_context(cafile=certifi.where())
-                except Exception:
-                    ctx = ssl.create_default_context()
-                req = urllib.request.Request(deb_url, headers={"User-Agent": "StockMonitor"})
-                with urllib.request.urlopen(req, timeout=600, context=ctx) as resp:
+                with _req.get(deb_url, stream=True, timeout=60,
+                              headers={"User-Agent": "StockMonitor"}) as resp:
+                    resp.raise_for_status()
+                    total = int(resp.headers.get("Content-Length") or 0)
+                    downloaded = 0
                     with open(fpath, "wb") as f:
-                        while True:
-                            buf = resp.read(65536)
+                        for buf in resp.iter_content(chunk_size=65536):
                             if not buf:
-                                break
+                                continue
                             f.write(buf)
+                            downloaded += len(buf)
+                            if total > 0:
+                                pct = int(downloaded * 100 / total)
+                                mb_done = downloaded / 1_048_576
+                                mb_total = total / 1_048_576
+                                QTimer.singleShot(0, lambda p=pct, d=mb_done, t=mb_total: (
+                                    prog.setValue(p),
+                                    size_lbl.setText(f"{d:.1f} MB / {t:.1f} MB")
+                                ))
                 result = subprocess.run(
                     ["pkexec", "dpkg", "-i", fpath],
                     capture_output=True, text=True, timeout=300
@@ -26989,28 +27173,39 @@ class StockMonitorApp(QMainWindow):
         msg_lbl.setWordWrap(True)
         lay.addWidget(msg_lbl)
         prog = QProgressBar()
-        prog.setRange(0, 0)
+        prog.setRange(0, 100)
+        prog.setValue(0)
         lay.addWidget(prog)
+        size_lbl = QLabel("")
+        size_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        size_lbl.setStyleSheet("color: #666; font-size: 10px;")
+        lay.addWidget(size_lbl)
         prog_dlg.show()
 
         def _run():
             try:
-                import urllib.request, ssl
+                import requests as _req, tempfile
                 tmpdir = tempfile.mkdtemp(prefix="sm_upd_")
                 fpath = os.path.join(tmpdir, f"stock-monitor-{version}.x86_64.rpm")
-                try:
-                    import certifi
-                    ctx = ssl.create_default_context(cafile=certifi.where())
-                except Exception:
-                    ctx = ssl.create_default_context()
-                req = urllib.request.Request(rpm_url, headers={"User-Agent": "StockMonitor"})
-                with urllib.request.urlopen(req, timeout=600, context=ctx) as resp:
+                with _req.get(rpm_url, stream=True, timeout=60,
+                              headers={"User-Agent": "StockMonitor"}) as resp:
+                    resp.raise_for_status()
+                    total = int(resp.headers.get("Content-Length") or 0)
+                    downloaded = 0
                     with open(fpath, "wb") as f:
-                        while True:
-                            buf = resp.read(65536)
+                        for buf in resp.iter_content(chunk_size=65536):
                             if not buf:
-                                break
+                                continue
                             f.write(buf)
+                            downloaded += len(buf)
+                            if total > 0:
+                                pct = int(downloaded * 100 / total)
+                                mb_done = downloaded / 1_048_576
+                                mb_total = total / 1_048_576
+                                QTimer.singleShot(0, lambda p=pct, d=mb_done, t=mb_total: (
+                                    prog.setValue(p),
+                                    size_lbl.setText(f"{d:.1f} MB / {t:.1f} MB")
+                                ))
                 result = subprocess.run(
                     ["pkexec", "rpm", "-Uvh", fpath],
                     capture_output=True, text=True, timeout=300
@@ -27345,10 +27540,13 @@ class StockMonitorApp(QMainWindow):
             _yf_installed = "?"
         yf_hdr = QLabel(f"<b>yfinance</b>  <span style='color:#888;'>(installiert: {_yf_installed})</span>")
         yf_lay.addWidget(yf_hdr)
-        yf_status_lbl = QLabel(f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>")
+        _in_flatpak = os.path.exists('/.flatpak-info')
+        _yf_initial = (f"<span style='color:#27ae60;'>{TR('lbl_yf_flatpak_managed')}</span>"
+                       if _in_flatpak
+                       else f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>")
+        yf_status_lbl = QLabel(_yf_initial)
         yf_status_lbl.setWordWrap(True)
         yf_lay.addWidget(yf_status_lbl)
-        _in_flatpak = os.path.exists('/.flatpak-info')
         _is_frozen  = getattr(sys, 'frozen', False)
         yf_install_btn = QPushButton(TR("btn_install_yfinance"))
         yf_install_btn.setVisible(False)
@@ -27367,7 +27565,10 @@ class StockMonitorApp(QMainWindow):
 
         def _run_checks():
             app_status_lbl.setText(f"<span style='color:#888;'>{TR('lbl_update_checking_app')}</span>")
-            yf_status_lbl.setText(f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>")
+            if _in_flatpak:
+                yf_status_lbl.setText(f"<span style='color:#27ae60;'>{TR('lbl_yf_flatpak_managed')}</span>")
+            else:
+                yf_status_lbl.setText(f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>")
             app_update_btn.setVisible(False)
             recheck_btn.setEnabled(False)
 
@@ -27578,7 +27779,10 @@ class StockMonitorApp(QMainWindow):
                     return "error", installed, "", ""
 
             self._start_update_worker(_check_app, _on_app)
-            self._start_update_worker(_check_yf,  _on_yf)
+            if not _in_flatpak:
+                self._start_update_worker(_check_yf, _on_yf)
+            else:
+                recheck_btn.setEnabled(True)
 
         recheck_btn.clicked.connect(_run_checks)
         btn_row.addWidget(recheck_btn)
@@ -29475,9 +29679,13 @@ class StockMonitorApp(QMainWindow):
                       TR('lbl_precious_metals_separator'),
                       TR('lbl_xau_label'), TR('lbl_xag_label'),
                       TR('lbl_xpt_label'), TR('lbl_xpd_label'), TR('lbl_xcu_label')]
+        _cc_cfg = _app_config.get_global_chart_settings()
+        _saved_from = _cc_cfg.get('currency_from', 'USD')
+        _saved_to   = _cc_cfg.get('currency_to',   'CHF')
+
         from_combo = QComboBox()
         from_combo.addItems(currencies)
-        from_combo.setCurrentText('USD')
+        from_combo.setCurrentText(_saved_from if _saved_from in currencies else 'USD')
         from_combo.setMinimumWidth(80)
         input_row.addWidget(from_combo)
 
@@ -29488,7 +29696,7 @@ class StockMonitorApp(QMainWindow):
 
         to_combo = QComboBox()
         to_combo.addItems(currencies)
-        to_combo.setCurrentText('CHF')
+        to_combo.setCurrentText(_saved_to if _saved_to in currencies else 'CHF')
         to_combo.setMinimumWidth(80)
         input_row.addWidget(to_combo)
 
@@ -29618,6 +29826,10 @@ class StockMonitorApp(QMainWindow):
             rate_label.setText("")
             dialog.repaint()
 
+            try:
+                _app_config.save_config({'currency_from': from_cur, 'currency_to': to_cur})
+            except Exception:
+                pass
             rate, err = _get_rate(from_cur, to_cur)
             if rate is None:
                 result_label.setText(TR("lbl_rate_unavailable"))
