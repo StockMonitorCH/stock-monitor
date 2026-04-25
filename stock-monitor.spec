@@ -148,6 +148,9 @@ done
 $PYTHON -m pip install --quiet --target "$LIBDIR" --no-deps \
     "$WHEELDIR/odfpy-1.4.1.tar.gz" >/dev/null 2>&1 || true
 
+gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
+update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+
 
 %preun
 # Beim vollständigen Entfernen die pip-installierten Pakete löschen
@@ -161,6 +164,8 @@ fi
 if [ $1 -eq 0 ]; then
     rm -rf /opt/stock-monitor
 fi
+gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
+update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %files
