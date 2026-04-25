@@ -27158,9 +27158,16 @@ class StockMonitorApp(QMainWindow):
         threading.Thread(target=_run, daemon=True).start()
 
     def _do_rpm_update(self, version, rpm_url):
-        """Lädt das neue .rpm herunter und installiert es via pkexec rpm."""
+        """Lädt das neue .rpm herunter und installiert es via pkexec dnf/rpm."""
         import subprocess, threading, tempfile
+        from PyQt6.QtCore import pyqtSignal, QObject
         from PyQt6.QtWidgets import QProgressBar, QMessageBox
+
+        class _Sigs(QObject):
+            progress_update = pyqtSignal(int, str)
+            finished        = pyqtSignal(str, str)
+
+        sigs = _Sigs(self)
 
         prog_dlg = QDialog(self)
         prog_dlg.setWindowTitle("Stock Monitor Update")
@@ -27182,40 +27189,69 @@ class StockMonitorApp(QMainWindow):
         lay.addWidget(size_lbl)
         prog_dlg.show()
 
+        sigs.progress_update.connect(
+            lambda v, t: (prog.setValue(v), size_lbl.setText(t)),
+            Qt.ConnectionType.QueuedConnection
+        )
+
+        def _on_done(status, msg):
+            prog_dlg.close()
+            if status == "error":
+                _on_error(msg)
+            else:
+                _on_success()
+
+        sigs.finished.connect(_on_done, Qt.ConnectionType.QueuedConnection)
+
         def _run():
             try:
-                import requests as _req, tempfile
+                import urllib.request, ssl, tempfile
                 tmpdir = tempfile.mkdtemp(prefix="sm_upd_")
                 fpath = os.path.join(tmpdir, f"stock-monitor-{version}.x86_64.rpm")
-                with _req.get(rpm_url, stream=True, timeout=60,
-                              headers={"User-Agent": "StockMonitor"}) as resp:
-                    resp.raise_for_status()
+
+                sigs.progress_update.emit(2, "Verbindung wird hergestellt…")
+
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+
+                req = urllib.request.Request(rpm_url, headers={"User-Agent": "StockMonitor"})
+                with urllib.request.urlopen(req, timeout=120, context=ctx) as resp:
                     total = int(resp.headers.get("Content-Length") or 0)
                     downloaded = 0
                     with open(fpath, "wb") as f:
-                        for buf in resp.iter_content(chunk_size=65536):
+                        while True:
+                            buf = resp.read(65536)
                             if not buf:
-                                continue
+                                break
                             f.write(buf)
                             downloaded += len(buf)
                             if total > 0:
-                                pct = int(downloaded * 100 / total)
-                                mb_done = downloaded / 1_048_576
-                                mb_total = total / 1_048_576
-                                QTimer.singleShot(0, lambda p=pct, d=mb_done, t=mb_total: (
-                                    prog.setValue(p),
-                                    size_lbl.setText(f"{d:.1f} MB / {t:.1f} MB")
-                                ))
-                result = subprocess.run(
-                    ["pkexec", "rpm", "-Uvh", fpath],
-                    capture_output=True, text=True, timeout=300
-                )
-                if result.returncode == 0:
-                    QTimer.singleShot(0, lambda: _on_success())
+                                pct = int(5 + downloaded * 90 / total)
+                                mb_d = downloaded / 1_048_576
+                                mb_t = total / 1_048_576
+                                sigs.progress_update.emit(pct, f"Download: {mb_d:.1f} / {mb_t:.1f} MB")
+                            else:
+                                mb_d = downloaded / 1_048_576
+                                sigs.progress_update.emit(30, f"Download: {mb_d:.1f} MB…")
+
+                sigs.progress_update.emit(96, "Wird installiert…")
+
+                # dnf bevorzugen (Fedora), Fallback auf rpm
+                if subprocess.run(["which", "dnf"], capture_output=True).returncode == 0:
+                    cmd = ["pkexec", "dnf", "install", "-y", fpath]
                 else:
-                    QTimer.singleShot(0, lambda e=(result.stderr or result.stdout or "").strip(): _on_error(e))
+                    cmd = ["pkexec", "rpm", "-Uvh", "--force", fpath]
+
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                if result.returncode == 0:
+                    sigs.finished.emit("ok", "")
+                else:
+                    sigs.finished.emit("error", (result.stderr or result.stdout or "").strip())
             except Exception as e:
-                QTimer.singleShot(0, lambda e=str(e): _on_error(e))
+                sigs.finished.emit("error", str(e))
 
         def _on_success():
             prog_dlg.close()
