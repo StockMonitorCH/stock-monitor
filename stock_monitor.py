@@ -29940,7 +29940,7 @@ def main():
     app.setApplicationVersion(APP_VERSION)
     # Flatpak/Linux: Desktop-Dateiname setzen → korrektes Taskleisten-Symbol
     if os.environ.get("FLATPAK_ID") or sys.platform != "win32":
-        app.setDesktopFileName("ch.stockmonitor.StockMonitor")
+        app.setDesktopFileName("stock-monitor")
     app.setStyle('Fusion')  # KDE-freundlicher Style
 
     # ── Windows Taskleisten-Icon Fix ──────────────────────────────────────
