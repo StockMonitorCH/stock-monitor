@@ -87,6 +87,9 @@
 
   <screenshots>
     <screenshot type="default">
+      <video>https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.0.7/stock-monitor-demo-final.mp4</video>
+    </screenshot>
+    <screenshot type="default">
       <caption>Main dashboard with 16 simultaneous live charts</caption>
       <caption xml:lang="de">Hauptansicht mit 16 gleichzeitigen Live-Charts</caption>
       <image>https://www.stock-monitor.ch/screenshots/dashboard_EN.png</image>
