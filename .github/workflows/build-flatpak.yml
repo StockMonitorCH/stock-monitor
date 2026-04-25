@@ -42,14 +42,14 @@ jobs:
             --disable-rofiles-fuse \
             --repo=repo \
             build-dir \
-            ch.stockmonitor.StockMonitor.yml
+            io.github.StockMonitorCH.stock-monitor.yml
 
       - name: Create flatpakref file
         run: |
           mkdir -p fp/repo-web
           cat > fp/repo-web/StockMonitor.flatpakref << 'EOF'
           [Flatpak Ref]
-          Name=ch.stockmonitor.StockMonitor
+          Name=io.github.StockMonitorCH.stock-monitor
           Branch=master
           Title=Stock Monitor
           Url=https://StockMonitorCH.github.io/stock-monitor/repo
@@ -77,12 +77,10 @@ jobs:
 
       - name: Export Flatpak bundle
         run: |
-          VERSION=$(grep -m1 'APP_VERSION' fp/sources/stock_monitor.py | grep -oP '"\K\d+\.\d+\.\d+')
           flatpak build-bundle fp/repo \
-            "StockMonitor-${VERSION}.flatpak" \
-            ch.stockmonitor.StockMonitor
-          echo "FLATPAK_FILE=StockMonitor-${VERSION}.flatpak" >> $GITHUB_ENV
-          echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
+            "StockMonitor-5.0.7.flatpak" \
+            io.github.StockMonitorCH.stock-monitor
+          echo "FLATPAK_FILE=StockMonitor-5.0.7.flatpak" >> $GITHUB_ENV
 
       - name: Upload Flatpak to latest release
         run: |
