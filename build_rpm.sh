@@ -7,7 +7,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="5.0.3"
+VERSION="5.0.7"
 PKG="stock-monitor-${VERSION}"
 RPMBUILD="$HOME/rpmbuild"
 
@@ -44,7 +44,7 @@ done
 
 # Launcher, Desktop, Metainfo, Icon, Lizenz
 cp stock-monitor.sh                       "$SRCDIR/"
-cp ch.stockmonitor.StockMonitor.desktop   "$SRCDIR/"
+cp stock-monitor.desktop                  "$SRCDIR/"
 cp stock-monitor.metainfo.xml             "$SRCDIR/"
 cp LICENSE                                "$SRCDIR/"
 

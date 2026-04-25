@@ -8,7 +8,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="5.0.3"
+VERSION="5.0.7"
 PKG="stock-monitor"
 PKGDIR="$(mktemp -d)/stock-monitor_${VERSION}_amd64"
 
@@ -56,8 +56,8 @@ cp stock-monitor.sh "$PKGDIR/usr/bin/stock-monitor"
 chmod 0755 "$PKGDIR/usr/bin/stock-monitor"
 
 # ── Desktop + Metainfo + Icon ──────────────────────────────────────────────────
-cp ch.stockmonitor.StockMonitor.desktop \
-   "$PKGDIR/usr/share/applications/ch.stockmonitor.StockMonitor.desktop"
+cp stock-monitor.desktop \
+   "$PKGDIR/usr/share/applications/stock-monitor.desktop"
 cp stock-monitor.metainfo.xml \
    "$PKGDIR/usr/share/metainfo/ch.stockmonitor.StockMonitor.metainfo.xml"
 if [ -f "fp/sources/stock-monitor-256.png" ]; then
@@ -175,7 +175,14 @@ $PIP \
     pyparsing pyqtgraph "python-dateutil" pytz reportlab requests rich \
     six soupsieve "typing-extensions" tzdata urllib3 yfinance >/dev/null 2>&1 || true
 
-for pkg in numpy pandas matplotlib Pillow websockets \
+PYVER=$("$PYTHON" -c "import sys; print('cp%d%d' % sys.version_info[:2])" 2>/dev/null)
+NUMPY_WHL=$(ls "$WHEELDIR"/numpy-*-${PYVER}-*.whl 2>/dev/null | head -1)
+if [ -n "$NUMPY_WHL" ]; then
+    "$PYTHON" -m pip install --quiet --target "$LIBDIR" --no-deps $BSP "$NUMPY_WHL" >/dev/null 2>&1 || true
+else
+    $PIP numpy >/dev/null 2>&1 || true
+fi
+for pkg in pandas matplotlib Pillow websockets \
            contourpy fonttools kiwisolver "charset-normalizer" cffi; do
     $PIP "$pkg" >/dev/null 2>&1 || true
 done

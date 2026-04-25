@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.0.3
+Version:        5.0.7
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
@@ -61,14 +61,14 @@ done
 install -m 0755 stock-monitor.sh %{buildroot}/usr/bin/stock-monitor
 
 # ── Desktop-Integration ────────────────────────────────────────────────────────
-install -m 0644 ch.stockmonitor.StockMonitor.desktop \
-    %{buildroot}/usr/share/applications/ch.stockmonitor.StockMonitor.desktop
+install -m 0644 stock-monitor.desktop \
+    %{buildroot}/usr/share/applications/stock-monitor.desktop
 install -m 0644 stock-monitor-256.png \
     %{buildroot}/usr/share/icons/hicolor/256x256/apps/stock-monitor.png
 
 # ── AppStream Metainfo (für Discover / GNOME Software) ────────────────────────
 install -m 0644 stock-monitor.metainfo.xml \
-    %{buildroot}/usr/share/metainfo/ch.stockmonitor.StockMonitor.metainfo.xml
+    %{buildroot}/usr/share/metainfo/stock-monitor.metainfo.xml
 
 # ── Lizenz ─────────────────────────────────────────────────────────────────────
 install -m 0644 LICENSE %{buildroot}/usr/share/licenses/%{name}/LICENSE
@@ -132,7 +132,15 @@ $PIP \
     pyparsing pyqtgraph "python-dateutil" pytz reportlab requests rich \
     six soupsieve "typing-extensions" tzdata urllib3 yfinance >/dev/null 2>&1 || true
 
-for pkg in numpy pandas matplotlib Pillow websockets \
+PYVER=$("$PYTHON" -c "import sys; print('cp%d%d' % sys.version_info[:2])" 2>/dev/null)
+NUMPY_WHL=$(ls "$WHEELDIR"/numpy-*-${PYVER}-*.whl 2>/dev/null | head -1)
+if [ -n "$NUMPY_WHL" ]; then
+    "$PYTHON" -m pip install --quiet --target "$LIBDIR" --no-deps "$NUMPY_WHL" >/dev/null 2>&1 || true
+else
+    $PIP numpy >/dev/null 2>&1 || true
+fi
+
+for pkg in pandas matplotlib Pillow websockets \
            contourpy fonttools kiwisolver charset-normalizer cffi; do
     $PIP "$pkg" >/dev/null 2>&1 || true
 done
@@ -160,12 +168,16 @@ fi
 /opt/stock-monitor/app/
 /opt/stock-monitor/wheels/
 /usr/bin/stock-monitor
-/usr/share/applications/ch.stockmonitor.StockMonitor.desktop
+/usr/share/applications/stock-monitor.desktop
 /usr/share/icons/hicolor/256x256/apps/stock-monitor.png
-/usr/share/metainfo/ch.stockmonitor.StockMonitor.metainfo.xml
+/usr/share/metainfo/stock-monitor.metainfo.xml
 
 
 %changelog
+* Fri Apr 25 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.0.7-1
+- Fix: Flatpak – Einstellungen persistent (XDG_DATA_HOME), WebEngine-Absturz
+- Fix: NumPy – passendes Wheel direkt installieren (kein Versions-Konflikt)
+- Fix: Weltkarte und Finment im Flatpak (Berechtigungen, Thread-Sicherheit)
 * Thu Apr 23 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.0.3-1
 - Fix: Sharpe-Ratio negativer Wert zeigte fehlendes Minus im Erklärungstext
 - Fix: Übersetzungsfehler in DE behoben

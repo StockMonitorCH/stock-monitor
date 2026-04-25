@@ -190,7 +190,14 @@ PIP="$PYBIN -m pip install --quiet --target \$LIBDIR --no-index --find-links \$W
     openpyxl packaging peewee platformdirs protobuf pycparser pygments \
     pyparsing pyqtgraph python-dateutil pytz reportlab requests rich \
     six soupsieve typing-extensions tzdata urllib3 yfinance >/dev/null 2>&1 || true
-for pkg in numpy pandas matplotlib Pillow websockets contourpy fonttools kiwisolver charset-normalizer cffi; do
+PYVER=\$($PYBIN -c "import sys; print('cp%d%d' % sys.version_info[:2])" 2>/dev/null)
+NUMPY_WHL=\$(ls "\$WHEELDIR"/numpy-*-\${PYVER}-*.whl 2>/dev/null | head -1)
+if [ -n "\$NUMPY_WHL" ]; then
+    $PYBIN -m pip install --quiet --target \$LIBDIR --no-deps \$BSP "\$NUMPY_WHL" >/dev/null 2>&1 || true
+else
+    \$PIP numpy >/dev/null 2>&1 || true
+fi
+for pkg in pandas matplotlib Pillow websockets contourpy fonttools kiwisolver charset-normalizer cffi; do
     \$PIP \$pkg >/dev/null 2>&1 || true
 done
 $PYBIN -m pip install --quiet --target \$LIBDIR --no-deps \$BSP \
