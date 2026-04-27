@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.0.7
+Version:        5.1.2
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
@@ -179,7 +179,17 @@ update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %changelog
-* Fri Apr 25 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.0.7-1
+* Mon Apr 27 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.1.2-1
+- Fix: Dark-Mode-Kompatibilität auf Windows (Buttons, Ampel, Börsenzeiten, Demo-Banner)
+* Mon Apr 27 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.1.1-1
+- Fix: Eigener Zeitraum – "unconverted data remains: 00:00:00" behoben (strftime statt str())
+- Fix: Nach Eigener Zeitraum blieben custom_start/end gesetzt → Folgezeiträume luden keine Daten
+* Mon Apr 27 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.1.0-1
+- Feature: Nachrichten-Button in Charts (Yahoo Finance, letzte 2 Tage, grün bei heutigen News)
+- Fix: "Alle entfernen" Button in Full HD Portfolio-Übersicht war nicht sichtbar
+- Fix: News-Button Farbe beim App-Start automatisch gesetzt (kein Klick nötig)
+- Fix: Dark Mode – Demo-Disclaimer und yfinance-Toast-Text immer lesbar
+* Sat Apr 25 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.0.7-1
 - Fix: Flatpak – Einstellungen persistent (XDG_DATA_HOME), WebEngine-Absturz
 - Fix: NumPy – passendes Wheel direkt installieren (kein Versions-Konflikt)
 - Fix: Weltkarte und Finment im Flatpak (Berechtigungen, Thread-Sicherheit)

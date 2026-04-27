@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.0.7"                            # beim Release anpassen
+APP_VERSION  = "5.1.2"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -1130,17 +1130,17 @@ class AnalystInfoDialog(QDialog):
             if idx == active_light:
                 light_label.setStyleSheet(f"font-size: 42px; color: {color};")
             else:
-                light_label.setStyleSheet("font-size: 42px; color: #333333;")
+                light_label.setStyleSheet("font-size: 42px; color: #606060;")
             light_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             light_layout.addWidget(light_label)
-            
+
             # Text
             text_label = QLabel(text)
             text_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
             if idx == active_light:
                 text_label.setStyleSheet(f"color: {color};")
             else:
-                text_label.setStyleSheet("color: #888888;")
+                text_label.setStyleSheet("color: #909090;")
             text_label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
             light_layout.addWidget(text_label)
             
@@ -1164,7 +1164,7 @@ class AnalystInfoDialog(QDialog):
         # Fundamentaldaten-Box
         fundamentals_box = QFrame()
         fundamentals_box.setFrameStyle(QFrame.Shape.Box)
-        fundamentals_box.setStyleSheet("background-color: #e8f4f8; border: 1px solid #3498db;")  # KEIN padding hier!
+        fundamentals_box.setStyleSheet("border: 2px solid #3498db; border-radius: 4px;")  # kein Hintergrund → Dark-Mode-sicher
         fund_layout = QVBoxLayout()
         fund_layout.setSpacing(5)
         fund_layout.setContentsMargins(15, 15, 15, 15)  # Padding im Layout statt Stylesheet
@@ -4662,11 +4662,11 @@ class FavoritesDialog(QDialog):
 
 
 _DEMO_BANNER_STYLE_TOP    = (
-    "color: #7a2900; font-style: italic; font-size: 13px; font-weight: bold;"
-    "padding: 4px 8px; background-color: #ffe0b2; border-bottom: 2px solid #e65100;")
+    "color: #1a0a00; font-style: italic; font-size: 13px; font-weight: bold;"
+    "padding: 4px 8px; background-color: #e65100; border-bottom: 2px solid #bf360c;")
 _DEMO_BANNER_STYLE_BOTTOM = (
-    "color: #7a2900; font-style: italic; font-size: 13px; font-weight: bold;"
-    "padding: 4px 8px; background-color: #ffe0b2; border-top: 2px solid #e65100;")
+    "color: #1a0a00; font-style: italic; font-size: 13px; font-weight: bold;"
+    "padding: 4px 8px; background-color: #e65100; border-top: 2px solid #bf360c;")
 
 def _make_demo_banner(top: bool) -> 'QLabel':
     lbl = QLabel(TR("lbl_demo_watermark"))
@@ -4711,9 +4711,12 @@ class _DemoWatermark(QWidget):
 
 class StockChartWidget(QFrame):
     """Widget für einen einzelnen Aktien-Chart"""
-    
+
     maximize_requested = pyqtSignal(object)  # Signal für Vollbild
     limits_changed     = pyqtSignal(str, object, object)  # symbol, stop, target
+
+    _news_cache    = {}     # {symbol: (fetch_time, articles)}
+    _NEWS_CACHE_TTL = 1800  # 30 Minuten
     
     TIMEFRAMES = {
         TR('period_1d'): ('1d', '5m'),
@@ -4794,9 +4797,10 @@ class StockChartWidget(QFrame):
         self.timeframe_combo.setCurrentText(TR('period_1mo'))
 
         def _on_timeframe_user_changed(text):
-            # Bei manueller Auswahl von "Eigener Zeitraum" → Datum zurücksetzen
-            # damit der Dialog erscheint (außer wenn _ready=False = State-Restore)
-            if text == TR('lbl_custom_period_entry') and getattr(self, '_ready', False):
+            # Bei jedem manuellen Zeitrahmenwechsel Datum zurücksetzen:
+            # - custom → Dialog erscheint neu
+            # - andere → verhindert dass alter custom-Range weiterverwendet wird
+            if getattr(self, '_ready', False):
                 self.custom_start = None
                 self.custom_end   = None
             self.update_chart()
@@ -4859,7 +4863,20 @@ class StockChartWidget(QFrame):
             header.addWidget(self.update_btn)
             header.addWidget(self.maximize_btn)
             header.addWidget(self.print_btn)
-        
+
+        # Nachrichten-Button: 4K → obere Zeile nach Export; Full HD → untere Zeile nach Info
+        self.news_btn = QPushButton(TR("btn_news"))
+        self.news_btn.setMaximumWidth(135)
+        self.news_btn.setFont(QFont("Segoe UI Emoji", 9))
+        self.news_btn.setToolTip(TR("tip_news"))
+        self.news_btn.setStyleSheet(
+            "QPushButton { background-color:#5d6d7e; color:white; border-radius:3px; font-weight:bold; }"
+            "QPushButton:hover { background-color:#717d8a; }"
+        )
+        self.news_btn.clicked.connect(self.show_news)
+        if not self.compact_mode:
+            header.addWidget(self.news_btn)
+
         header.addStretch()
         
         # Zweite Zeile: MA und Analyse-Buttons
@@ -5076,11 +5093,14 @@ class StockChartWidget(QFrame):
         # Info Button mit Ampel
         self.info_btn = QPushButton(TR("btn_info"))
         self.info_btn.setMaximumWidth(80)
-        self.info_btn.setFont(QFont("Segoe UI Emoji", 9))
         self.info_btn.setToolTip(TR("tip_analyst_ai"))
         self.info_btn.clicked.connect(self.show_analyst_info)
         controls_row.addWidget(self.info_btn)
-        
+
+        # Full HD: Nachrichten-Button in unterer Zeile rechts neben Info
+        if self.compact_mode:
+            controls_row.addWidget(self.news_btn)
+
         controls_row.addStretch()
 
         # Branchen-Label: im Zoom-Modus und Portfolio-Modus sichtbar
@@ -5371,6 +5391,14 @@ class StockChartWidget(QFrame):
         """Symbol aktualisieren"""
         self.symbol = self.symbol_input.text().strip().upper()
         self.company_name = ""  # Name wird beim Chart-Update geholt
+        # News-Button bei Symbolwechsel zurücksetzen
+        if hasattr(self, 'news_btn'):
+            self.news_btn.setStyleSheet(
+                "QPushButton { background-color:#5d6d7e; color:white; border-radius:3px; font-weight:bold; }"
+                "QPushButton:hover { background-color:#717d8a; }"
+            )
+            self.news_btn.setEnabled(True)
+            self.news_btn.setText(TR("btn_news"))
         self.update_chart()
         if self.zoom_mode:
             if self.sector_label:
@@ -5906,7 +5934,10 @@ class StockChartWidget(QFrame):
             
             # Zeichnen
             self._redraw_chart()
-            
+
+            # News-Button Farbe im Hintergrund prüfen (nur wenn Cache kalt)
+            QTimer.singleShot(200, self._auto_check_news)
+
         except Exception as e:
             self.info_label.setText(TR("lbl_error_generic", e=e))
             self.plot_widget.clear()
@@ -6990,7 +7021,7 @@ class StockChartWidget(QFrame):
         # Zeiten-Grid
         def _row(label, value):
             hl = QHBoxLayout()
-            lbl = QLabel(label); lbl.setStyleSheet("color:#666; font-size:11px;")
+            lbl = QLabel(label); lbl.setStyleSheet("color:#999; font-size:11px;")
             val = QLabel(f"<b>{value}</b>"); val.setStyleSheet("font-size:11px;")
             hl.addWidget(lbl); hl.addStretch(); hl.addWidget(val)
             lay.addLayout(hl)
@@ -7025,13 +7056,17 @@ class StockChartWidget(QFrame):
             if len(remaining) > 8:
                 hol_text += f"\n…"
             hol_lbl = QLabel(hol_text)
-            hol_lbl.setStyleSheet("font-size:11px; color:#444; padding-left:8px;")
+            hol_lbl.setStyleSheet("font-size:11px; color:#999; padding-left:8px;")
             lay.addWidget(hol_lbl)
         else:
             lay.addWidget(QLabel(TR("lbl_market_no_holidays")))
 
         # Schliessen-Button
         close_btn = QPushButton(TR("btn_close"))
+        close_btn.setStyleSheet(
+            "QPushButton { background-color:#5d6d7e; color:white; border:1px solid #4a5a6a; border-radius:3px; font-weight:bold; }"
+            "QPushButton:hover { background-color:#717d8a; border:1px solid #5d6d7e; }"
+        )
         close_btn.clicked.connect(dlg.accept)
         lay.addWidget(close_btn)
 
@@ -7199,7 +7234,255 @@ class StockChartWidget(QFrame):
 
         except Exception as e:
             QMessageBox.warning(self, TR("msg_title_error"), f"Konnte Analystendaten nicht laden:\n{str(e)}")
-    
+
+    def _auto_check_news(self):
+        """Hintergrund-Check: News-Button grün färben falls heute Nachrichten vorhanden."""
+        import time as _time
+        symbol = self.symbol
+        now    = _time.time()
+        cutoff = now - 2 * 24 * 3600
+
+        # Bereits im Cache → Button-Farbe sofort setzen
+        cached = StockChartWidget._news_cache.get(symbol)
+        if cached and (now - cached[0]) < StockChartWidget._NEWS_CACHE_TTL:
+            try:
+                self._restore_news_btn(symbol, cached[1])
+            except RuntimeError:
+                pass
+            return
+
+        # Kein Cache → stiller Hintergrund-Fetch, nur für Farb-Update
+        class _ColorWorker(QThread):
+            done = pyqtSignal(list)
+            def __init__(self, sym, cutoff):
+                super().__init__()
+                self._sym    = sym
+                self._cutoff = cutoff
+            def run(self):
+                try:
+                    from datetime import datetime as _ddt, timezone as _tz
+                    raw = yf.Ticker(self._sym).news or []
+                    result = []
+                    for item in raw:
+                        c = item.get('content', item)
+                        title = c.get('title', '')
+                        if not title:
+                            continue
+                        link = (c.get('clickThroughUrl') or {}).get('url', '') \
+                            or (c.get('canonicalUrl') or {}).get('url', '') \
+                            or c.get('link', '')
+                        publisher = (c.get('provider') or {}).get('displayName', '') \
+                            or c.get('publisher', '')
+                        ts = 0
+                        pub = c.get('pubDate') or c.get('displayTime', '')
+                        if pub:
+                            try:
+                                dt = _ddt.strptime(pub, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=_tz.utc)
+                                ts = dt.timestamp()
+                            except Exception:
+                                pass
+                        if not ts:
+                            ts = c.get('providerPublishTime', 0) or 0
+                        if ts >= self._cutoff:
+                            result.append({'title': title, 'link': link,
+                                           'publisher': publisher, 'ts': ts})
+                    self.done.emit(result)
+                except Exception:
+                    self.done.emit([])
+
+        worker = _ColorWorker(symbol, cutoff)
+        self._color_worker = worker
+
+        def _on_color_done(articles):
+            import time as _t
+            StockChartWidget._news_cache[symbol] = (_t.time(), articles)
+            try:
+                self._restore_news_btn(symbol, articles)
+            except RuntimeError:
+                pass
+
+        worker.done.connect(_on_color_done, Qt.ConnectionType.QueuedConnection)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def show_news(self):
+        """Aktuelle Nachrichten der letzten 2 Tage für das Symbol abrufen und anzeigen."""
+        import time as _time
+        symbol = self.symbol
+        now    = _time.time()
+        cutoff = now - 2 * 24 * 3600
+
+        cached = StockChartWidget._news_cache.get(symbol)
+        if cached and (now - cached[0]) < StockChartWidget._NEWS_CACHE_TTL:
+            self._show_news_dialog(symbol, cached[1])
+            return
+
+        self.news_btn.setEnabled(False)
+        self.news_btn.setText("⏳")
+
+        class _NewsWorker(QThread):
+            done  = pyqtSignal(list)
+            error = pyqtSignal(str)
+            def __init__(self, sym, cutoff):
+                super().__init__()
+                self._sym    = sym
+                self._cutoff = cutoff
+            def run(self):
+                try:
+                    from datetime import datetime as _ddt, timezone as _tz
+                    raw = yf.Ticker(self._sym).news or []
+                    result = []
+                    for item in raw:
+                        # yfinance ≥ 0.2.50: verschachtelte Struktur {id, content:{...}}
+                        c = item.get('content', item)
+                        title = c.get('title', '')
+                        if not title:
+                            continue
+                        # Link
+                        link = (c.get('clickThroughUrl') or {}).get('url', '') \
+                            or (c.get('canonicalUrl') or {}).get('url', '') \
+                            or c.get('link', '')
+                        # Publisher
+                        publisher = (c.get('provider') or {}).get('displayName', '') \
+                            or c.get('publisher', '')
+                        # Zeitstempel: ISO-String oder Unix-Int
+                        ts = 0
+                        pub = c.get('pubDate') or c.get('displayTime', '')
+                        if pub:
+                            try:
+                                dt = _ddt.strptime(pub, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=_tz.utc)
+                                ts = dt.timestamp()
+                            except Exception:
+                                pass
+                        if not ts:
+                            ts = c.get('providerPublishTime', 0) or 0
+                        if ts >= self._cutoff:
+                            result.append({'title': title, 'link': link,
+                                           'publisher': publisher, 'ts': ts})
+                    self.done.emit(result)
+                except Exception as ex:
+                    self.error.emit(str(ex))
+
+        worker = _NewsWorker(symbol, cutoff)
+        self._news_worker = worker
+
+        def _on_done(articles):
+            import time as _t
+            StockChartWidget._news_cache[symbol] = (_t.time(), articles)
+            try:
+                self._restore_news_btn(symbol, articles)
+                self._show_news_dialog(symbol, articles)
+            except RuntimeError:
+                pass
+
+        def _on_error(msg):
+            try:
+                self._restore_news_btn(symbol, [])
+                QMessageBox.warning(self, TR("msg_title_error"),
+                                    f"{TR('title_news')}: {msg}")
+            except RuntimeError:
+                pass
+
+        worker.done.connect(_on_done,  Qt.ConnectionType.QueuedConnection)
+        worker.error.connect(_on_error, Qt.ConnectionType.QueuedConnection)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def _restore_news_btn(self, symbol, articles):
+        """News-Button Text und Farbe nach Abruf wiederherstellen."""
+        from datetime import date as _date, datetime as _datetime
+        self.news_btn.setText(TR("btn_news"))
+        self.news_btn.setEnabled(True)
+        today = _date.today()
+        has_today = any(
+            _datetime.fromtimestamp(a.get('ts', 0)).date() == today
+            for a in articles
+        )
+        if has_today:
+            self.news_btn.setStyleSheet(
+                "QPushButton { background-color:#27ae60; color:white; border:1px solid #1e8449; border-radius:3px; font-weight:bold; }"
+                "QPushButton:hover { background-color:#2ecc71; border:1px solid #27ae60; }"
+            )
+        else:
+            self.news_btn.setStyleSheet(
+                "QPushButton { background-color:#5d6d7e; color:white; border-radius:3px; font-weight:bold; }"
+                "QPushButton:hover { background-color:#717d8a; }"
+            )
+
+    def _show_news_dialog(self, symbol, articles):
+        """News-Fenster anzeigen."""
+        from datetime import datetime as _dt
+        from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QLabel,
+                                     QScrollArea, QWidget, QHBoxLayout)
+        from PyQt6.QtCore import Qt as _Qt
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"📰 {TR('title_news')} – {symbol}")
+        dlg.setMinimumSize(540, 400)
+        lay = QVBoxLayout(dlg)
+        lay.setSpacing(8)
+
+        if not articles:
+            lbl = QLabel(TR("msg_no_news"))
+            lbl.setAlignment(_Qt.AlignmentFlag.AlignCenter)
+            lbl.setStyleSheet("color:#666; font-size:13px; padding:30px;")
+            lay.addWidget(lbl)
+        else:
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            container = QWidget()
+            vlay = QVBoxLayout(container)
+            vlay.setSpacing(6)
+            vlay.setContentsMargins(4, 4, 4, 4)
+
+            for art in articles:
+                title     = art.get('title', '?')
+                link      = art.get('link', '')
+                publisher = art.get('publisher', '')
+                ts        = art.get('ts', 0)
+                dt_str    = _dt.fromtimestamp(ts).strftime('%d.%m.%Y %H:%M') if ts else ''
+
+                card = QWidget()
+                card.setStyleSheet(
+                    "QWidget { background:#f8f9fa; border-radius:5px;"
+                    " border:1px solid #dee2e6; }"
+                )
+                card_lay = QVBoxLayout(card)
+                card_lay.setContentsMargins(10, 7, 10, 7)
+                card_lay.setSpacing(3)
+
+                title_lbl = QLabel(
+                    f'<a href="{link}" style="color:#1a73e8; font-weight:bold;'
+                    f' text-decoration:none;">{title}</a>'
+                )
+                title_lbl.setOpenExternalLinks(True)
+                title_lbl.setWordWrap(True)
+                title_lbl.setFont(QFont("Arial", 10))
+                card_lay.addWidget(title_lbl)
+
+                meta_lbl = QLabel(
+                    f'<span style="color:#888; font-size:10px;">'
+                    f'{publisher}&nbsp;&nbsp;·&nbsp;&nbsp;{dt_str}</span>'
+                )
+                meta_lbl.setTextFormat(_Qt.TextFormat.RichText)
+                card_lay.addWidget(meta_lbl)
+
+                vlay.addWidget(card)
+
+            vlay.addStretch()
+            scroll.setWidget(container)
+            lay.addWidget(scroll)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        close_btn = QPushButton(TR("btn_close"))
+        close_btn.setMinimumWidth(90)
+        close_btn.clicked.connect(dlg.accept)
+        btn_row.addWidget(close_btn)
+        lay.addLayout(btn_row)
+
+        dlg.exec()
+
     def generate_time_ticks(self, times, max_ticks=10):
         """Zeit-Ticks für X-Achse – intelligente kalendarische Intervalle."""
         if len(times) == 0:
@@ -8312,7 +8595,7 @@ class PortfolioDialog(QMainWindow):
         text_lbl.setWordWrap(True)
         text_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft)
         text_lbl.setStyleSheet(
-            "font-size: 12px; padding: 10px; background: #fff8e1; "
+            "font-size: 12px; padding: 10px; background: #fff8e1; color: #1a1a1a; "
             "border: 1px solid #e65100; border-radius: 4px;")
         lay.addWidget(text_lbl)
 
@@ -8323,6 +8606,12 @@ class PortfolioDialog(QMainWindow):
         btn.clicked.connect(dlg.accept)
         lay.addWidget(btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
+        dlg.adjustSize()
+        _pg = self.geometry()
+        dlg.move(
+            _pg.center().x() - dlg.width() // 2,
+            _pg.center().y() - dlg.height() // 2
+        )
         dlg.exec()
 
     def _auto_load_demo_portfolio(self):
@@ -11118,7 +11407,6 @@ class PortfolioDialog(QMainWindow):
         _ov_is_fullhd = _ov_screen.width() <= 1920
 
         # ── Administration-Zeile ─────────────────────────────────────────────
-        # Emoji-Font für alle Buttons in dieser Zeile
         from PyQt6.QtGui import QFontDatabase as _QFDB_ov
         _ov_emoji_font = None
         for _fc_ov in ['Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji']:
@@ -11617,9 +11905,8 @@ class PortfolioDialog(QMainWindow):
 
 
         clear_all_btn = _make_ov_btn(
-            TR("btn_ov_clear_all") if _ov_is_fullhd else TR("btn_ov_clear_all"),
-            TR("tip_portfolio_clear_ov"), 100 if _ov_is_fullhd else 130)
-        if _ov_is_fullhd: clear_all_btn.setStyleSheet("padding: 2px 10px;")
+            TR("btn_ov_clear_all"),
+            TR("tip_portfolio_clear_ov"), 145 if _ov_is_fullhd else 130)
         def do_clear_all():
             if not self.portfolio_data:
                 QMessageBox.information(dlg, TR("msg_title_info"), TR("msg_portfolio_empty"))
@@ -11642,14 +11929,11 @@ class PortfolioDialog(QMainWindow):
                 self._update_portfolio_name_label("")
                 QMessageBox.information(self, TR("msg_title_done"), TR("msg_all_removed"))
         clear_all_btn.clicked.connect(do_clear_all)
-        if _ov_is_fullhd:
-            btn_grid.addWidget(clear_all_btn, 1, _export_col)  # direkt unter Exportieren
-        else:
+        if not _ov_is_fullhd:
             _add_btn(clear_all_btn, 2)
         _add_spacing(10, 2)
 
-        # API-Key Button: Full HD → direkt unter Schliessen (Zeile 1, gleiche Spalte)
-        #                 4K    → vor Hilfe in der HBox
+        # API-Key Button: Full HD → Zeile 2 rechts; 4K → vor Hilfe in der HBox
         def _show_settings_from_overview():
             main_app = self.parent()
             while main_app and not hasattr(main_app, 'show_settings'):
@@ -11660,8 +11944,11 @@ class PortfolioDialog(QMainWindow):
         apikey_btn_ov.clicked.connect(_show_settings_from_overview)
         if _ov_is_fullhd:
             apikey_btn_ov.setStyleSheet("padding: 2px 10px;")
-            _close_col = _col1[0] - 1
-            btn_grid.addWidget(apikey_btn_ov, 1, _close_col)
+            _apikey_col = _col1[0] - 1  # neben Exportieren (Zeile 0, gleiche Spalte)
+            btn_grid.addWidget(apikey_btn_ov, 1, _apikey_col)
+            # Alle entfernen: rechts neben API-Key
+            clear_all_btn.setStyleSheet("padding: 2px 10px;")
+            btn_grid.addWidget(clear_all_btn, 1, _apikey_col + 1)
         else:
             _add_btn(apikey_btn_ov, 2)
 
@@ -23873,8 +24160,8 @@ class DataFetchWorker(QThread):
                         continue
 
             ticker = yf.Ticker(fetch_symbol)
-            _end = self.demo_cutoff or (str(self.custom_end) if self.custom_end else None)
-            _start = str(self.custom_start) if self.custom_start else None
+            _end = self.demo_cutoff or (self.custom_end.strftime('%Y-%m-%d') if self.custom_end else None)
+            _start = self.custom_start.strftime('%Y-%m-%d') if self.custom_start else None
             if _start and _end:
                 data = ticker.history(
                     start=_start,
@@ -23986,7 +24273,7 @@ def _make_flag_btn(b64, tooltip, lang_code=None):
             btn.clicked.connect(lambda: None)
         else:
             btn.setStyleSheet("QPushButton{border:1px solid #ccc;border-radius:3px;"
-                              "background:#f0f0f0;opacity:0.7;}"
+                              "background:#f0f0f0;}"
                               "QPushButton:hover{background:#e0e0e0;border-color:#aaa;}")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
@@ -24090,8 +24377,15 @@ class StockMonitorApp(QMainWindow):
             self._startup_target = 88.0
             self.loading_dialog.update_progress(65, TR("status_creating_charts"))
             _scr = QApplication.primaryScreen()
-            _sw = (_scr.geometry().width() * _scr.devicePixelRatio()) if _scr else 1920
-            _default_charts = 16 if _sw >= 3840 else 12
+            if _scr:
+                _geom_w = _scr.geometry().width()
+                _dpr    = _scr.devicePixelRatio()
+                _sw     = _geom_w * _dpr
+                _pdpi   = _scr.physicalDotsPerInch()
+                _ldpi   = _scr.logicalDotsPerInch()
+            else:
+                _sw = 1920
+            _default_charts = 16 if round(_sw) >= 3840 else 12
             self.create_charts(_default_charts)
             if hasattr(self, 'view_combo'):
                 self.view_combo.blockSignals(True)
@@ -27408,7 +27702,7 @@ class StockMonitorApp(QMainWindow):
 
         # Header
         hdr = QLabel(f"<b>📦 {TR('lbl_yf_toast_title')}</b>")
-        hdr.setStyleSheet("font-size:13px;")
+        hdr.setStyleSheet("font-size:13px; color:#1a1a1a;")
         lay.addWidget(hdr)
 
         _in_flatpak = os.path.exists('/.flatpak-info')
@@ -27508,7 +27802,7 @@ class StockMonitorApp(QMainWindow):
         lay.addLayout(btn_row)
 
         toast.setStyleSheet(
-            "QDialog{background:#fffbe6; border:2px solid #f0c040; border-radius:10px;}"
+            "QDialog{background:#fffbe6; border:2px solid #f0c040; border-radius:10px; color:#1a1a1a;}"
         )
 
         # Positionierung: Bildschirm-Mitte
@@ -29942,6 +30236,15 @@ def main():
     if os.environ.get("FLATPAK_ID") or sys.platform != "win32":
         app.setDesktopFileName("stock-monitor")
     app.setStyle('Fusion')  # KDE-freundlicher Style
+
+    # Snap: Emoji-Fonts explizit laden (fontconfig-Fallback reicht im Snap nicht)
+    _snap_dir = os.environ.get('SNAP', '')
+    if _snap_dir:
+        import glob as _glob
+        from PyQt6.QtGui import QFontDatabase as _QFD_snap
+        for _ef in _glob.glob(f'{_snap_dir}/usr/share/fonts/**/*.ttf', recursive=True) + \
+                   _glob.glob(f'{_snap_dir}/usr/share/fonts/**/*.otf', recursive=True):
+            _QFD_snap.addApplicationFont(_ef)
 
     # ── Windows Taskleisten-Icon Fix ──────────────────────────────────────
     import sys as _sys_plat
