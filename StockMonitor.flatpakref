@@ -1,5 +1,5 @@
 [Flatpak Ref]
-Name=io.github.StockMonitorCH.stock-monitor
+Name=ch.stockmonitor.StockMonitor
 Branch=master
 Title=Stock Monitor
 Url=https://StockMonitorCH.github.io/stock-monitor/repo
