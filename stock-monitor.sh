@@ -1,5 +1,6 @@
 #!/bin/bash
 # Stock Monitor Launcher
+APP_VERSION="5.2.0"
 USER_LIB="${XDG_DATA_HOME:-$HOME/.local/share}/stock-monitor/lib"
 mkdir -p "$USER_LIB"
 export SM_LOG_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/stock-monitor"
@@ -165,14 +166,16 @@ oder kontaktieren Sie: https://www.stock-monitor.ch${LOG_HINT}"
     fi
 fi
 
-# ── Pip-Pakete einrichten falls noch nicht geschehen ─────────────────────────
-if [ -z "$(ls -A /opt/stock-monitor/lib 2>/dev/null)" ]; then
+# ── Pip-Pakete einrichten falls noch nicht geschehen oder Version veraltet ────
+LIB_VERSION=$(cat /opt/stock-monitor/lib/.sm-version 2>/dev/null)
+if [ -z "$(ls -A /opt/stock-monitor/lib 2>/dev/null)" ] || [ "$LIB_VERSION" != "$APP_VERSION" ]; then
     PYBIN="$PYTHON"
     WHEEL_SETUP=$(mktemp /tmp/sm-wheels-XXXXXX.sh)
     cat > "$WHEEL_SETUP" << SCRIPT
 #!/bin/bash
 LIBDIR=/opt/stock-monitor/lib
 WHEELDIR=/opt/stock-monitor/wheels
+rm -rf "\$LIBDIR"/*
 mkdir -p "\$LIBDIR"
 echo "$PYBIN" > /opt/stock-monitor/python_bin
 # --break-system-packages erst ab pip 22.3 verfügbar
@@ -202,6 +205,7 @@ for pkg in pandas matplotlib Pillow websockets contourpy fonttools kiwisolver ch
 done
 $PYBIN -m pip install --quiet --target \$LIBDIR --no-deps \$BSP \
     \$WHEELDIR/odfpy-1.4.1.tar.gz >/dev/null 2>&1 || true
+echo "$APP_VERSION" > /opt/stock-monitor/lib/.sm-version
 SCRIPT
     run_as_root "Bibliotheken werden eingerichtet…" "$WHEEL_SETUP"
     rm -f "$WHEEL_SETUP"

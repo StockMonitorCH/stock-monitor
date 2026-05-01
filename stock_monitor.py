@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.1.2"                            # beim Release anpassen
+APP_VERSION  = "5.2.0"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -1404,6 +1404,9 @@ class AnalystInfoDialog(QDialog):
         h_dlg.move(screen.x() + (screen.width()  - hw) // 2,
                    screen.y() + (screen.height() - hh) // 2)
 
+        from PyQt6.QtGui import QPalette as _QPalette_dh
+        _dm_dh = QApplication.palette().color(_QPalette_dh.ColorRole.Window).lightness() < 128
+
         h_outer = QVBoxLayout(h_dlg)
         h_outer.setContentsMargins(14, 10, 14, 10)
         h_outer.setSpacing(8)
@@ -1589,7 +1592,8 @@ class AnalystInfoDialog(QDialog):
 
         h_info = QLabel(TR("status_loading_div_data"))
         h_info.setWordWrap(True)
-        h_info.setStyleSheet("background:#EBF5FB; border-radius:8px; padding:10px 14px; font-size:11px;")
+        _dh_info_bg = "#0d2a3d" if _dm_dh else "#EBF5FB"
+        h_info.setStyleSheet(f"background:{_dh_info_bg}; border-radius:8px; padding:10px 14px; font-size:11px;")
         h_outer.addWidget(h_info)
 
         h_fig   = Figure(figsize=(max(7, hw/96), max(5, (hh-180)/96)))
@@ -5094,6 +5098,11 @@ class StockChartWidget(QFrame):
         self.info_btn = QPushButton(TR("btn_info"))
         self.info_btn.setMaximumWidth(80)
         self.info_btn.setToolTip(TR("tip_analyst_ai"))
+        from PyQt6.QtGui import QFontDatabase as _QFDB_info
+        _ef_info = next((QFont(f, 9) for f in ['Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji']
+                         if f in _QFDB_info.families()), None)
+        if _ef_info:
+            self.info_btn.setFont(_ef_info)
         self.info_btn.clicked.connect(self.show_analyst_info)
         controls_row.addWidget(self.info_btn)
 
@@ -7954,6 +7963,7 @@ class PortfolioDialog(QMainWindow):
         super().__init__(parent)
         self.setWindowModality(Qt.WindowModality.NonModal)
         self.charts = charts
+        self._portfolio_notes = []   # Journal-Einträge, portf.-spezifisch
         self.portfolio_data = self.load_portfolio()
         self._limits = self._load_limits()
         PortfolioDialog.load_api_keys()   # API-Keys beim Start laden
@@ -8560,11 +8570,18 @@ class PortfolioDialog(QMainWindow):
         try:
             if os.path.exists(self.PORTFOLIO_FILE):
                 with open(self.PORTFOLIO_FILE, 'r') as f:
-                    data = json.load(f)
-                migrated = self._migrate_crypto(data)
-                if migrated != data:
+                    raw = json.load(f)
+                # Neues Format: {"positions": {...}, "notes": [...]}
+                if isinstance(raw, dict) and "positions" in raw and isinstance(raw.get("positions"), dict):
+                    positions = raw["positions"]
+                    self._portfolio_notes = raw.get("notes", [])
+                else:
+                    positions = raw   # altes Format: nur Positionen
+                    self._portfolio_notes = []
+                migrated = self._migrate_crypto(positions)
+                if migrated != positions:
                     with open(self.PORTFOLIO_FILE, 'w') as f:
-                        json.dump(migrated, f, indent=2)
+                        json.dump({"positions": migrated, "notes": self._portfolio_notes}, f, indent=2)
                 return migrated
         except Exception:
             pass
@@ -8631,6 +8648,7 @@ class PortfolioDialog(QMainWindow):
                     return
             data = _pdb.load_portfolio("Demo", "")
             self.portfolio_data = self._migrate_crypto(data["positions"])
+            self._portfolio_notes = data.get("notes", [])
             if data.get("sector_cache"):
                 self._sector_cache.update(data["sector_cache"])
             self._set_active_portfolio_name("Demo")
@@ -8674,7 +8692,7 @@ class PortfolioDialog(QMainWindow):
         Für benannte Portfolios in der DB: portfolio_save_as() verwenden."""
         try:
             with open(self.PORTFOLIO_FILE, 'w') as f:
-                json.dump(self.portfolio_data, f, indent=2)
+                json.dump({"positions": self.portfolio_data, "notes": self._portfolio_notes}, f, indent=2)
         except Exception as e:
             QMessageBox.warning(self, TR("msg_title_error"), TR("msg_save_failed", e=e))
 
@@ -8766,6 +8784,7 @@ class PortfolioDialog(QMainWindow):
                 name, self.portfolio_data, password,
                 price_cache  = self._sector_cache,   # Branchen-Cache mitschreiben
                 sector_cache = self._sector_cache,
+                notes        = self._portfolio_notes,
             )
             self._set_active_portfolio_name(name)
             self.save_portfolio()
@@ -9051,6 +9070,7 @@ class PortfolioDialog(QMainWindow):
                 else:
                     # Ersetzen
                     self.portfolio_data = new_positions
+                    self._portfolio_notes = data.get("notes", [])
                     info_txt = TR("lbl_portfolio_loaded_n", name=e['name'], n=len(self.portfolio_data))
 
                 # Branchen-Cache übernehmen
@@ -9225,17 +9245,23 @@ class PortfolioDialog(QMainWindow):
         if not _DB_IMPORT_OK or not CRYPTO_AVAILABLE:
             layout.addWidget(QLabel(TR("lbl_encrypt_unavailable")))
         else:
+            from PyQt6.QtGui import QPalette as _QPalette_db
+            _dm_db = QApplication.palette().color(_QPalette_db.ColorRole.Window).lightness() < 128
             entries = _pdb.list_portfolios()
+            _sm_clr = "#aaa" if _dm_db else "#666"
+            _ef = "font-family: 'Noto Color Emoji', 'Segoe UI Emoji', 'Apple Color Emoji';"
             stats_txt = (
                 TR("lbl_encrypted_portfolios")
-                + f"📁 Ordner: <code>{PORTFOLIO_DIR}</code><br>"
-                + f"📊 {len(entries)} Portfolio-Datei(en) vorhanden<br><br>"
-                + f"<small style='color:#666'>Jede .smpf-Datei hat ein eigenes Passwort<br>"
+                + f"<span style='{_ef}'>📁</span> Ordner: <code>{PORTFOLIO_DIR}</code><br>"
+                + f"<span style='{_ef}'>📊</span> {len(entries)} Portfolio-Datei(en) vorhanden<br><br>"
+                + f"<small style='color:{_sm_clr}'>Jede .smpf-Datei hat ein eigenes Passwort<br>"
                 + TR("lbl_smpf_portable2") + "</small>"
             )
             lbl = QLabel(stats_txt)
             lbl.setWordWrap(True)
-            lbl.setStyleSheet("background:#eafaf1; padding:10px; border-radius:4px;")
+            lbl.setStyleSheet(
+                "background:#1a2f1a; color:#cdd6f4; padding:10px; border-radius:4px;" if _dm_db
+                else "background:#eafaf1; padding:10px; border-radius:4px;")
             layout.addWidget(lbl)
 
             if entries:
@@ -9543,9 +9569,12 @@ class PortfolioDialog(QMainWindow):
         layout.addSpacing(6)
 
         # Eingabe-Bereich
+        from PyQt6.QtGui import QPalette as _QPalette_adm
+        _dm_adm = QApplication.palette().color(_QPalette_adm.ColorRole.Window).lightness() < 128
         input_frame = QFrame()
         input_frame.setFrameStyle(QFrame.Shape.Box)
-        input_frame.setStyleSheet("background-color: #f0f8ff; border: 1px solid #3498db;")
+        _adm_input_bg = "#0d1f30" if _dm_adm else "#f0f8ff"
+        input_frame.setStyleSheet(f"background-color: {_adm_input_bg}; border: 1px solid #3498db;")
         input_layout = QHBoxLayout(input_frame)
 
         input_layout.addWidget(QLabel(TR("lbl_symbol")))
@@ -9932,6 +9961,9 @@ class PortfolioDialog(QMainWindow):
             return
 
         # Vorschau-Dialog anzeigen
+        from PyQt6.QtGui import QPalette as _QPalette_sq
+        _dm_sq = QApplication.palette().color(_QPalette_sq.ColorRole.Window).lightness() < 128
+
         preview_dialog = QDialog(self)
         preview_dialog.setWindowTitle(TR("title_swissquote_import"))
         preview_dialog.setMinimumSize(750, 500)
@@ -9970,7 +10002,10 @@ class PortfolioDialog(QMainWindow):
         all_rows = sorted(kauf_rows + verkauf_rows, key=lambda x: x['date'], reverse=True)
         for idx2, row in enumerate(all_rows):
             r_widget = QWidget()
-            bg = "#f9f9f9" if idx2 % 2 == 0 else "white"
+            if _dm_sq:
+                bg = "#1e2535" if idx2 % 2 == 0 else "#161d2b"
+            else:
+                bg = "#f9f9f9" if idx2 % 2 == 0 else "white"
             r_widget.setStyleSheet(f"background-color: {bg};")
             r_layout = QHBoxLayout(r_widget)
             r_layout.setContentsMargins(4, 2, 4, 2)
@@ -9995,12 +10030,16 @@ class PortfolioDialog(QMainWindow):
             tbl_layout.addWidget(r_widget)
 
         tbl_layout.addStretch()
+        if _dm_sq:
+            tbl_widget.setStyleSheet("background: #161d2b;")
         scroll.setWidget(tbl_widget)
         dlg_layout.addWidget(scroll)
 
         # Optionen
         opt_frame = QFrame()
-        opt_frame.setStyleSheet("background-color: #eaf4fb; border: 1px solid #aed6f1;")
+        opt_frame.setStyleSheet(
+            "background-color: #0d2030; border: 1px solid #1a4060;" if _dm_sq
+            else "background-color: #eaf4fb; border: 1px solid #aed6f1;")
         opt_layout = QVBoxLayout(opt_frame)
         opt_layout.addWidget(QLabel("<b>Import-Optionen:</b>"))
 
@@ -10012,7 +10051,7 @@ class PortfolioDialog(QMainWindow):
         chk_skip_existing.setChecked(True)
         chk_yahoo_price = QCheckBox(TR("chk_swissquote_yahoo_price"))
         chk_yahoo_price.setChecked(True)
-        chk_yahoo_price.setStyleSheet("color: #155724; font-weight: normal;")
+        chk_yahoo_price.setStyleSheet("color: #a8d8a8; font-weight: normal;" if _dm_sq else "color: #155724; font-weight: normal;")
 
         opt_layout.addWidget(chk_kauf)
         opt_layout.addWidget(chk_verkauf)
@@ -10023,7 +10062,7 @@ class PortfolioDialog(QMainWindow):
         # Progress-Anzeige für den Import
         progress_label = QLabel("")
         progress_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        progress_label.setStyleSheet("color: #2980b9; font-style: italic;")
+        progress_label.setStyleSheet("color: #74b9ff; font-style: italic;" if _dm_sq else "color: #2980b9; font-style: italic;")
         dlg_layout.addWidget(progress_label)
 
         # Buttons
@@ -10556,6 +10595,8 @@ class PortfolioDialog(QMainWindow):
 
         # ── 7. Mapping-Dialog (wenn kein Profil erkannt) ──────────────────────
         # Auch wenn Profil erkannt: zeige dem User was erkannt wurde (lesbare Zusammenfassung)
+        from PyQt6.QtGui import QPalette as _QPalette_gm
+        _dm_gm = QApplication.palette().color(_QPalette_gm.ColorRole.Window).lightness() < 128
 
         mapping_dialog = QDialog(self)
         mapping_dialog.setWindowTitle(TR("title_csv_mapping"))
@@ -10575,7 +10616,9 @@ class PortfolioDialog(QMainWindow):
 
         # Vorschau: erste 3 Datenzeilen als Tabelle
         prev_frame = QFrame()
-        prev_frame.setStyleSheet("background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px;")
+        prev_frame.setStyleSheet(
+            "background:#1e2535; border:1px solid #2a3a50; border-radius:4px;" if _dm_gm
+            else "background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px;")
         prev_vlayout = QVBoxLayout(prev_frame)
         prev_vlayout.addWidget(QLabel(TR("lbl_file_preview")))
 
@@ -10586,6 +10629,10 @@ class PortfolioDialog(QMainWindow):
         prev_tbl.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         prev_tbl.setMaximumHeight(130)
         prev_tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        if _dm_gm:
+            prev_tbl.setStyleSheet(
+                "QTableWidget { background:#1e2535; color:#cdd6f4; gridline-color:#2a3a50; }"
+                "QHeaderView::section { background:#313244; color:#cdd6f4; border:none; }")
         for row_i, dline in enumerate(data_lines[:n_preview]):
             dcols = [c.strip().strip('"') for c in dline.split(sep)]
             for col_i in range(n_cols):
@@ -10596,7 +10643,9 @@ class PortfolioDialog(QMainWindow):
 
         # Spalten-Mapping
         mapping_frame = QFrame()
-        mapping_frame.setStyleSheet("background:#eaf4fb; border:1px solid #aed6f1; border-radius:4px;")
+        mapping_frame.setStyleSheet(
+            "background:#0d2030; border:1px solid #1a4060; border-radius:4px;" if _dm_gm
+            else "background:#eaf4fb; border:1px solid #aed6f1; border-radius:4px;")
         map_layout = QVBoxLayout(mapping_frame)
         map_layout.addWidget(QLabel(TR("lbl_column_mapping")))
 
@@ -10627,12 +10676,12 @@ class PortfolioDialog(QMainWindow):
                     auto_idx = idx + 1
             combo.setCurrentIndex(auto_idx)
             row_h.addWidget(combo)
-            hint_lbl = QLabel(f"<small style='color:#7f8c8d'>{hint}</small>")
+            hint_lbl = QLabel(f"<small style='color:{'#aaa' if _dm_gm else '#7f8c8d'}'>{hint}</small>")
             row_h.addWidget(hint_lbl)
             row_h.addStretch()
             return row_w, combo
 
-        map_layout.addWidget(QLabel(f"<small style='color:#555'>{TR('lbl_required_fields_hint')}</small>"))
+        map_layout.addWidget(QLabel(f"<small style='color:{'#aaa' if _dm_gm else '#555'}'>{TR('lbl_required_fields_hint')}</small>"))
 
         row_sym,    cmb_sym    = make_row(TR("lbl_csv_col_symbol"),  TR("ph_csv_symbol"),  'col_symbol',  'symbol')
         row_date,   cmb_date   = make_row(TR("lbl_csv_col_date"),    TR("ph_csv_date"),    'col_date',    'datum')
@@ -10646,10 +10695,12 @@ class PortfolioDialog(QMainWindow):
 
         # Typ-Schlüsselwörter
         kw_frame = QFrame()
-        kw_frame.setStyleSheet("background:#fff8e1; border:1px solid #f0d080; border-radius:3px; margin:2px;")
+        kw_frame.setStyleSheet(
+            "background:#2a2010; border:1px solid #5a4020; border-radius:3px; margin:2px;" if _dm_gm
+            else "background:#fff8e1; border:1px solid #f0d080; border-radius:3px; margin:2px;")
         kw_layout = QVBoxLayout(kw_frame)
         kw_layout.addWidget(QLabel(TR("lbl_tx_keywords")
-                                   + "<small style='color:#7f8c8d'>(kommagetrennt, Gross-/Kleinschreibung egal)</small>"))
+                                   + f"<small style='color:{'#aaa' if _dm_gm else '#7f8c8d'}'>(kommagetrennt, Gross-/Kleinschreibung egal)</small>"))
         from PyQt6.QtWidgets import QLineEdit
         kw_h = QHBoxLayout()
         kw_h.addWidget(QLabel(TR("lbl_kauf")))
@@ -10962,7 +11013,9 @@ class PortfolioDialog(QMainWindow):
             for ut in unknown_types:
                 row_w2 = QWidget()
                 row_h2 = QHBoxLayout(row_w2)
-                lbl2 = QLabel(f"<code style='background:#f0f0f0; padding:2px 6px'>{ut}</code>")
+                _ub = "#313244" if _dm_gm else "#f0f0f0"
+                _uc = "#cdd6f4" if _dm_gm else "#333"
+                lbl2 = QLabel(f"<code style='background:{_ub}; color:{_uc}; padding:2px 6px'>{ut}</code>")
                 lbl2.setMinimumWidth(200)
                 row_h2.addWidget(lbl2)
                 cmb2 = QComboBox()
@@ -11005,6 +11058,9 @@ class PortfolioDialog(QMainWindow):
             return
 
         # ── 10. Vorschau-Dialog ───────────────────────────────────────────────
+        from PyQt6.QtGui import QPalette as _QPalette_gc
+        _dm_gc = QApplication.palette().color(_QPalette_gc.ColorRole.Window).lightness() < 128
+
         prev_dlg = QDialog(self)
         prev_dlg.setWindowTitle(TR("title_csv_preview"))
         prev_dlg.setMinimumSize(780, 520)
@@ -11032,7 +11088,9 @@ class PortfolioDialog(QMainWindow):
         isin_rows = [r for r in kauf_rows + verkauf_rows if len(r['symbol']) == 12 and r['symbol'][:2].isalpha()]
         if isin_rows:
             isin_warn = QLabel(TR("lbl_isin_warning", n=len(isin_rows)))
-            isin_warn.setStyleSheet("color: #e67e22; background:#fff8e1; padding:4px; border-radius:3px;")
+            isin_warn.setStyleSheet(
+                "color: #e67e22; background:#2a2010; padding:4px; border-radius:3px;" if _dm_gc
+                else "color: #e67e22; background:#fff8e1; padding:4px; border-radius:3px;")
             isin_warn.setWordWrap(True)
             prev_dlg_layout.addWidget(isin_warn)
 
@@ -11042,6 +11100,8 @@ class PortfolioDialog(QMainWindow):
         tbl2_widget = QWidget()
         tbl2_layout = QVBoxLayout(tbl2_widget)
         tbl2_layout.setSpacing(1)
+        if _dm_gc:
+            tbl2_widget.setStyleSheet("background: #161d2b;")
 
         hdr2 = QWidget()
         hdr2.setStyleSheet("background-color: #2c3e50; color: white;")
@@ -11059,7 +11119,10 @@ class PortfolioDialog(QMainWindow):
                            key=lambda x: x['date'], reverse=True)
         for idx3, row in enumerate(all_rows2):
             rw = QWidget()
-            bg = "#f9f9f9" if idx3 % 2 == 0 else "white"
+            if _dm_gc:
+                bg = "#1e2535" if idx3 % 2 == 0 else "#161d2b"
+            else:
+                bg = "#f9f9f9" if idx3 % 2 == 0 else "white"
             rw.setStyleSheet(f"background-color: {bg};")
             rl = QHBoxLayout(rw)
             rl.setContentsMargins(4, 2, 4, 2)
@@ -11093,7 +11156,9 @@ class PortfolioDialog(QMainWindow):
 
         # Import-Optionen
         opt2_frame = QFrame()
-        opt2_frame.setStyleSheet("background-color: #eaf4fb; border: 1px solid #aed6f1;")
+        opt2_frame.setStyleSheet(
+            "background-color: #0d2030; border: 1px solid #1a4060;" if _dm_gc
+            else "background-color: #eaf4fb; border: 1px solid #aed6f1;")
         opt2_layout = QVBoxLayout(opt2_frame)
         opt2_layout.addWidget(QLabel("<b>Import-Optionen:</b>"))
         chk2_kauf    = QCheckBox(TR("lbl_import_buy_chk", n=len(kauf_rows)))
@@ -11109,7 +11174,7 @@ class PortfolioDialog(QMainWindow):
 
         prog2_lbl = QLabel("")
         prog2_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        prog2_lbl.setStyleSheet("color: #2980b9; font-style: italic;")
+        prog2_lbl.setStyleSheet("color: #74b9ff; font-style: italic;" if _dm_gc else "color: #2980b9; font-style: italic;")
         prev_dlg_layout.addWidget(prog2_lbl)
 
         btn_row2 = QHBoxLayout()
@@ -11406,6 +11471,10 @@ class PortfolioDialog(QMainWindow):
         _ov_screen = QApplication.primaryScreen().geometry()
         _ov_is_fullhd = _ov_screen.width() <= 1920
 
+        # Dark-Mode-Erkennung für das Übersichts-Widget
+        from PyQt6.QtGui import QPalette as _QPalette_ov
+        _dm_ov = QApplication.palette().color(_QPalette_ov.ColorRole.Window).lightness() < 128
+
         # ── Administration-Zeile ─────────────────────────────────────────────
         from PyQt6.QtGui import QFontDatabase as _QFDB_ov
         _ov_emoji_font = None
@@ -11429,30 +11498,19 @@ class PortfolioDialog(QMainWindow):
             btn.setStyleSheet("padding: 2px 10px;")
             return btn
 
-        # Full HD: QGridLayout fuer perfekte Spaltenausrichtung | 4K: 1 HBoxLayout
+        # Full HD: 2 unabhängige HBoxLayouts (Zeile 1 + Zeile 2) | 4K: 1 HBoxLayout
         if _ov_is_fullhd:
-            from PyQt6.QtWidgets import QSizePolicy as _QSP
-            btn_grid = QGridLayout()
-            btn_grid.setHorizontalSpacing(5)
-            btn_grid.setVerticalSpacing(3)
-            _col1 = [0]; _col2 = [2]  # Zeile2 startet ab Spalte 2 (nach Admin+Akt.)
+            _btn_top = QHBoxLayout(); _btn_top.setSpacing(4); _btn_top.setContentsMargins(0,0,0,0)
+            _btn_bot = QHBoxLayout(); _btn_bot.setSpacing(4); _btn_bot.setContentsMargins(0,0,0,0)
             def _add_btn(btn, row=1):
-                if row == 1:
-                    btn_grid.addWidget(btn, 0, _col1[0]); _col1[0] += 1
-                else:
-                    btn_grid.addWidget(btn, 1, _col2[0]); _col2[0] += 1
+                if row == 1: _btn_top.addWidget(btn)
+                else:        _btn_bot.addWidget(btn)
             def _add_stretch(row=1):
-                sp = QWidget(); sp.setSizePolicy(_QSP.Policy.Expanding, _QSP.Policy.Preferred)
-                if row == 1:
-                    btn_grid.addWidget(sp, 0, _col1[0]); _col1[0] += 1
-                else:
-                    btn_grid.addWidget(sp, 1, _col2[0]); _col2[0] += 1
+                if row == 1: _btn_top.addStretch()
+                else:        _btn_bot.addStretch()
             def _add_spacing(px, row=1):
-                sp = QWidget(); sp.setFixedWidth(px)
-                if row == 1:
-                    btn_grid.addWidget(sp, 0, _col1[0]); _col1[0] += 1
-                else:
-                    btn_grid.addWidget(sp, 1, _col2[0]); _col2[0] += 1
+                if row == 1: _btn_top.addSpacing(px)
+                else:        _btn_bot.addSpacing(px)
         else:
             admin_row = QHBoxLayout(); admin_row.setSpacing(6)
             def _add_btn(btn, row=1):    admin_row.addWidget(btn)
@@ -11535,7 +11593,7 @@ class PortfolioDialog(QMainWindow):
 
         perf_chart_btn = _make_ov_btn(
             TR("btn_ov_perf_hd") if _ov_is_fullhd else TR("btn_ov_perf_4k"),
-            TR("tip_ov_perf"), 155)
+            TR("tip_ov_perf"), 120 if _ov_is_fullhd else 155)
         perf_chart_btn.clicked.connect(self.show_portfolio_performance_chart)
         _add_btn(perf_chart_btn, 1)
 
@@ -11547,7 +11605,7 @@ class PortfolioDialog(QMainWindow):
 
         bar_btn2 = _make_ov_btn(
             TR("btn_ov_bar_hd") if _ov_is_fullhd else TR("btn_ov_bar_4k"),
-            TR("tip_ov_bar"), 170)
+            TR("tip_ov_bar"), 125 if _ov_is_fullhd else 170)
         bar_btn2.clicked.connect(self.show_bar_chart)
         _add_btn(bar_btn2, 1)
 
@@ -11586,10 +11644,16 @@ class PortfolioDialog(QMainWindow):
             TR("tip_ov_dividends"), 130)
         # Full HD: Zeile 1 (nach Branchen); 4K: Zeile 2
         div_btn.clicked.connect(self.show_dividend_chart)
-        _div_col_idx = [_col1[0]] if _ov_is_fullhd else [None]  # Spalte von Dividenden in Zeile 0
         _add_btn(div_btn, 1 if _ov_is_fullhd else 2)
+
+        pf_bewertung_btn = _make_ov_btn(
+            TR("btn_ov_pf_bewertung_hd") if _ov_is_fullhd else TR("btn_ov_pf_bewertung"),
+            TR("tip_ov_pf_bewertung"),
+            90 if _ov_is_fullhd else 130)
+        pf_bewertung_btn.clicked.connect(self.show_portfolio_assessment)
         if _ov_is_fullhd:
-            _add_stretch(1)  # Full HD: Stretch nach Dividenden in Zeile 1
+            _add_stretch(1)  # Stretch vor Export (Zeile 1)
+        # 4K: wird weiter unten in _tax_row_4k vor Indizes platziert
 
         # ── Steuern-Button ────────────────────────────────────────────────────
         def _make_tax_popup(anchor_ref):
@@ -11638,14 +11702,6 @@ class PortfolioDialog(QMainWindow):
         tax_btn_ov.setText("\u2004\u2004\u2004" + tax_btn_ov.text())
         _tax_btn_ref = [tax_btn_ov]
         tax_btn_ov.clicked.connect(_make_tax_popup(_tax_btn_ref))
-        # Full HD: per _add_btn in Zeile 2 eingefügt (Platzhalter oben gesetzt)
-        # → Steuern erscheint zwischen Sharpe und AI-Balance = visuell unter Dividenden
-        if _ov_is_fullhd:
-            # Full HD: direkt unter Dividenden (gleiche Spalte, Zeile 1 des Grids)
-            btn_grid.addWidget(tax_btn_ov, 1, _div_col_idx[0])
-        # 4K: Steuern wird weiter unten in einer eigenen Zeile unter Exportieren platziert
-        # (siehe dlg_layout.addLayout weiter unten)
-
 
         ai_balance_btn = _make_ov_btn(
             TR("btn_ov_ai_balance"),
@@ -11659,13 +11715,23 @@ class PortfolioDialog(QMainWindow):
         ki_btn.clicked.connect(self.show_ki_analysis)
         _add_btn(ki_btn, 2)
 
+        notes_ov_btn = _make_ov_btn(
+            TR("btn_ov_notes"),
+            TR("tip_ov_notes"), 110)
+        notes_ov_btn.clicked.connect(self.show_portfolio_notes)
+        if _ov_is_fullhd:
+            _add_btn(notes_ov_btn, 2)
+            _add_btn(tax_btn_ov, 2)
+        # 4K: wird weiter unten in _tax_row_4k links neben PF-Bewertung platziert
+
         indices_btn = _make_ov_btn(
             TR("btn_ov_indices"),
             TR("tip_ov_indices"), 105)
         indices_btn.clicked.connect(self.show_indices_comparison)
         if _ov_is_fullhd:
-            # Full HD: direkt neben Steuern in Zeile 1 (unter Performance-Vergleich)
-            btn_grid.addWidget(indices_btn, 1, _div_col_idx[0] + 1)
+            _add_btn(indices_btn, 2)
+            pf_bewertung_btn.setStyleSheet("padding: 2px 10px;")
+            _add_btn(pf_bewertung_btn, 2)
         # 4K: wird unten in _tax_row_4k neben Steuern platziert
 
 
@@ -11890,7 +11956,6 @@ class PortfolioDialog(QMainWindow):
             ov_export_btn.setStyleSheet("padding:2px 12px;")
             if _ov_emoji_font:
                 ov_export_btn.setFont(_ov_emoji_font)
-            _export_col = _col1[0]
             _add_btn(ov_export_btn, 1)
         else:
             # 4K: Stretch vor Exportieren → Button gehört zur rechten Gruppe
@@ -11905,8 +11970,8 @@ class PortfolioDialog(QMainWindow):
 
 
         clear_all_btn = _make_ov_btn(
-            TR("btn_ov_clear_all"),
-            TR("tip_portfolio_clear_ov"), 145 if _ov_is_fullhd else 130)
+            TR("btn_ov_clear_all_hd") if _ov_is_fullhd else TR("btn_ov_clear_all"),
+            TR("tip_portfolio_clear_ov"), 120 if _ov_is_fullhd else 130)
         def do_clear_all():
             if not self.portfolio_data:
                 QMessageBox.information(dlg, TR("msg_title_info"), TR("msg_portfolio_empty"))
@@ -11929,11 +11994,9 @@ class PortfolioDialog(QMainWindow):
                 self._update_portfolio_name_label("")
                 QMessageBox.information(self, TR("msg_title_done"), TR("msg_all_removed"))
         clear_all_btn.clicked.connect(do_clear_all)
-        if not _ov_is_fullhd:
-            _add_btn(clear_all_btn, 2)
         _add_spacing(10, 2)
 
-        # API-Key Button: Full HD → Zeile 2 rechts; 4K → vor Hilfe in der HBox
+        # API-Key Button
         def _show_settings_from_overview():
             main_app = self.parent()
             while main_app and not hasattr(main_app, 'show_settings'):
@@ -11944,13 +12007,12 @@ class PortfolioDialog(QMainWindow):
         apikey_btn_ov.clicked.connect(_show_settings_from_overview)
         if _ov_is_fullhd:
             apikey_btn_ov.setStyleSheet("padding: 2px 10px;")
-            _apikey_col = _col1[0] - 1  # neben Exportieren (Zeile 0, gleiche Spalte)
-            btn_grid.addWidget(apikey_btn_ov, 1, _apikey_col)
-            # Alle entfernen: rechts neben API-Key
+            _add_btn(apikey_btn_ov, 2)
             clear_all_btn.setStyleSheet("padding: 2px 10px;")
-            btn_grid.addWidget(clear_all_btn, 1, _apikey_col + 1)
+            _add_btn(clear_all_btn, 2)
         else:
             _add_btn(apikey_btn_ov, 2)
+            _add_btn(clear_all_btn, 2)
 
         help_btn2 = _make_ov_btn(TR("btn_help"), TR("tip_help"), 80)
         if _ov_is_fullhd: help_btn2.setStyleSheet("padding: 2px 10px;")
@@ -11972,13 +12034,9 @@ class PortfolioDialog(QMainWindow):
         close_btn_top = _make_ov_btn(TR("btn_ov_close"), TR("tip_ov_close"), 115)
         if _ov_is_fullhd: close_btn_top.setStyleSheet("padding: 2px 10px;")
         close_btn_top.clicked.connect(_close_overview_top)
-        # Gleiche Breite: tax_btn_ov auf Breite von div_btn fixieren (Full HD) bzw. close_btn_top (4K)
+        # 4K: Steuern und Schliessen auf gleiche Breite bringen
         def _sync_ov_btn_width():
-            if _ov_is_fullhd:
-                _w = div_btn.width()
-                if _w > 0:
-                    tax_btn_ov.setFixedWidth(_w)
-            else:
+            if not _ov_is_fullhd:
                 _w = close_btn_top.width()
                 if _w > 0:
                     tax_btn_ov.setFixedWidth(_w)
@@ -11987,7 +12045,6 @@ class PortfolioDialog(QMainWindow):
         _add_btn(close_btn_top, 1 if _ov_is_fullhd else 2)
 
         if _ov_is_fullhd:
-            # Portfolio-Name Label in Zeile 2 des Grids (unter Admin/Akt., gleiche Zeile wie Alpha usw.)
             self._portfolio_name_label_ov = QLabel()
             _active = self._get_active_portfolio_name()
             if _active:
@@ -11995,11 +12052,11 @@ class PortfolioDialog(QMainWindow):
             else:
                 self._portfolio_name_label_ov.setText(TR("lbl_no_portfolio_loaded"))
             self._portfolio_name_label_ov.setStyleSheet("color: #2980b9; font-size: 11px; padding-left: 4px;")
-            btn_grid.addWidget(self._portfolio_name_label_ov, 1, 0, 1, 2)  # row 1, col 0, span 2 cols
-            dlg_layout.addLayout(btn_grid)
-            # Dividenden-Spalte breiter setzen damit Button in normaler Grösse dargestellt wird
-            if _div_col_idx[0] is not None:
-                btn_grid.setColumnMinimumWidth(_div_col_idx[0], 135)
+            _btn_bot.insertWidget(0, self._portfolio_name_label_ov)
+            _btn_bot.insertSpacing(1, 8)
+            _btn_bot.addStretch()
+            dlg_layout.addLayout(_btn_top)
+            dlg_layout.addLayout(_btn_bot)
         else:
             dlg_layout.addLayout(admin_row)
             # 4K: zweite Zeile mit Steuern direkt unter Exportieren
@@ -12009,6 +12066,8 @@ class PortfolioDialog(QMainWindow):
             _tax_row_4k.setSpacing(6)
             _tax_row_4k.setContentsMargins(0, 0, 0, 0)
             _tax_row_4k.addStretch()
+            _tax_row_4k.addWidget(notes_ov_btn)
+            _tax_row_4k.addWidget(pf_bewertung_btn)
             _tax_row_4k.addWidget(indices_btn)
             _tax_row_4k.addWidget(tax_btn_ov)
             dlg_layout.addLayout(_tax_row_4k)
@@ -12125,11 +12184,20 @@ class PortfolioDialog(QMainWindow):
 
         # ── Header-Zeile ────────────────────────────────────────────────────
         hdr = QWidget()
-        hdr.setStyleSheet("background:#f0f0f0; border-bottom:2px solid #bdc3c7;")
+        _hdr_bg = "#2c3e50" if _dm_ov else "#f0f0f0"
+        hdr.setStyleSheet(f"background:{_hdr_bg}; border-bottom:2px solid #bdc3c7;")
         hdr_layout = QHBoxLayout(hdr)
         hdr_layout.setContentsMargins(8, 5, 8, 5)
         hdr_layout.setSpacing(0)
         sort_state = {'col': 'value', 'asc': False}   # Standardsortierung
+
+        _hdr_btn_style = (
+            "font-weight:bold; text-align:left; border:none; padding:0px 2px;"
+            "QPushButton:hover{color:#89b4fa;}"
+        ) if _dm_ov else (
+            "font-weight:bold; text-align:left; border:none; padding:0px 2px;"
+            "QPushButton:hover{color:#2980b9;}"
+        )
 
         hdr_btns = {}
         for (name, w, key, _) in COLS:
@@ -12140,8 +12208,7 @@ class PortfolioDialog(QMainWindow):
             b = QPushButton(name)
             b.setFlat(True)
             b.setMinimumWidth(w); b.setMaximumWidth(w)
-            b.setStyleSheet("color:#2c3e50; font-weight:bold; text-align:left;"
-                            "QPushButton:hover{color:#2980b9;} border:none; padding:0px 2px;")
+            b.setStyleSheet(_hdr_btn_style)
             hdr_layout.addWidget(b)
             hdr_btns[key] = (b, name)
         hdr_layout.addStretch()
@@ -12161,7 +12228,8 @@ class PortfolioDialog(QMainWindow):
 
         # ── Summen-Zeile ────────────────────────────────────────────────────
         sum_frame = QFrame()
-        sum_frame.setStyleSheet("background:#ecf0f1; border-top:2px solid #bdc3c7; padding:4px;")
+        _sum_bg = "#1a2533" if _dm_ov else "#ecf0f1"
+        sum_frame.setStyleSheet(f"background:{_sum_bg}; border-top:2px solid #bdc3c7; padding:4px;")
         _sum_is_fullhd = QApplication.primaryScreen().geometry().width() <= 1920
         if _sum_is_fullhd:
             # Full HD: zwei Zeilen in VBoxLayout
@@ -12305,8 +12373,7 @@ class PortfolioDialog(QMainWindow):
                                     "border:none; padding:0px 2px;")
                 else:
                     b.setText(name)
-                    b.setStyleSheet("color:#2c3e50; font-weight:bold; text-align:left;"
-                                    "QPushButton:hover{color:#2980b9;} border:none; padding:0px 2px;")
+                    b.setStyleSheet(_hdr_btn_style)
 
             # Zeilen löschen
             while rows_layout.count() > 1:
@@ -12337,10 +12404,13 @@ class PortfolioDialog(QMainWindow):
                 s = fx
                 c_pnl = "#27ae60" if pnl_pct >= 0 else "#c0392b"
                 sign  = "+" if pnl_pct >= 0 else ""
-                bg    = "#f8f9fa" if idx % 2 == 0 else "white"
+                if _dm_ov:
+                    bg = "#1e2535" if idx % 2 == 0 else "#161d2b"
+                else:
+                    bg = "#f8f9fa" if idx % 2 == 0 else "white"
 
                 row = QWidget()
-                row.setStyleSheet(f"background:{bg}; border-bottom:1px solid #ecf0f1;")
+                row.setStyleSheet(f"background:{bg};")
                 row.setCursor(Qt.CursorShape.ArrowCursor)
                 rl = QHBoxLayout(row)
                 rl.setContentsMargins(8, 4, 8, 4)
@@ -12524,7 +12594,7 @@ class PortfolioDialog(QMainWindow):
                     # Farbe: aktueller Kurs nahe Jahreshoch → orange; nahe Jahrestief → rot
                     _pct_from_high = (_cur_disp - _w52h) / _w52h * 100 if _w52h > 0 else 0
                     _pct_from_low  = (_cur_disp - _w52l) / _w52l * 100 if _w52l  > 0 else 0
-                    _h_color = "#e67e22" if _pct_from_high > -5 else "#555"
+                    _h_color = "#e67e22" if _pct_from_high > -5 else ("#aaa" if _dm_ov else "#555")
                     _l_color = "#c0392b" if _pct_from_low  <  10 else "#27ae60"
                     _w52h_lbl = mk(f"{_fmt(_w52h)}", 70, _h_color, right=True)
                     _w52l_lbl = mk(f"{_fmt(_w52l)}", 70, _l_color, right=True)
@@ -12571,7 +12641,7 @@ class PortfolioDialog(QMainWindow):
                             _tt.append(f"Sub-Industry:    {_sub_industry}")
                         _tooltip_txt = "\n".join(_tt)
 
-                sector_lbl = mk(_display_txt, 300, "#555")
+                sector_lbl = mk(_display_txt, 300, "#aaa" if _dm_ov else "#555")
                 sector_lbl.setMinimumWidth(160)
                 sector_lbl.setMaximumWidth(400)
                 sector_lbl.setContentsMargins(12, 0, 0, 0)
@@ -13051,6 +13121,9 @@ class PortfolioDialog(QMainWindow):
         dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
                     screen.y() + (screen.height() - dlg_h) // 2)
 
+        from PyQt6.QtGui import QPalette as _QPalette_ppc
+        _dm_ppc = QApplication.palette().color(_QPalette_ppc.ColorRole.Window).lightness() < 128
+
         outer = QVBoxLayout(dialog)
         outer.setSpacing(6)
         outer.setContentsMargins(14, 10, 14, 10)
@@ -13059,7 +13132,8 @@ class PortfolioDialog(QMainWindow):
             TR("lbl_twr_mwr_info")
         )
         info.setWordWrap(True)
-        info.setStyleSheet("background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:12px;")
+        _ppc_info_bg = "#0d2a3d" if _dm_ppc else "#EBF5FB"
+        info.setStyleSheet(f"background:{_ppc_info_bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
         outer.addWidget(info)
 
         # ── Steuerleiste ──────────────────────────────────────────────────
@@ -13160,8 +13234,9 @@ class PortfolioDialog(QMainWindow):
 
         stats_label = QLabel("")
         stats_label.setWordWrap(True)
+        _ppc_stats_bg = "#0d2a1a" if _dm_ppc else "#EAFAF1"
         stats_label.setStyleSheet(
-            "background:#EAFAF1; border-radius:5px; padding:6px 12px; font-size:12px;")
+            f"background:{_ppc_stats_bg}; border-radius:5px; padding:6px 12px; font-size:12px;")
         stats_label.setVisible(False)
         outer.addWidget(stats_label)
 
@@ -13697,13 +13772,17 @@ class PortfolioDialog(QMainWindow):
                     pass
             dialog.finished.connect(_repaint_perf)
 
+        from PyQt6.QtGui import QPalette as _QPalette_mc
+        _dm_mc = QApplication.palette().color(_QPalette_mc.ColorRole.Window).lightness() < 128
+
         outer = QVBoxLayout(dialog)
         outer.setSpacing(6)
         outer.setContentsMargins(14, 10, 14, 10)
 
         info = QLabel(TR("lbl_mc_info"))
         info.setWordWrap(True)
-        info.setStyleSheet("background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:12px;")
+        _mc_info_bg = "#0d2a3d" if _dm_mc else "#EBF5FB"
+        info.setStyleSheet(f"background:{_mc_info_bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
         outer.addWidget(info)
 
         ctrl = QHBoxLayout(); ctrl.setSpacing(8)
@@ -14740,6 +14819,8 @@ class PortfolioDialog(QMainWindow):
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
         from matplotlib.figure import Figure
         import matplotlib.ticker as _mticker
+        from PyQt6.QtGui import QPalette as _QPalette_ecy
+        _dm_ecy = QApplication.palette().color(_QPalette_ecy.ColorRole.Window).lightness() < 128
 
         outer = QVBoxLayout(dialog)
         outer.setSpacing(6)
@@ -14749,7 +14830,8 @@ class PortfolioDialog(QMainWindow):
         head_row = QHBoxLayout()
         info = QLabel(TR("lbl_ecy_info"))
         info.setWordWrap(True)
-        info.setStyleSheet("background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:12px;")
+        _ecy_info_bg = "#0d2a3d" if _dm_ecy else "#EBF5FB"
+        info.setStyleSheet(f"background:{_ecy_info_bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
         head_row.addWidget(info, stretch=1)
 
         _ecy_export_data = [{}]
@@ -15236,6 +15318,230 @@ class PortfolioDialog(QMainWindow):
         dialog.exec()
 
 
+    @safe_slot
+    def show_portfolio_assessment(self):
+        """Portfolio-Bewertung: regelbasierte Analyse (Stufe 1) + erweiterte Synthese (Stufe 2)."""
+        if not self.portfolio_data:
+            QMessageBox.information(self, TR("msg_title_info"),
+                                    "Keine Portfolio-Daten vorhanden."
+                                    if True else "No portfolio data available.")
+            return
+
+        from portfolio_analysis import analyze_portfolio
+        from translations import get_language
+        from PyQt6.QtWidgets import QTextEdit
+        from PyQt6.QtGui import QPalette
+
+        # ── Dark-mode detection ───────────────────────────────────────
+        palette   = QApplication.palette()
+        dark_mode = palette.color(QPalette.ColorRole.Window).lightness() < 128
+
+        def _run_stage1():
+            return analyze_portfolio(
+                portfolio_data=self.portfolio_data,
+                price_cache=self._price_cache or {},
+                sector_cache=getattr(self, '_sector_cache', {}) or {},
+                limits=self._limits or {},
+                language=get_language(),
+                dark_mode=dark_mode,
+            )
+
+        result = _run_stage1()
+
+        # ── Dialog ────────────────────────────────────────────────────
+        dialog = QDialog(self)
+        dialog.setWindowTitle(TR("title_pf_bewertung"))
+        import sys as _sys_pfa
+        if _sys_pfa.platform == 'win32':
+            dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
+        screen = QApplication.primaryScreen().availableGeometry()
+        dlg_w  = min(860, int(screen.width()  * 0.65))
+        dlg_h  = min(920, int(screen.height() * 0.92))
+        dialog.resize(dlg_w, dlg_h)
+        dialog.move(
+            screen.x() + (screen.width()  - dlg_w) // 2,
+            screen.y() + (screen.height() - dlg_h) // 2,
+        )
+        outer = QVBoxLayout(dialog)
+        outer.setSpacing(8)
+        outer.setContentsMargins(14, 12, 14, 10)
+
+        # ── PROMINENTER DISCLAIMER ────────────────────────────────────
+        disclaimer_banner = QLabel(TR("lbl_disclaimer_pf_bewertung"))
+        disclaimer_banner.setWordWrap(True)
+        disclaimer_banner.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if dark_mode:
+            disclaimer_banner.setStyleSheet(
+                "QLabel {"
+                "  background: #3a2800;"
+                "  border: 2px solid #a07000;"
+                "  border-radius: 8px;"
+                "  padding: 12px 18px;"
+                "  font-size: 13px;"
+                "  font-weight: bold;"
+                "  color: #ffd166;"
+                "}"
+            )
+        else:
+            disclaimer_banner.setStyleSheet(
+                "QLabel {"
+                "  background: #fff3cd;"
+                "  border: 2px solid #e6a817;"
+                "  border-radius: 8px;"
+                "  padding: 12px 18px;"
+                "  font-size: 13px;"
+                "  font-weight: bold;"
+                "  color: #7d5a00;"
+                "}"
+            )
+        outer.addWidget(disclaimer_banner)
+
+        # ── Buttons ───────────────────────────────────────────────────
+        _pf_export_data = [{}]
+        btn_row = QHBoxLayout()
+        refresh_btn = QPushButton(TR("btn_reanalyse"))
+        refresh_btn.setMinimumHeight(28)
+        refresh_btn.setStyleSheet("font-weight:bold; padding:2px 14px;")
+        btn_row.addWidget(refresh_btn)
+
+        ext_btn_label = "🔍 Erweiterte Analyse" if get_language() == 'DE' else "🔍 Extended Analysis"
+        ext_btn = QPushButton(ext_btn_label)
+        ext_btn.setMinimumHeight(28)
+        ext_btn.setStyleSheet(
+            "QPushButton { font-weight:bold; padding:2px 14px; "
+            "background:#1a6fbf; color:white; border-radius:4px; }"
+            "QPushButton:hover { background:#1558a0; }"
+            "QPushButton:disabled { background:#555; color:#999; }"
+        )
+        btn_row.addWidget(ext_btn)
+        btn_row.addStretch()
+
+        export_btn = self._make_export_btn(
+            lambda: _pf_export_data[0], TR("export_btn_pf_bewertung"))
+        btn_row.addWidget(export_btn)
+
+        close_btn = QPushButton(TR("btn_close"))
+        close_btn.setMaximumWidth(110)
+        close_btn.setMinimumHeight(28)
+        close_btn.clicked.connect(dialog.close)
+        btn_row.addWidget(close_btn)
+        outer.addLayout(btn_row)
+
+        # ── Inhaltsbereich ────────────────────────────────────────────
+        text_area = QTextEdit()
+        text_area.setReadOnly(True)
+        if dark_mode:
+            text_area.setStyleSheet(
+                "QTextEdit { background:#1a1a1a; border:1px solid #3a3a3a; "
+                "border-radius:6px; padding:8px; font-size:13px; color:#d0d0d0; }"
+            )
+        else:
+            text_area.setStyleSheet(
+                "QTextEdit { background:#fafafa; border:1px solid #ddd; "
+                "border-radius:6px; padding:8px; font-size:13px; }"
+            )
+        text_area.setHtml(result['html'])
+        _pf_export_data[0] = {
+            'title': TR("export_col_pf_bewertung"),
+            'headers': [TR("export_col_pf_bewertung")],
+            'rows': [[l] for l in text_area.toPlainText().splitlines() if l.strip()],
+            'fig': None,
+        }
+        outer.addWidget(text_area, stretch=1)
+
+        # ── Stage-1 refresh ───────────────────────────────────────────
+        def _refresh():
+            new_result = _run_stage1()
+            text_area.setHtml(new_result['html'])
+            _pf_export_data[0] = {
+                'title': TR("export_col_pf_bewertung"),
+                'headers': [TR("export_col_pf_bewertung")],
+                'rows': [[l] for l in text_area.toPlainText().splitlines() if l.strip()],
+                'fig': None,
+            }
+        refresh_btn.clicked.connect(_refresh)
+
+        # ── Stage-2 extended analysis (QThread + Dollarnote overlay) ──
+        _ext_workers = []
+
+        def _run_extended():
+            from portfolio_analysis_extended import analyze_extended
+            ext_btn.setEnabled(False)
+            overlay = self._show_risk_loading(
+                dialog, dlg_w, dlg_h, "📋",
+                "Erweiterte Analyse" if get_language() == 'DE' else "Extended Analysis",
+                "1y",
+            )
+
+            class _ExtWorker(QThread):
+                done = pyqtSignal(str)
+
+                def __init__(self, pd, pc, sc_, lm, lang, dm):
+                    super().__init__()
+                    self._pd = pd; self._pc = pc; self._sc = sc_
+                    self._lm = lm; self._lang = lang; self._dm = dm
+
+                def run(self):
+                    try:
+                        res = analyze_extended(
+                            portfolio_data=self._pd,
+                            price_cache=self._pc,
+                            sector_cache=self._sc,
+                            limits=self._lm,
+                            language=self._lang,
+                            dark_mode=self._dm,
+                            period='1y',
+                        )
+                        self.done.emit(res.get('html', ''))
+                    except Exception as exc:
+                        self.done.emit(
+                            f"<p style='color:#e74c3c;padding:12px'>"
+                            f"Fehler: {exc}</p>"
+                        )
+
+            worker = _ExtWorker(
+                self.portfolio_data,
+                self._price_cache or {},
+                getattr(self, '_sector_cache', {}) or {},
+                self._limits or {},
+                get_language(),
+                dark_mode,
+            )
+            _ext_workers.append(worker)
+
+            def _on_done(ext_html):
+                try:
+                    overlay.hide()
+                    overlay.deleteLater()
+                except RuntimeError:
+                    pass
+                try:
+                    stage1_html = _run_stage1()['html']
+                    sep = (
+                        "<hr style='border:none;border-top:1px solid #888;"
+                        "margin:18px 0'>"
+                    )
+                    text_area.setHtml(ext_html + sep + stage1_html)
+                    text_area.verticalScrollBar().setValue(0)
+                    _pf_export_data[0] = {
+                        'title': TR("export_col_pf_bewertung"),
+                        'headers': [TR("export_col_pf_bewertung")],
+                        'rows': [[l] for l in text_area.toPlainText().splitlines() if l.strip()],
+                        'fig': None,
+                    }
+                except RuntimeError:
+                    pass
+                ext_btn.setEnabled(True)
+                if worker in _ext_workers:
+                    _ext_workers.remove(worker)
+
+            worker.done.connect(_on_done)
+            worker.start()
+
+        ext_btn.clicked.connect(_run_extended)
+        dialog.exec()
+
+
     def show_dividend_chart(self):
         """Portfolio-Performance: 3 Balken – Gesamt, Wachstum, Dividenden."""
         if not self.portfolio_data:
@@ -15262,6 +15568,9 @@ class PortfolioDialog(QMainWindow):
         dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
                     screen.y() + (screen.height() - dlg_h) // 2)
 
+        from PyQt6.QtGui import QPalette as _QPalette_dv
+        _dm_dv = QApplication.palette().color(_QPalette_dv.ColorRole.Window).lightness() < 128
+
         outer = QVBoxLayout(dialog)
         outer.setSpacing(6)
         outer.setContentsMargins(14, 10, 14, 10)
@@ -15270,7 +15579,8 @@ class PortfolioDialog(QMainWindow):
             TR("lbl_div_perf_info") + " " + TR("lbl_crypto_warning")
         )
         info.setWordWrap(True)
-        info.setStyleSheet("background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:12px;")
+        _dv_info_bg = "#0d2a3d" if _dm_dv else "#EBF5FB"
+        info.setStyleSheet(f"background:{_dv_info_bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
         self._ef(info)
         outer.addWidget(info)
 
@@ -15703,7 +16013,8 @@ class PortfolioDialog(QMainWindow):
 
                 hi_info = QLabel(TR("status_loading_line2"))
                 hi_info.setWordWrap(True)
-                hi_info.setStyleSheet("background:#EBF5FB; border-radius:8px; padding:10px 14px; font-size:11px;")
+                _hi_info_bg = "#0d2a3d" if _dm_dv else "#EBF5FB"
+                hi_info.setStyleSheet(f"background:{_hi_info_bg}; border-radius:8px; padding:10px 14px; font-size:11px;")
                 hi_layout.addWidget(hi_info)
 
                 hi_fig   = Figure(figsize=(det_fig_w, det_fig_h))
@@ -16343,6 +16654,9 @@ class PortfolioDialog(QMainWindow):
             QMessageBox.information(self, TR("msg_title_no_transactions"), TR("msg_no_tx_for_symbol", symbol=symbol))
             return
 
+        from PyQt6.QtGui import QPalette as _QPalette_tx
+        _dm_tx = QApplication.palette().color(_QPalette_tx.ColorRole.Window).lightness() < 128
+
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Transaktionshistorie: {symbol}")
         dialog.setMinimumWidth(640)
@@ -16404,7 +16718,10 @@ class PortfolioDialog(QMainWindow):
             date_raw  = p.get('buy_date', '–')
             currency  = p.get('currency', 'USD')
             cost      = qty * price
-            bg        = "#f8f9fa" if i % 2 == 0 else "white"
+            if _dm_tx:
+                bg = "#1e2535" if i % 2 == 0 else "#161d2b"
+            else:
+                bg = "#f8f9fa" if i % 2 == 0 else "white"
 
             try:
                 date_disp = _app_config.fmt_date(date_raw) if date_raw and date_raw != '–' else '–'
@@ -16414,7 +16731,7 @@ class PortfolioDialog(QMainWindow):
             cost_disp  = _fmt(cost,  2)
 
             row = QWidget()
-            row.setStyleSheet(f"background:{bg}; border-bottom:1px solid #ecf0f1;")
+            row.setStyleSheet(f"background:{bg};")
             rl = QHBoxLayout(row)
             rl.setContentsMargins(8, 5, 8, 5)
             rl.setSpacing(0)
@@ -16430,12 +16747,12 @@ class PortfolioDialog(QMainWindow):
                 return l
 
             qty_str = f"{qty:,.4f}".rstrip('0').rstrip('.') if qty != int(qty) else str(int(qty))
-            rl.addWidget(_c(str(i+1),    36,  "#888"))
+            rl.addWidget(_c(str(i+1),    36))
             rl.addWidget(_c(date_disp,   110))
             rl.addWidget(_c(qty_str,     100,  bold=True, right=True))
             rl.addWidget(_c(price_disp,  110,  right=True))
-            rl.addWidget(_c(cost_disp,   120,  "#555", right=True))
-            rl.addWidget(_c(currency,     80,  "#777"))
+            rl.addWidget(_c(cost_disp,   120,  right=True))
+            rl.addWidget(_c(currency,     80))
             rl.addStretch()
             cl.addWidget(row)
 
@@ -16445,7 +16762,8 @@ class PortfolioDialog(QMainWindow):
 
         # Zusammenfassung
         summary = QWidget()
-        summary.setStyleSheet("background:#EBF5FB; border-radius:4px; padding:4px;")
+        _tx_sum_bg = "#0d2a3d" if _dm_tx else "#EBF5FB"
+        summary.setStyleSheet(f"background:{_tx_sum_bg}; border-radius:4px; padding:4px;")
         sl = QHBoxLayout(summary)
         sl.setContentsMargins(10, 6, 10, 6)
         qty_str_tot = f"{total_qty:,.4f}".rstrip('0').rstrip('.') if total_qty != int(total_qty) else str(int(total_qty))
@@ -16470,6 +16788,9 @@ class PortfolioDialog(QMainWindow):
         if not self.portfolio_data:
             QMessageBox.information(self, TR("msg_title_info"), "Keine Portfolio-Daten vorhanden.")
             return
+
+        from PyQt6.QtGui import QPalette as _QPalette_aib
+        _dm_aib = QApplication.palette().color(_QPalette_aib.ColorRole.Window).lightness() < 128
 
         CRYPTO_SUFFIXES = ('-USD', '-EUR', '-CHF', '-BTC')
         def is_crypto(sym): return any(sym.upper().endswith(s) for s in CRYPTO_SUFFIXES)
@@ -16500,7 +16821,8 @@ class PortfolioDialog(QMainWindow):
             TR("lbl_ai_balance_info") + " " + TR("lbl_crypto_warning")
         )
         info.setWordWrap(True)
-        info.setStyleSheet("background:#EBF5FB; border-radius:6px; padding:10px 14px; font-size:13px;")
+        _aib_info_bg = "#0d2a3d" if _dm_aib else "#EBF5FB"
+        info.setStyleSheet(f"background:{_aib_info_bg}; border-radius:6px; padding:10px 14px; font-size:13px;")
         self._ef(info)
         outer.addWidget(info)
 
@@ -16733,8 +17055,9 @@ class PortfolioDialog(QMainWindow):
             # Info-Banner
             cmp_info = QLabel(TR("lbl_portfolios_compare_info"))
             cmp_info.setWordWrap(True)
+            _cmp_info_bg = "#0d2a3d" if _dm_aib else "#EBF5FB"
             cmp_info.setStyleSheet(
-                "background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:13px;")
+                f"background:{_cmp_info_bg}; border-radius:6px; padding:8px 14px; font-size:13px;")
             cmp_outer.addWidget(cmp_info)
 
             # ── Steuerzeile: Zeitraum + Währung + Buttons ───────────────
@@ -17912,8 +18235,9 @@ class PortfolioDialog(QMainWindow):
 
             t_info = QLabel(TR("lbl_targeted_info"))
             t_info.setWordWrap(True)
+            _ti_info_bg = "#0d2a3d" if _dm_aib else "#EBF5FB"
             t_info.setStyleSheet(
-                "background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:12px;")
+                f"background:{_ti_info_bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
             tlayout.addWidget(t_info)
 
             # ── Helper: Abschnitt mit Checkbox + SpinBox-Zeilen ───────────────
@@ -18169,7 +18493,7 @@ class PortfolioDialog(QMainWindow):
             l = QLabel(f"<b>{text}</b>")
             l.setFixedWidth(w)
             l.setAlignment(align)
-            l.setStyleSheet(f"color:#444; font-size:{FS};")
+            l.setStyleSheet(f"font-size:{FS};")
             return l
 
         hdr_row = QHBoxLayout()
@@ -18190,7 +18514,8 @@ class PortfolioDialog(QMainWindow):
         hdr_row.addWidget(_hdr(TR("lbl_action_qty"),        85, Qt.AlignmentFlag.AlignRight))
         hdr_row.addStretch()
         hdr_frame = QFrame()
-        hdr_frame.setStyleSheet("background:#e8edf2; border-radius:5px; padding:3px;")
+        _aib_hdr_bg = "#1a2d3d" if _dm_aib else "#e8edf2"
+        hdr_frame.setStyleSheet(f"background:{_aib_hdr_bg}; border-radius:5px; padding:3px;")
         hdr_frame.setLayout(hdr_row)
         outer.addWidget(hdr_frame)
 
@@ -18208,13 +18533,13 @@ class PortfolioDialog(QMainWindow):
 
         sum_label = QLabel("")
         sum_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        sum_label.setStyleSheet(f"font-size:{FS}; color:#333; padding:5px; border-top:1px solid #ddd; font-weight:bold;")
+        sum_label.setStyleSheet(f"font-size:{FS}; padding:5px; border-top:1px solid #ddd; font-weight:bold;")
         outer.addWidget(sum_label)
 
         status_label = QLabel(TR("lbl_period_status2"))
         status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         try:
-            status_label.setStyleSheet("color:#888; font-size:11px;")
+            status_label.setStyleSheet("font-size:11px;")
         except RuntimeError:
             pass
         outer.addWidget(status_label)
@@ -18226,7 +18551,7 @@ class PortfolioDialog(QMainWindow):
         )
         legend.setWordWrap(True)
         legend.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        legend.setStyleSheet("color:#888; font-size:11px; padding:3px 8px;")
+        legend.setStyleSheet("font-size:11px; padding:3px 8px;")
         outer.addWidget(legend)
 
         disclaimer = QLabel(
@@ -18234,7 +18559,7 @@ class PortfolioDialog(QMainWindow):
         )
         disclaimer.setWordWrap(True)
         disclaimer.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        disclaimer.setStyleSheet("color:#888; font-size:11px; font-style:italic; padding:4px 12px; border-top:1px solid #ddd;")
+        disclaimer.setStyleSheet("font-size:11px; font-style:italic; padding:4px 12px; border-top:1px solid #ddd;")
         outer.addWidget(disclaimer)
 
 
@@ -18288,7 +18613,10 @@ class PortfolioDialog(QMainWindow):
                 results.append({**entry, 'rank': rank+1, 'soll_val': soll_val,
                                  'soll_qty': soll_qty, 'diff': diff})
 
-            row_colors = ["#ffffff", "#f5f8fc"]
+            if _dm_aib:
+                row_colors = ["#1e2535", "#161d2b"]
+            else:
+                row_colors = ["#ffffff", "#f5f8fc"]
 
             for i, r in enumerate(results):
                 bg = row_colors[i % 2]
@@ -20144,11 +20472,258 @@ class PortfolioDialog(QMainWindow):
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
         dialog.exec()
 
+    # ── Portfolio-Notizen ──────────────────────────────────────────────────────
+    def show_portfolio_notes(self):
+        """Journal-Notizen für das aktuelle Portfolio anzeigen und bearbeiten."""
+        import uuid as _uuid
+        from datetime import datetime as _dt
+        from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout,
+                                     QLabel, QTextEdit, QPushButton,
+                                     QScrollArea, QWidget, QFrame,
+                                     QFileDialog, QMessageBox, QSizePolicy)
+        from PyQt6.QtCore import Qt
+        from PyQt6.QtGui import QPalette as _QPalette_notes
+
+        _dm = QApplication.palette().color(_QPalette_notes.ColorRole.Window).lightness() < 128
+
+        pf_name = self._get_active_portfolio_name()
+        dlg = QDialog(self)
+        dlg.setWindowTitle(TR("title_notes"))
+        dlg.setMinimumSize(520, 480)
+        dlg.resize(580, 560)
+        lay = QVBoxLayout(dlg)
+        lay.setSpacing(8)
+
+        if not pf_name:
+            lay.addWidget(QLabel(TR("lbl_notes_no_portfolio")))
+            close_btn = QPushButton(TR("btn_close"))
+            close_btn.clicked.connect(dlg.accept)
+            lay.addWidget(close_btn)
+            dlg.exec()
+            return
+
+        # Header
+        hdr = QLabel(f"<b>{TR('title_notes')}</b> – <i>{pf_name}</i>")
+        hdr.setStyleSheet("font-size:13px; padding-bottom:4px;")
+        lay.addWidget(hdr)
+
+        # Scroll-Bereich für Einträge
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.StyledPanel)
+        entries_widget = QWidget()
+        entries_lay = QVBoxLayout(entries_widget)
+        entries_lay.setSpacing(6)
+        entries_lay.setAlignment(Qt.AlignmentFlag.AlignTop)
+        scroll.setWidget(entries_widget)
+        lay.addWidget(scroll, 1)
+
+        def _rebuild_entries():
+            while entries_lay.count():
+                item = entries_lay.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+
+            notes = list(reversed(self._portfolio_notes))  # neueste zuerst
+            if not notes:
+                lbl = QLabel(TR("lbl_no_notes"))
+                lbl.setStyleSheet("color: #888; font-style: italic; padding: 8px;")
+                lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                entries_lay.addWidget(lbl)
+                return
+
+            for note in notes:
+                card = QFrame()
+                card.setFrameShape(QFrame.Shape.StyledPanel)
+                if _dm:
+                    card.setStyleSheet("QFrame { background:#1e2535; border:1px solid #3a4a6a; border-radius:6px; }")
+                else:
+                    card.setStyleSheet("QFrame { background:#f8f9fa; border:1px solid #dee2e6; border-radius:6px; }")
+                card_lay = QVBoxLayout(card)
+                card_lay.setContentsMargins(10, 6, 10, 6)
+                card_lay.setSpacing(4)
+
+                top_row = QHBoxLayout()
+                ts_lbl = QLabel(note.get("timestamp", ""))
+                ts_lbl.setStyleSheet("font-size:11px; color: #888;")
+                top_row.addWidget(ts_lbl)
+                top_row.addStretch()
+
+                del_btn = QPushButton(TR("btn_delete_note"))
+                del_btn.setFixedSize(60, 22)
+                del_btn.setStyleSheet("font-size:11px; padding:1px 4px;")
+                note_id = note.get("id", "")
+
+                def _make_delete(nid):
+                    def _do_delete():
+                        reply = QMessageBox.question(
+                            dlg, TR("btn_delete_note"),
+                            TR("msg_note_delete_confirm"),
+                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                            QMessageBox.StandardButton.No
+                        )
+                        if reply == QMessageBox.StandardButton.Yes:
+                            self._portfolio_notes = [n for n in self._portfolio_notes if n.get("id") != nid]
+                            self.save_portfolio()
+                            _rebuild_entries()
+                    return _do_delete
+
+                del_btn.clicked.connect(_make_delete(note_id))
+                top_row.addWidget(del_btn)
+                card_lay.addLayout(top_row)
+
+                txt_lbl = QLabel(note.get("text", ""))
+                txt_lbl.setWordWrap(True)
+                txt_lbl.setTextFormat(Qt.TextFormat.PlainText)
+                txt_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+                card_lay.addWidget(txt_lbl)
+
+                entries_lay.addWidget(card)
+
+        _rebuild_entries()
+
+        # Eingabe
+        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
+        lay.addWidget(sep)
+
+        input_lbl = QLabel(TR("lbl_note_placeholder"))
+        input_lbl.setStyleSheet("font-size:11px; color:#888;")
+        lay.addWidget(input_lbl)
+
+        text_edit = QTextEdit()
+        text_edit.setPlaceholderText(TR("lbl_note_placeholder"))
+        text_edit.setFixedHeight(80)
+        lay.addWidget(text_edit)
+
+        btn_row = QHBoxLayout()
+
+        from PyQt6.QtGui import QFontDatabase as _QFD_notes
+        _ef_notes = next(
+            (QFont(f, 10) for f in ['Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji']
+             if f in _QFD_notes.families()), None)
+
+        add_btn = QPushButton(TR("btn_add_note"))
+        add_btn.setStyleSheet("background:#27ae60; color:white; padding:5px 14px; font-weight:bold;")
+
+        def _add_note():
+            txt = text_edit.toPlainText().strip()
+            if not txt:
+                QMessageBox.information(dlg, TR("title_notes"), TR("msg_note_empty"))
+                return
+            entry = {
+                "id":        str(_uuid.uuid4()),
+                "timestamp": _dt.now().strftime("%Y-%m-%d %H:%M"),
+                "text":      txt,
+            }
+            self._portfolio_notes.append(entry)
+            self.save_portfolio()
+            text_edit.clear()
+            _rebuild_entries()
+
+        add_btn.clicked.connect(_add_note)
+        btn_row.addWidget(add_btn)
+
+        def _do_export_txt():
+            if not self._portfolio_notes:
+                QMessageBox.information(dlg, TR("btn_export_notes_txt"), TR("lbl_no_notes"))
+                return
+            fname, _ = QFileDialog.getSaveFileName(
+                dlg, TR("btn_export_notes_txt"),
+                f"{pf_name}_notes.txt", "Text (*.txt)"
+            )
+            if not fname:
+                return
+            lines = [f"=== {TR('title_notes')} – {pf_name} ===\n"]
+            for note in reversed(self._portfolio_notes):
+                lines.append(f"[{note.get('timestamp','')}]")
+                lines.append(note.get("text", ""))
+                lines.append("")
+            try:
+                with open(fname, "w", encoding="utf-8") as f:
+                    f.write("\n".join(lines))
+                QMessageBox.information(dlg, TR("btn_export_notes_txt"),
+                                        TR("msg_notes_exported", path=fname))
+            except Exception as ex:
+                QMessageBox.warning(dlg, TR("msg_title_error"), str(ex))
+
+        def _do_export_pdf():
+            if not self._portfolio_notes:
+                QMessageBox.information(dlg, TR("btn_export_notes_pdf"), TR("lbl_no_notes"))
+                return
+            fname, _ = QFileDialog.getSaveFileName(
+                dlg, TR("btn_export_notes_pdf"),
+                f"{pf_name}_notes.pdf", "PDF (*.pdf)"
+            )
+            if not fname:
+                return
+            try:
+                from reportlab.lib.pagesizes import A4
+                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                from reportlab.lib import colors
+                from reportlab.lib.units import cm
+                doc = SimpleDocTemplate(fname, pagesize=A4,
+                                        leftMargin=2*cm, rightMargin=2*cm,
+                                        topMargin=2*cm, bottomMargin=2*cm)
+                styles = getSampleStyleSheet()
+                title_style = ParagraphStyle('title', parent=styles['Heading1'],
+                                             fontSize=14, spaceAfter=6)
+                ts_style = ParagraphStyle('ts', parent=styles['Normal'],
+                                          fontSize=9, textColor=colors.grey, spaceAfter=2)
+                body_style = ParagraphStyle('body', parent=styles['Normal'],
+                                            fontSize=11, spaceAfter=4)
+                story = [
+                    Paragraph(f"📝 {TR('title_notes')} – {pf_name}", title_style),
+                    Spacer(1, 0.3*cm),
+                ]
+                for note in reversed(self._portfolio_notes):
+                    story.append(Paragraph(note.get('timestamp', ''), ts_style))
+                    txt_safe = note.get('text', '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    story.append(Paragraph(txt_safe, body_style))
+                    story.append(Spacer(1, 0.4*cm))
+                doc.build(story)
+                QMessageBox.information(dlg, TR("btn_export_notes_pdf"),
+                                        TR("msg_notes_exported", path=fname))
+            except ImportError:
+                QMessageBox.warning(dlg, TR("msg_title_error"),
+                    "reportlab nicht installiert.\n"
+                    "pip install reportlab --break-system-packages")
+            except Exception as ex:
+                QMessageBox.warning(dlg, TR("msg_title_error"), str(ex))
+
+        exp_txt_btn = QPushButton(TR("btn_export_notes_txt"))
+        exp_txt_btn.setStyleSheet("padding:5px 10px;")
+        if _ef_notes: exp_txt_btn.setFont(_ef_notes)
+        exp_txt_btn.clicked.connect(_do_export_txt)
+        btn_row.addWidget(exp_txt_btn)
+
+        exp_pdf_btn = QPushButton(TR("btn_export_notes_pdf"))
+        exp_pdf_btn.setStyleSheet("padding:5px 10px;")
+        if _ef_notes: exp_pdf_btn.setFont(_ef_notes)
+        exp_pdf_btn.clicked.connect(_do_export_pdf)
+        btn_row.addWidget(exp_pdf_btn)
+
+        btn_row.addStretch()
+
+        close_btn = QPushButton(TR("btn_close"))
+        close_btn.setStyleSheet("padding:5px 12px;")
+        close_btn.clicked.connect(dlg.accept)
+        btn_row.addWidget(close_btn)
+
+        lay.addLayout(btn_row)
+
+        if sys.platform == 'win32':
+            dlg.finished.connect(lambda: (self.raise_(), self.activateWindow()))
+        dlg.exec()
+
     def show_portfolio_balance(self):
         """Rebalancing-Vorschlag: Positionsgrössen nach Performance-Rang umverteilen (ohne Krypto)"""
         if not self.portfolio_data:
             QMessageBox.information(self, TR("msg_title_info"), "Keine Portfolio-Daten vorhanden.")
             return
+
+        from PyQt6.QtGui import QPalette as _QPalette_pb
+        _dm_pb = QApplication.palette().color(_QPalette_pb.ColorRole.Window).lightness() < 128
 
         # ── Dialog aufbauen ────────────────────────────────────────────────
         dialog = QDialog(self)
@@ -20171,7 +20746,8 @@ class PortfolioDialog(QMainWindow):
             TR("lbl_rebalancing_idea")
         )
         info.setWordWrap(True)
-        info.setStyleSheet("background: #EBF5FB; border-radius: 6px; padding: 10px 14px; font-size: 13px;")
+        _info_bg = "#0d2a3d" if _dm_pb else "#EBF5FB"
+        info.setStyleSheet(f"background: {_info_bg}; border-radius: 6px; padding: 10px 14px; font-size: 13px;")
         outer.addWidget(info)
 
         # Zeitraum-Auswahl
@@ -20208,7 +20784,7 @@ class PortfolioDialog(QMainWindow):
             l = QLabel(f"<b>{text}</b>")
             l.setFixedWidth(w)
             l.setAlignment(align)
-            l.setStyleSheet(f"color: #444; font-size: {FS};")
+            l.setStyleSheet(f"font-size: {FS};")
             return l
 
         header_row = QHBoxLayout()
@@ -20226,7 +20802,8 @@ class PortfolioDialog(QMainWindow):
         header_row.addStretch()
 
         hdr_frame = QFrame()
-        hdr_frame.setStyleSheet("background: #e8edf2; border-radius: 5px; padding: 3px;")
+        _pb_hdr_bg = "#1a2d3d" if _dm_pb else "#e8edf2"
+        hdr_frame.setStyleSheet(f"background: {_pb_hdr_bg}; border-radius: 5px; padding: 3px;")
         hdr_frame.setLayout(header_row)
         outer.addWidget(hdr_frame)
 
@@ -20245,13 +20822,13 @@ class PortfolioDialog(QMainWindow):
         # Status + Summe
         sum_label = QLabel("")
         sum_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        sum_label.setStyleSheet(f"font-size: {FS}; color: #333; padding: 5px; border-top: 1px solid #ddd; font-weight: bold;")
+        sum_label.setStyleSheet(f"font-size: {FS}; padding: 5px; border-top: 1px solid #ddd; font-weight: bold;")
         outer.addWidget(sum_label)
 
         status_label = QLabel(TR("lbl_period_status2"))
         status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         try:
-            status_label.setStyleSheet("color: #888; font-size: 11px;")
+            status_label.setStyleSheet("font-size: 11px;")
         except RuntimeError:
             pass
         outer.addWidget(status_label)
@@ -20259,7 +20836,7 @@ class PortfolioDialog(QMainWindow):
         disclaimer = QLabel(TR("lbl_disclaimer_rebalancing"))
         disclaimer.setWordWrap(True)
         disclaimer.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        disclaimer.setStyleSheet("color: #888; font-size: 11px; font-style: italic; padding: 4px 12px; border-top: 1px solid #ddd;")
+        disclaimer.setStyleSheet("font-size: 11px; font-style: italic; padding: 4px 12px; border-top: 1px solid #ddd;")
         outer.addWidget(disclaimer)
 
         _alpha_export_data = [{}]
@@ -20311,7 +20888,10 @@ class PortfolioDialog(QMainWindow):
             total_ist  = sum(r['ist_val']  for r in results)
             total_soll = sum(r['soll_val'] for r in results)
 
-            row_colors = ["#ffffff", "#f5f8fc"]
+            if _dm_pb:
+                row_colors = ["#1e2535", "#161d2b"]
+            else:
+                row_colors = ["#ffffff", "#f5f8fc"]
 
             for i, r in enumerate(results):
                 bg = row_colors[i % 2]
@@ -20607,8 +21187,12 @@ class PortfolioDialog(QMainWindow):
 
     def _make_risk_section(self, title_text, value, color_fn, fmt_fn, explanation_fn, bg_color):
         """Erstellt einen farbigen Abschnitt mit Kennzahl + Erklärung."""
+        from PyQt6.QtGui import QPalette as _QPalette_rs
+        _dm_rs = QApplication.palette().color(_QPalette_rs.ColorRole.Window).lightness() < 128
+        _rs_border = "#3a4255" if _dm_rs else "#d0d0d0"
+        _rs_txt    = "#cdd6f4" if _dm_rs else "#2c3e50"
         frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {bg_color}; border-radius: 10px; border: 1px solid #d0d0d0; }}")
+        frame.setStyleSheet(f"QFrame {{ background: {bg_color}; border-radius: 10px; border: 1px solid {_rs_border}; }}")
         fl = QVBoxLayout(frame)
         fl.setSpacing(8)
         fl.setContentsMargins(18, 14, 18, 14)
@@ -20623,7 +21207,7 @@ class PortfolioDialog(QMainWindow):
         fl.addWidget(bv)
         exp = QLabel(explanation_fn(value))
         exp.setWordWrap(True)
-        exp.setStyleSheet("font-size: 13px; color: #2c3e50; border: none; background: transparent; padding: 6px 0px;")
+        exp.setStyleSheet(f"font-size: 13px; color: {_rs_txt}; border: none; background: transparent; padding: 6px 0px;")
         fl.addWidget(exp)
         return frame
 
@@ -20691,6 +21275,9 @@ class PortfolioDialog(QMainWindow):
 
         dialog, outer, period_combo, periods, calc_btn, result_layout, status_label, dlg_w, dlg_h, _alpha_export_data = \
             self._make_risk_dialog("Portfolio Alpha-Analyse", "α")
+
+        from PyQt6.QtGui import QPalette as _QPalette_alp
+        _dm_alp = QApplication.palette().color(_QPalette_alp.ColorRole.Window).lightness() < 128
 
         CRYPTO_SUFFIXES = ('-USD', '-EUR', '-CHF', '-BTC')
         def is_crypto(sym): return any(sym.upper().endswith(s) for s in CRYPTO_SUFFIXES)
@@ -20814,13 +21401,17 @@ class PortfolioDialog(QMainWindow):
                 while result_layout.count():
                     item = result_layout.takeAt(0)
                     if item.widget(): item.widget().deleteLater()
+                if _dm_alp:
+                    _alp_bg1, _alp_bg2, _alp_bg3, _alp_bg4 = "#0d2a3d", "#0d2a1a", "#2a0d25", "#2a2210"
+                else:
+                    _alp_bg1, _alp_bg2, _alp_bg3, _alp_bg4 = "#EBF5FB", "#EAFAF1", "#FDF2F8", "#FEF9E7"
                 sections = [
-                    (f"🌐  {TR('lbl_total_portfolio')}",      a_all,       "gesamt", "#EBF5FB"),
-                    (f"📈  {TR('lbl_only_stocks_etf')}",     a_stocks,    "aktien", "#EAFAF1"),
-                    (f"🪙  {TR('lbl_only_crypto')}",   a_crypto,    "krypto", "#FDF2F8"),
+                    (f"🌐  {TR('lbl_total_portfolio')}",      a_all,       "gesamt", _alp_bg1),
+                    (f"📈  {TR('lbl_only_stocks_etf')}",     a_stocks,    "aktien", _alp_bg2),
+                    (f"🪙  {TR('lbl_only_crypto')}",   a_crypto,    "krypto", _alp_bg3),
                 ]
                 if commodity_sv:
-                    sections.append((f"🥇  {TR('lbl_only_commodities')}", a_commodity, "aktien", "#FEF9E7"))
+                    sections.append((f"🥇  {TR('lbl_only_commodities')}", a_commodity, "aktien", _alp_bg4))
                 for title, val, scope, bg in sections:
                     result_layout.addWidget(self._make_risk_section(
                         title, val, _color, _fmt_alpha,
@@ -20861,6 +21452,9 @@ class PortfolioDialog(QMainWindow):
 
         dialog, outer, period_combo, periods, calc_btn, result_layout, status_label, dlg_w, dlg_h, _sharpe_export_data = \
             self._make_risk_dialog("Portfolio Sharpe-Ratio", "S")
+
+        from PyQt6.QtGui import QPalette as _QPalette_shp
+        _dm_shp = QApplication.palette().color(_QPalette_shp.ColorRole.Window).lightness() < 128
 
         CRYPTO_SUFFIXES = ('-USD', '-EUR', '-CHF', '-BTC')
         def is_crypto(sym): return any(sym.upper().endswith(s) for s in CRYPTO_SUFFIXES)
@@ -20991,13 +21585,17 @@ class PortfolioDialog(QMainWindow):
                 while result_layout.count():
                     item = result_layout.takeAt(0)
                     if item.widget(): item.widget().deleteLater()
+                if _dm_shp:
+                    _shp_bg1, _shp_bg2, _shp_bg3, _shp_bg4 = "#0d2a3d", "#0d2a1a", "#2a0d25", "#2a2210"
+                else:
+                    _shp_bg1, _shp_bg2, _shp_bg3, _shp_bg4 = "#EBF5FB", "#EAFAF1", "#FDF2F8", "#FEF9E7"
                 sections = [
-                    (f"🌐  {TR('lbl_total_portfolio')}",    s_all,       "gesamt", "#EBF5FB"),
-                    (f"📈  {TR('lbl_only_stocks_etf')}",   s_stocks,    "aktien", "#EAFAF1"),
-                    (f"🪙  {TR('lbl_only_crypto')}",   s_crypto,    "krypto", "#FDF2F8"),
+                    (f"🌐  {TR('lbl_total_portfolio')}",    s_all,       "gesamt", _shp_bg1),
+                    (f"📈  {TR('lbl_only_stocks_etf')}",   s_stocks,    "aktien", _shp_bg2),
+                    (f"🪙  {TR('lbl_only_crypto')}",   s_crypto,    "krypto", _shp_bg3),
                 ]
                 if commodity_sv:
-                    sections.append((f"🥇  {TR('lbl_only_commodities')}", s_commodity, "aktien", "#FEF9E7"))
+                    sections.append((f"🥇  {TR('lbl_only_commodities')}", s_commodity, "aktien", _shp_bg4))
                 for title, val, scope, bg in sections:
                     result_layout.addWidget(self._make_risk_section(
                         title, val, _color, _fmt,
@@ -21037,6 +21635,9 @@ class PortfolioDialog(QMainWindow):
             return
 
         # ── Dialog aufbauen ────────────────────────────────────────────────
+        from PyQt6.QtGui import QPalette as _QPalette_beta
+        _dm_beta = QApplication.palette().color(_QPalette_beta.ColorRole.Window).lightness() < 128
+
         dialog = QDialog(self)
         dialog.setWindowTitle(TR("title_beta_analysis"))
         screen = QApplication.primaryScreen().availableGeometry()
@@ -21357,11 +21958,15 @@ class PortfolioDialog(QMainWindow):
                     if item.widget():
                         item.widget().deleteLater()
 
-                result_layout.addWidget(_make_section(f"🌐  {TR('lbl_total_portfolio')}",    b_all,    "gesamt", "#EBF5FB"))
-                result_layout.addWidget(_make_section(f"📈  {TR('lbl_only_stocks_etf')}",  b_stocks, "aktien", "#EAFAF1"))
-                result_layout.addWidget(_make_section(f"🪙  {TR('lbl_only_crypto')}",b_crypto, "krypto", "#FDF2F8"))
+                if _dm_beta:
+                    _bt_bg1, _bt_bg2, _bt_bg3, _bt_bg4 = "#0d2a3d", "#0d2a1a", "#2a0d25", "#2a2210"
+                else:
+                    _bt_bg1, _bt_bg2, _bt_bg3, _bt_bg4 = "#EBF5FB", "#EAFAF1", "#FDF2F8", "#FEF9E7"
+                result_layout.addWidget(_make_section(f"🌐  {TR('lbl_total_portfolio')}",    b_all,    "gesamt", _bt_bg1))
+                result_layout.addWidget(_make_section(f"📈  {TR('lbl_only_stocks_etf')}",  b_stocks, "aktien", _bt_bg2))
+                result_layout.addWidget(_make_section(f"🪙  {TR('lbl_only_crypto')}",b_crypto, "krypto", _bt_bg3))
                 if commodity_sv:
-                    result_layout.addWidget(_make_section(f"🥇  {TR('lbl_only_commodities')}",  b_commodity, "aktien", "#FEF9E7"))
+                    result_layout.addWidget(_make_section(f"🥇  {TR('lbl_only_commodities')}",  b_commodity, "aktien", _bt_bg4))
                 result_layout.addStretch()
                 _fmt_b = lambda v: f"{v:.4f}" if v is not None else "n/a"
                 _beta_rows = [
@@ -23819,8 +24424,12 @@ class PortfolioDialog(QMainWindow):
             if item.widget():
                 item.widget().deleteLater()
 
+        from PyQt6.QtGui import QPalette as _QPalette_bt
+        _dm = QApplication.palette().color(_QPalette_bt.ColorRole.Window).lightness() < 128
+
         total_invested = 0.0
         total_current  = 0.0
+        _row_idx = 0
 
         for symbol, positions in self.portfolio_data.items():
             d = price_map.get(symbol, {})
@@ -23842,7 +24451,12 @@ class PortfolioDialog(QMainWindow):
                 pnl_pct    = (pnl / buy_value * 100) if pnl is not None and buy_value != 0 else None
 
                 row = QWidget()
-                row.setStyleSheet("background-color: white; border-bottom: 1px solid #ddd;")
+                if _dm:
+                    _bg = "#1e2535" if _row_idx % 2 == 0 else "#161d2b"
+                else:
+                    _bg = "#f8f9fa" if _row_idx % 2 == 0 else "white"
+                row.setStyleSheet(f"background-color: {_bg};")
+                _row_idx += 1
                 row_layout = QHBoxLayout(row)
                 row_layout.setContentsMargins(0, 2, 0, 2)
 
@@ -26717,7 +27331,11 @@ class StockMonitorApp(QMainWindow):
         ai_info = QTextBrowser()
         ai_info.setOpenExternalLinks(True)
         ai_info.setMaximumHeight(260)
-        ai_info.setStyleSheet("background:#f0fff0; border-radius:6px; font-size:12px;")
+        from PyQt6.QtGui import QPalette as _QPalette_set
+        _dm_set = QApplication.palette().color(_QPalette_set.ColorRole.Window).lightness() < 128
+        ai_info.setStyleSheet(
+            "background:#1e2a1e; border-radius:6px; font-size:12px; color:#cdd6f4;" if _dm_set
+            else "background:#f0fff0; border-radius:6px; font-size:12px;")
         ai_info.setHtml(TR("gemini_info_html"))
         ai_lay.addWidget(ai_info)
 
@@ -26741,7 +27359,7 @@ class StockMonitorApp(QMainWindow):
         ai_lay.addWidget(ai_status)
 
         ai_web_btn = QPushButton(TR("btn_google_ai_web"))
-        ai_web_btn.setStyleSheet("color:#1e8449; font-weight:bold;")
+        ai_web_btn.setStyleSheet("color:#27ae60; font-weight:bold;" if _dm_set else "color:#1e8449; font-weight:bold;")
         ai_web_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://aistudio.google.com/apikey")))
         ai_lay.addWidget(ai_web_btn)
         ai_lay.addStretch()
@@ -26805,24 +27423,23 @@ class StockMonitorApp(QMainWindow):
             QComboBox as _QCB_lang,
         )
         from PyQt6.QtCore import Qt
-        from PyQt6.QtGui import QFontDatabase as _QFDB_help, QFont as _QFontToc, QColor as _QColorToc
+        from PyQt6.QtGui import QFontDatabase as _QFDB_help, QFont as _QFontToc, QColor as _QColorToc, QPalette as _QPalette_help
         from help_texts import get_help
         from config import save_config, get_language
+
+        # ── Dark mode detection ───────────────────────────────────────────
+        _dm_help = QApplication.palette().color(_QPalette_help.ColorRole.Window).lightness() < 128
 
         # ── Current language & help data ──────────────────────────────────
         _current_lang = [get_language()]   # list so closure can mutate it
 
         def _load_help():
-            return get_help(_current_lang[0])
+            return get_help(_current_lang[0], dark_mode=_dm_help)
 
         # Parent: aufrufendes Fenster bevorzugt (bleibt darüber), sonst Hauptfenster
         _dlg_parent = parent_widget if parent_widget is not None else self
         dialog = QDialog(_dlg_parent)
         dialog.setWindowTitle(_load_help()["window_title"])
-        # Hilfe-Fenster bleibt immer über dem aufrufenden Fenster
-        dialog.setWindowFlags(
-            dialog.windowFlags() | Qt.WindowType.WindowStaysOnTopHint
-        )
         dialog.setMinimumSize(1000, 720)
         screen = QApplication.primaryScreen().availableGeometry()
         dlg_w = int(screen.width()  * 0.78)
@@ -26852,7 +27469,7 @@ class StockMonitorApp(QMainWindow):
         lang_hl.setSpacing(4)
 
         lang_lbl   = _QL_search(_load_help()["lang_label"])
-        lang_lbl.setStyleSheet("color:#555; font-size:11px; border:none;")
+        lang_lbl.setStyleSheet("font-size:11px; border:none;")
         lang_combo = _QCB_lang()
         lang_combo.addItem("DE")
         lang_combo.addItem("EN")
@@ -26867,7 +27484,7 @@ class StockMonitorApp(QMainWindow):
         _search_row = _QW_search()
         _search_row.setMaximumHeight(32)
         _search_row.setStyleSheet(
-            "QWidget { border:1px solid #bbb; border-radius:4px; background:#fff; }"
+            "QWidget { border:1px solid #888; border-radius:4px; }"
             "QWidget:focus-within { border-color:#3498db; }"
         )
         _search_hl = _QHL_help(_search_row)
@@ -26908,8 +27525,12 @@ class StockMonitorApp(QMainWindow):
                         _fsep.setPointSize(8)
                     _fsep.setBold(True)
                     _item.setFont(_fsep)
-                    _item.setForeground(_QColorToc("#2c3e50"))
-                    _item.setBackground(_QColorToc("#dce8f5"))
+                    if _dm_help:
+                        _item.setForeground(_QColorToc("#89b4fa"))
+                        _item.setBackground(_QColorToc("#1a3a5c"))
+                    else:
+                        _item.setForeground(_QColorToc("#2c3e50"))
+                        _item.setBackground(_QColorToc("#dce8f5"))
                 toc.addItem(_item)
 
         _populate_toc(_load_help()["toc_items"])
@@ -28841,7 +29462,7 @@ class StockMonitorApp(QMainWindow):
         sub = QLabel(TR("lbl_donate_text"))
         sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sub.setWordWrap(True)
-        sub.setStyleSheet("color: #555555; font-size: 11px;")
+        sub.setStyleSheet("font-size: 11px;")
         layout.addWidget(sub)
 
         layout.addSpacing(6)
@@ -28888,8 +29509,26 @@ class StockMonitorApp(QMainWindow):
         info_col.setSpacing(10)
 
         def _open_paypal():
-            import webbrowser
-            webbrowser.open("https://paypal.me/StockMonitor")
+            import sys
+            from PyQt6.QtGui import QDesktopServices
+            from PyQt6.QtCore import QUrl, QTimer
+            url = QUrl("https://paypal.me/StockMonitor")
+            if sys.platform == "win32":
+                # WindowStaysOnTopHint verhindert auf Windows, dass der Browser in den
+                # Vordergrund kommt. Flag kurz entfernen, URL öffnen, dann wiederherstellen.
+                flagged = [w for w in QApplication.topLevelWidgets()
+                           if w.isVisible() and (w.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)]
+                for w in flagged:
+                    w.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
+                    w.show()
+                QDesktopServices.openUrl(url)
+                def _restore():
+                    for w in flagged:
+                        w.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+                        w.show()
+                QTimer.singleShot(2000, _restore)
+            else:
+                QDesktopServices.openUrl(url)
         paypal_btn = QPushButton(TR("btn_paypal"))
         paypal_btn.setStyleSheet(
             "QPushButton { background-color: #003087; color: white; font-weight: bold; "
@@ -28899,10 +29538,15 @@ class StockMonitorApp(QMainWindow):
         paypal_btn.clicked.connect(_open_paypal)
         info_col.addWidget(paypal_btn)
 
+        from PyQt6.QtGui import QPalette as _QPalette_don
+        _dm_don = QApplication.palette().color(_QPalette_don.ColorRole.Window).lightness() < 128
+        _iban_bg  = "#0d2a3d" if _dm_don else "#f0f7ff"
+        _iban_brd = "#4a90d9" if _dm_don else "#2980b9"
+        _iban_col = "#89b4fa" if _dm_don else "#1a3a5c"
         iban_lbl = QLabel(
             "<b>Banküberweisung (CH):</b><br>"
-            "<span style='font-family:monospace; background:#f0f7ff; "
-            "border:1px solid #2980b9; border-radius:4px; padding:3px 8px;'>"
+            f"<span style='font-family:monospace; background:{_iban_bg}; "
+            f"border:1px solid {_iban_brd}; border-radius:4px; padding:3px 8px; color:{_iban_col};'>"
             "CH81 0900 0000 6010 1573 2</span>"
         )
         iban_lbl.setWordWrap(True)
@@ -29975,6 +30619,9 @@ class StockMonitorApp(QMainWindow):
 
     def show_currency_converter(self):
         """Währungsrechner-Dialog"""
+        from PyQt6.QtGui import QPalette as _QPalette_curr
+        _dm_curr = QApplication.palette().color(_QPalette_curr.ColorRole.Window).lightness() < 128
+
         dialog = QDialog(self)
         dialog.setWindowTitle(TR("title_currency"))
         dialog.setFixedSize(660, 320)
@@ -29990,7 +30637,7 @@ class StockMonitorApp(QMainWindow):
 
         hint = QLabel(TR("lbl_yahoo_delay"))
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint.setStyleSheet("color: #888; font-size: 10px;")
+        hint.setStyleSheet("font-size: 10px;")
         layout.addWidget(hint)
 
         layout.addSpacing(6)
@@ -30037,20 +30684,25 @@ class StockMonitorApp(QMainWindow):
         result_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         result_label.setWordWrap(True)
-        result_label.setStyleSheet(
-            "color: #1a5276; padding: 10px; background: #eaf4fb; border-radius: 6px;"
-        )
+        if _dm_curr:
+            result_label.setStyleSheet(
+                "color: #7fc8f0; padding: 10px; background: #0d2a3d; border-radius: 6px;"
+            )
+        else:
+            result_label.setStyleSheet(
+                "color: #1a5276; padding: 10px; background: #eaf4fb; border-radius: 6px;"
+            )
         layout.addWidget(result_label)
 
         rate_label = QLabel("")
         rate_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        rate_label.setStyleSheet("color: #555; font-size: 10px;")
+        rate_label.setStyleSheet("font-size: 10px;")
         layout.addWidget(rate_label)
 
         status_label = QLabel("")
         status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         try:
-            status_label.setStyleSheet("color: #888; font-size: 10px;")
+            status_label.setStyleSheet("font-size: 10px;")
         except RuntimeError:
             pass
         layout.addWidget(status_label)

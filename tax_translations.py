@@ -67,8 +67,8 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_loading_calculating":      "{n} / {n} Symbole – berechne Steuer…",
 
         # ── Haupt-Dialog Titel ────────────────────────────────────────────────
-        "tax_main_title":               "{flag}  Steuerauszug {name}  –  {year}",
-        "tax_main_heading":             "<b>{flag}  Steuerauszug {name}  –  Steuerjahr {year}</b>",
+        "tax_main_title":               "Steuerauszug {name}  –  {year}",
+        "tax_main_heading":             "<b>Steuerauszug {name}  –  Steuerjahr {year}</b>",
 
         # ── Buttons (Haupt-Dialog) ────────────────────────────────────────────
         "tax_btn_update":               "🔄  Update Steuerregeln",
@@ -160,7 +160,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         # ── Globaler Disclaimer ───────────────────────────────────────────────
         "tax_disclaimer_global": (
             "Bitte verwenden Sie für Ihre Steuererklärung den originalen Bankauszug. "
-            "Dieses Portfolio kann bis zu ca. 2 % vom tatsächlichen Bankwert abweichen "
+            "Dieses Portfolio kann bis zu ca. 3 % vom tatsächlichen Bankwert abweichen "
             "(Bankrundungen, Devisenkurse). Gebühren, Lombardkredite und sonstige "
             "Bankkosten sind nicht berücksichtigt. Keine Steuerberatung."
         ),
@@ -243,7 +243,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_btn_export":          "📋  PDF exportieren",
         "tax_form_btn_cancel":          "Abbrechen",
         # CH
-        "tax_form_ch_heading":          "🇨🇭  Wertschriftenverzeichnis – Schweiz",
+        "tax_form_ch_heading":          "Wertschriftenverzeichnis – Schweiz",
         "tax_form_ch_info": (
             "Exportiert ein ausgefülltes Wertschriftenverzeichnis (Formular DA-1) "
             "als Orientierungshilfe. Kurse per 31.12., Währungsumrechnung via SNB/Yahoo Finance."
@@ -262,7 +262,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_ch_error_title":      "Fehler",
         "tax_form_ch_error_msg":        "Export fehlgeschlagen:\n{error}",
         # DE
-        "tax_form_de_heading":          "🇩🇪  Anlage KAP – Deutschland",
+        "tax_form_de_heading":          "Anlage KAP – Deutschland",
         "tax_form_de_info": (
             "Exportiert eine ausgefüllte Anlage KAP (Kapitalerträge) als Orientierungshilfe. "
             "Inkl. Freistellungsauftrag-Berechnung, Abgeltungsteuer und Soli. "
@@ -282,7 +282,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_de_error_title":      "Fehler",
         "tax_form_de_error_msg":        "Export fehlgeschlagen:\n{error}",
         # AT
-        "tax_form_at_heading":          "🇦🇹  E1kv-Nachweis – Österreich",
+        "tax_form_at_heading":          "E1kv-Nachweis – Österreich",
         "tax_form_at_info": (
             "Exportiert einen Nachweis für ausländische Kapitalerträge (E1kv-Beilage) "
             "als Orientierungshilfe. Hilft bei der Rückforderung ausländischer Quellensteuern. "
@@ -302,7 +302,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_at_error_title":      "Fehler",
         "tax_form_at_error_msg":        "Export fehlgeschlagen:\n{error}",
         # UK
-        "tax_form_uk_heading":          "🇬🇧  Capital Gains & Dividends – United Kingdom",
+        "tax_form_uk_heading":          "Capital Gains & Dividends – United Kingdom",
         "tax_form_uk_info": (
             "Exports a Capital Gains Tax / Dividend Tax summary (SA108 / SA100 guidance) "
             "as an orientation aid. Dividend Allowance £500, CGT Annual Exempt £3,000 (2024/25). "
@@ -322,7 +322,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_uk_error_title":      "Error",
         "tax_form_uk_error_msg":        "Export failed:\n{error}",
         # US
-        "tax_form_us_heading":          "🇺🇸  Schedule B / Form 1040 – United States",
+        "tax_form_us_heading":          "Schedule B / Form 1040 – United States",
         "tax_form_us_info": (
             "Exports a dividend & withholding tax summary (Schedule B / 1099-DIV guidance) "
             "as an orientation aid. For non-US persons: 30 % / DBA 15 % withholding. "
@@ -375,8 +375,8 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_loading_calculating":      "{n} / {n} symbols – calculating taxes…",
 
         # ── Haupt-Dialog Titel ────────────────────────────────────────────────
-        "tax_main_title":               "{flag}  Tax Statement {name}  –  {year}",
-        "tax_main_heading":             "<b>{flag}  Tax Statement {name}  –  Tax Year {year}</b>",
+        "tax_main_title":               "Tax Statement {name}  –  {year}",
+        "tax_main_heading":             "<b>Tax Statement {name}  –  Tax Year {year}</b>",
 
         # ── Buttons (Haupt-Dialog) ────────────────────────────────────────────
         "tax_btn_update":               "🔄  Update Tax Rules",
@@ -468,7 +468,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         # ── Globaler Disclaimer ───────────────────────────────────────────────
         "tax_disclaimer_global": (
             "Please use your official bank statement for your tax return. "
-            "This portfolio may deviate by up to approx. 2 % from the actual bank value "
+            "This portfolio may deviate by up to approx. 3 % from the actual bank value "
             "(bank rounding, exchange rates). Fees, margin loans and other "
             "bank costs are not included. Not tax advice."
         ),
@@ -551,7 +551,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_btn_export":          "📋  Export PDF",
         "tax_form_btn_cancel":          "Cancel",
         # CH
-        "tax_form_ch_heading":          "🇨🇭  Securities Schedule – Switzerland",
+        "tax_form_ch_heading":          "Securities Schedule – Switzerland",
         "tax_form_ch_info": (
             "Exports a completed securities schedule (Form DA-1) "
             "as an orientation aid. Prices at Dec 31, FX via SNB/Yahoo Finance."
@@ -570,7 +570,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_ch_error_title":      "Error",
         "tax_form_ch_error_msg":        "Export failed:\n{error}",
         # DE
-        "tax_form_de_heading":          "🇩🇪  Anlage KAP – Germany",
+        "tax_form_de_heading":          "Anlage KAP – Germany",
         "tax_form_de_info": (
             "Exports a completed Anlage KAP (capital income) as an orientation aid. "
             "Incl. exemption order, withholding tax and solidarity surcharge. "
@@ -590,7 +590,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_de_error_title":      "Error",
         "tax_form_de_error_msg":        "Export failed:\n{error}",
         # AT
-        "tax_form_at_heading":          "🇦🇹  E1kv Declaration – Austria",
+        "tax_form_at_heading":          "E1kv Declaration – Austria",
         "tax_form_at_info": (
             "Exports a declaration for foreign capital income (E1kv supplement) "
             "as an orientation aid. Helps with reclaiming foreign withholding taxes. "
@@ -610,7 +610,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_at_error_title":      "Error",
         "tax_form_at_error_msg":        "Export failed:\n{error}",
         # UK
-        "tax_form_uk_heading":          "🇬🇧  Capital Gains & Dividends – United Kingdom",
+        "tax_form_uk_heading":          "Capital Gains & Dividends – United Kingdom",
         "tax_form_uk_info": (
             "Exports a Capital Gains Tax / Dividend Tax summary (SA108 / SA100 guidance) "
             "as an orientation aid. Dividend Allowance £500, CGT Annual Exempt £3,000 (2024/25). "
@@ -630,7 +630,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_uk_error_title":      "Error",
         "tax_form_uk_error_msg":        "Export failed:\n{error}",
         # US
-        "tax_form_us_heading":          "🇺🇸  Schedule B / Form 1040 – United States",
+        "tax_form_us_heading":          "Schedule B / Form 1040 – United States",
         "tax_form_us_info": (
             "Exports a dividend & withholding tax summary (Schedule B / 1099-DIV guidance) "
             "as an orientation aid. For non-US persons: 30 % / treaty 15 % withholding. "

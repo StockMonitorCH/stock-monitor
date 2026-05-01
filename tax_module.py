@@ -15,14 +15,18 @@ Unterstützte Länder:
 
 Haftungsausschluss:
   Bitte verwenden Sie den originalen Bankauszug für Ihre Steuererklärung.
-  Dieses Portfolio kann bis ca. 2 % Abweichung aufweisen (Banklogik).
+  Dieses Portfolio kann bis ca. 3 % Abweichung aufweisen (Banklogik).
   Gebühren, Lombardkredite u. ä. werden nicht berücksichtigt.
 
-Version: 2025-01  (jährlich aktualisierbar)
+Version: 2025-01  (jährlich aktualisierbar; UK-Steuerjahr: 6. April – 5. April)
 """
 
 import os
+import sys as _sys_tax
 from tax_translations import TRT, get_tax_language
+
+# Windows-nativer Explorer-Dialog kann beim Zurücknavigieren abstürzen → eigenes Qt-Dialog nutzen
+_WIN_DLG_OPTS_AVAILABLE = (_sys_tax.platform == 'win32')
 
 # ── Steuersätze & Regeln – NUR HIER ÄNDERN ─────────────────────────────────
 TAX_RULES = {
@@ -643,10 +647,13 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
         QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
         QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
         QFileDialog, QWidget, QSizePolicy, QScrollArea, QFrame,
+        QApplication,
     )
     from PyQt6.QtCore import Qt
-    from PyQt6.QtGui  import QFont, QColor, QFontDatabase
+    from PyQt6.QtGui  import QFont, QColor, QFontDatabase, QPalette as _QPalette_tax
     import os
+
+    _dm = QApplication.palette().color(_QPalette_tax.ColorRole.Window).lightness() < 128
 
     rules   = TAX_RULES[country_code]
     calc_fn = CALC_FUNCS[country_code]
@@ -824,7 +831,8 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
     title_lbl = QLabel(
         TRT("tax_main_heading", flag=rules['flag'], name=rules['name'], year=rules['year'])
     )
-    title_lbl.setStyleSheet("font-size:15px; margin-bottom:2px;")
+    _title_color = "#e0e0e0" if _dm else "#1a1a2e"
+    title_lbl.setStyleSheet(f"font-size:15px; margin-bottom:2px; color:{_title_color};")
     main_layout.addWidget(title_lbl)
 
     # Disclaimer (Regeln)
@@ -832,10 +840,16 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
     rule_lbl = QLabel(rules[_disc_key])
     rule_lbl.setWordWrap(True)
     rule_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-    rule_lbl.setStyleSheet(
-        "background:#f0f4ff; border:1px solid #c0c8e8; border-radius:4px;"
-        "padding:6px 8px; font-size:11px; color:#334;"
-    )
+    if _dm:
+        rule_lbl.setStyleSheet(
+            "background:#0d2a3d; border:1px solid #1a4a6a; border-radius:4px;"
+            "padding:6px 8px; font-size:11px; color:#cdd6f4;"
+        )
+    else:
+        rule_lbl.setStyleSheet(
+            "background:#f0f4ff; border:1px solid #c0c8e8; border-radius:4px;"
+            "padding:6px 8px; font-size:11px; color:#334;"
+        )
     main_layout.addWidget(rule_lbl)
 
     # ── Positions-Tabelle ─────────────────────────────────────────────────────
@@ -905,10 +919,16 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
     # ── Zusammenfassung ───────────────────────────────────────────────────────
     sumframe = QFrame()
     sumframe.setFrameShape(QFrame.Shape.StyledPanel)
-    sumframe.setStyleSheet(
-        "QFrame{background:#f8f9fa; border:1px solid #dde; border-radius:5px;}"
-        "QLabel{font-size:12px;}"
-    )
+    if _dm:
+        sumframe.setStyleSheet(
+            "QFrame{background:#1e2535; border:1px solid #2a3a4a; border-radius:5px;}"
+            "QLabel{font-size:12px;}"
+        )
+    else:
+        sumframe.setStyleSheet(
+            "QFrame{background:#f8f9fa; border:1px solid #dde; border-radius:5px;}"
+            "QLabel{font-size:12px;}"
+        )
     sum_layout = QVBoxLayout(sumframe)
     sum_layout.setContentsMargins(12, 8, 12, 8)
     sum_layout.setSpacing(3)
@@ -982,7 +1002,8 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
     if country_code == "US":
         _ws_frame = QWidget()
         _ws_frame.setStyleSheet(
-            "QWidget { background:#fff3cd; border:1px solid #e6a817; border-radius:4px; }"
+            "QWidget { background:%s; border:1px solid %s; border-radius:4px; }" % (
+                ("#2a2000", "#6a5000") if _dm else ("#fff3cd", "#e6a817"))
         )
         _ws_hl = QHBoxLayout(_ws_frame)
         _ws_hl.setContentsMargins(10, 6, 10, 6)
@@ -996,14 +1017,15 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
         _ws_lbl = QLabel(TRT("tax_wash_sale_text"))
         _ws_lbl.setWordWrap(True)
         _ws_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        _ws_lbl.setStyleSheet("border:none; background:transparent; font-size:10px; color:#7d4800;")
+        _ws_lbl.setStyleSheet(f"border:none; background:transparent; font-size:10px; color:{'#f0c040' if _dm else '#7d4800'};")
         _ws_hl.addWidget(_ws_lbl, 1)
         main_layout.addWidget(_ws_frame)
 
     # ── Globaler Disclaimer ────────────────────────────────────────────────────
     _disc_frame = QWidget()
     _disc_frame.setStyleSheet(
-        "QWidget { background:#fff8e1; border:1px solid #f0c040; border-radius:4px; }"
+        "QWidget { background:%s; border:1px solid %s; border-radius:4px; }" % (
+            ("#2a2000", "#6a5000") if _dm else ("#fff8e1", "#f0c040"))
     )
     _disc_hl = QHBoxLayout(_disc_frame)
     _disc_hl.setContentsMargins(10, 6, 10, 6)
@@ -1019,7 +1041,7 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
     disc_lbl = QLabel(TRT("tax_disclaimer_global"))
     disc_lbl.setWordWrap(True)
     disc_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-    disc_lbl.setStyleSheet("border:none; background:transparent; font-size:10px; color:#555;")
+    disc_lbl.setStyleSheet(f"border:none; background:transparent; font-size:10px; color:{'#aaa' if _dm else '#555'};")
     _disc_hl.addWidget(disc_lbl, 1)
     main_layout.addWidget(_disc_frame)
 
@@ -1069,9 +1091,11 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
             else:                     ext, flt = ".ods",  "ODS (*.ods)"
 
             _default_name = TRT("tax_export_default_filename", country=country_code)
+            _dlg_opts = QFileDialog.Option.DontUseNativeDialog if _WIN_DLG_OPTS_AVAILABLE else QFileDialog.Option(0)
             path, _ = QFileDialog.getSaveFileName(
                 dlg, TRT("tax_export_save_dialog"),
-                os.path.expanduser(f"~/{_default_name}{ext}"), flt)
+                os.path.expanduser(f"~/{_default_name}{ext}"), flt,
+                options=_dlg_opts)
             if not path: return
             fmt_dlg.accept()
             try:
@@ -1584,11 +1608,51 @@ code { background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 12p
         _tb.setOpenExternalLinks(False)
         _tb.setReadOnly(True)
 
+        from PyQt6.QtWidgets import QApplication as _QApp_th
+        from PyQt6.QtGui import QPalette as _QPal_th
+        _dm_th = _QApp_th.palette().color(_QPal_th.ColorRole.Window).lightness() < 128
+        _CSS_DARK_TAX = """<style>
+            body { background-color: #1e1e2e !important; color: #cdd6f4 !important; }
+            h3 { color: #89b4fa !important; }
+            h4 { color: #a6e3a1 !important; }
+            b { color: #cdd6f4 !important; }
+            th { background: #313244 !important; color: #cdd6f4 !important; }
+            td { border-bottom-color: #45475a !important; color: #cdd6f4 !important; }
+            td b { color: #cdd6f4 !important; }
+            .tip  { background: #1a3a2a !important; border-left-color: #43a047 !important; color: #cdd6f4 !important; }
+            .tip b { color: #cdd6f4 !important; }
+            .warn { background: #3a2010 !important; border-left-color: #e65100 !important; color: #cdd6f4 !important; }
+            .warn b { color: #cdd6f4 !important; }
+            code { background: #313244 !important; color: #cdd6f4 !important; }
+        </style>""" if _dm_th else ""
+
+        _CSS_DARK_FULL_TAX = """<style>
+body { font-family: sans-serif; font-size: 13px; background-color: #1e1e2e; color: #cdd6f4; }
+h3 { color: #89b4fa; margin-top: 14px; margin-bottom: 4px; }
+h4 { color: #a6e3a1; margin-top: 10px; margin-bottom: 3px; }
+b { color: #cdd6f4; }
+table { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 12px; }
+th { background: #313244; padding: 4px 7px; text-align: left; color: #cdd6f4; }
+td { padding: 3px 7px; border-bottom: 1px solid #45475a; color: #cdd6f4; }
+td b { color: #cdd6f4; }
+ul { margin: 4px 0 6px 0; padding-left: 18px; }
+li { margin-bottom: 3px; }
+.tip  { background: #1a3a2a; border-left: 4px solid #43a047; padding: 6px 10px; margin: 8px 0; border-radius: 3px; color: #cdd6f4; }
+.tip b { color: #cdd6f4; }
+.warn { background: #3a2010; border-left: 4px solid #e65100; padding: 6px 10px; margin: 8px 0; border-radius: 3px; color: #cdd6f4; }
+.warn b { color: #cdd6f4; }
+code { background: #313244; padding: 1px 4px; border-radius: 3px; font-size: 12px; color: #cdd6f4; }
+</style>"""
+
         def _get_html(lang):
             entry = _HELP_TEXTS.get(country_code, {})
             if isinstance(entry, dict):
-                return entry.get(lang) or entry.get("DE") or TRT("tax_help_no_text")
-            return entry or TRT("tax_help_no_text")   # legacy: plain string
+                html = entry.get(lang) or entry.get("DE") or TRT("tax_help_no_text")
+            else:
+                html = entry or TRT("tax_help_no_text")
+            if _dm_th:
+                html = html.replace(_CSS, _CSS_DARK_FULL_TAX, 1)
+            return html
 
         _tb.setHtml(_get_html(get_tax_language()))
         _vl.addWidget(_tb)
@@ -1639,12 +1703,14 @@ def _save_tax_data(parent_widget, tax_data, country_code):
 
     # Dateinamen wählen
     _ensure_tax_dir()
+    _dlg_opts = QFileDialog.Option.DontUseNativeDialog if _WIN_DLG_OPTS_AVAILABLE else QFileDialog.Option(0)
     path, _ = QFileDialog.getSaveFileName(
         parent_widget,
         TRT("tax_save_dialog_title"),
         os.path.join(TAX_DIR, TRT("tax_file_save_default",
             country=country_code, year=tax_data['rules']['year']) + TAX_EXT),
-        TRT("tax_file_filter_smtx")
+        TRT("tax_file_filter_smtx"),
+        options=_dlg_opts,
     )
     if not path:
         return
@@ -1814,11 +1880,13 @@ def _load_tax_data(parent_widget, tax_data_ref, tbl_widget, sum_frame):
     import json, os
 
     _ensure_tax_dir()
+    _dlg_opts = QFileDialog.Option.DontUseNativeDialog if _WIN_DLG_OPTS_AVAILABLE else QFileDialog.Option(0)
     path, _ = QFileDialog.getOpenFileName(
         parent_widget,
         TRT("tax_load_dialog_title"),
         TAX_DIR,
-        f"{TRT('tax_file_filter_smtx')};;{TRT('tax_file_filter_all')}"
+        f"{TRT('tax_file_filter_smtx')};;{TRT('tax_file_filter_all')}",
+        options=_dlg_opts,
     )
     if not path:
         return
@@ -1966,11 +2034,13 @@ def _export_tax_form(parent_widget, tax_data, country_code):
     """
     from PyQt6.QtWidgets import (
         QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-        QComboBox, QFileDialog, QMessageBox, QFrame, QWidget
+        QComboBox, QFileDialog, QMessageBox, QFrame, QWidget, QApplication,
     )
     from PyQt6.QtCore import Qt
-    from PyQt6.QtGui import QFont, QFontDatabase
+    from PyQt6.QtGui import QFont, QFontDatabase, QPalette as _QPalette_form
     import sys as _sys
+
+    _dm_form = QApplication.palette().color(_QPalette_form.ColorRole.Window).lightness() < 128
 
     # Emoji-Font ermitteln
     _ef_form = None
@@ -1990,10 +2060,10 @@ def _export_tax_form(parent_widget, tax_data, country_code):
     lyt.setSpacing(10)
 
     title_lbl  = QLabel()
-    title_lbl.setStyleSheet("font-size:14px; font-weight:bold; color:#1a1a2e;")
+    title_lbl.setStyleSheet(f"font-size:14px; font-weight:bold; color:{'#e0e0e0' if _dm_form else '#1a1a2e'};")
     info_lbl   = QLabel()
     info_lbl.setWordWrap(True)
-    info_lbl.setStyleSheet("color:#444; font-size:11px;")
+    info_lbl.setStyleSheet(f"color:{'#cdd6f4' if _dm_form else '#444'}; font-size:11px;")
     lyt.addWidget(title_lbl)
     lyt.addWidget(info_lbl)
 
@@ -2005,14 +2075,15 @@ def _export_tax_form(parent_widget, tax_data, country_code):
     region_combo = QComboBox()
     region_combo.setMinimumHeight(28)
     stichtag_lbl = QLabel()
-    stichtag_lbl.setStyleSheet("color:#666; font-size:10px;")
+    stichtag_lbl.setStyleSheet(f"color:{'#aaa' if _dm_form else '#666'}; font-size:10px;")
     lyt.addWidget(region_lbl)
     lyt.addWidget(region_combo)
     lyt.addWidget(stichtag_lbl)
 
     _disc_frame = QWidget()
     _disc_frame.setStyleSheet(
-        "QWidget { background:#fff8e1; border-left:3px solid #ffc107; border-radius:3px; }"
+        "QWidget { background:%s; border-left:3px solid #ffc107; border-radius:3px; }" % (
+            "#2a2000" if _dm_form else "#fff8e1")
     )
     _disc_hl = QHBoxLayout(_disc_frame)
     _disc_hl.setContentsMargins(8, 6, 8, 6)
@@ -2026,7 +2097,7 @@ def _export_tax_form(parent_widget, tax_data, country_code):
     disc_lbl = QLabel()
     disc_lbl.setWordWrap(True)
     disc_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-    disc_lbl.setStyleSheet("border:none; background:transparent; font-size:10px; color:#555;")
+    disc_lbl.setStyleSheet(f"border:none; background:transparent; font-size:10px; color:{'#aaa' if _dm_form else '#555'};")
     _disc_hl.addWidget(disc_lbl, 1)
     lyt.addWidget(_disc_frame)
 
@@ -2078,10 +2149,11 @@ def _export_tax_form(parent_widget, tax_data, country_code):
         def _do_ch():
             canton_code = region_combo.currentData()
             canton_name = region_combo.currentText().split("–")[-1].strip()
+            _opts = QFileDialog.Option.DontUseNativeDialog if _WIN_DLG_OPTS_AVAILABLE else QFileDialog.Option(0)
             path, _ = QFileDialog.getSaveFileName(
                 dlg, TRT("tax_form_ch_save_dialog"),
                 TRT("tax_form_ch_default_filename", canton=canton_code, year=year),
-                "PDF (*.pdf)"
+                "PDF (*.pdf)", options=_opts,
             )
             if path:
                 try:
@@ -2115,10 +2187,11 @@ def _export_tax_form(parent_widget, tax_data, country_code):
         def _do_de():
             bl_code = region_combo.currentData()
             bl_name = region_combo.currentText().split("–")[-1].strip()
+            _opts = QFileDialog.Option.DontUseNativeDialog if _WIN_DLG_OPTS_AVAILABLE else QFileDialog.Option(0)
             path, _ = QFileDialog.getSaveFileName(
                 dlg, TRT("tax_form_de_save_dialog"),
                 TRT("tax_form_de_default_filename", year=year),
-                "PDF (*.pdf)"
+                "PDF (*.pdf)", options=_opts,
             )
             if path:
                 try:
@@ -2150,10 +2223,11 @@ def _export_tax_form(parent_widget, tax_data, country_code):
         def _do_at():
             fa_code = region_combo.currentData()
             fa_name = region_combo.currentText()
+            _opts = QFileDialog.Option.DontUseNativeDialog if _WIN_DLG_OPTS_AVAILABLE else QFileDialog.Option(0)
             path, _ = QFileDialog.getSaveFileName(
                 dlg, TRT("tax_form_at_save_dialog"),
                 TRT("tax_form_at_default_filename", year=year),
-                "PDF (*.pdf)"
+                "PDF (*.pdf)", options=_opts,
             )
             if path:
                 try:
@@ -2186,10 +2260,11 @@ def _export_tax_form(parent_widget, tax_data, country_code):
         def _do_uk():
             nation_code = region_combo.currentData()
             nation_name = region_combo.currentText()
+            _opts = QFileDialog.Option.DontUseNativeDialog if _WIN_DLG_OPTS_AVAILABLE else QFileDialog.Option(0)
             path, _ = QFileDialog.getSaveFileName(
                 dlg, TRT("tax_form_uk_save_dialog"),
                 TRT("tax_form_uk_default_filename", year=year),
-                "PDF (*.pdf)"
+                "PDF (*.pdf)", options=_opts,
             )
             if path:
                 try:
@@ -2340,10 +2415,11 @@ def _export_tax_form(parent_widget, tax_data, country_code):
             state_name  = state_combo.currentText()  if inv_code == "RES" else None
             filing_code = filing_combo.currentData() if inv_code == "RES" else None
             filing_name = filing_combo.currentText() if inv_code == "RES" else None
+            _opts = QFileDialog.Option.DontUseNativeDialog if _WIN_DLG_OPTS_AVAILABLE else QFileDialog.Option(0)
             path, _ = QFileDialog.getSaveFileName(
                 dlg, TRT("tax_form_us_save_dialog"),
                 TRT("tax_form_us_default_filename", year=year),
-                "PDF (*.pdf)"
+                "PDF (*.pdf)", options=_opts,
             )
             if path:
                 try:
