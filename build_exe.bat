@@ -60,6 +60,9 @@ set MISSING=0
 for %%f in (
     stock_monitor.py
     portfolio_db.py
+    portfolio_analysis.py
+    portfolio_analysis_extended.py
+    portfolio_analysis_texts.py
     config.py
     translations.py
     tax_module.py
@@ -122,6 +125,9 @@ python -m PyInstaller ^
     %ICO_DATA_ARG% ^
     --distpath "dist" ^
     --add-data "portfolio_db.py;." ^
+    --add-data "portfolio_analysis.py;." ^
+    --add-data "portfolio_analysis_extended.py;." ^
+    --add-data "portfolio_analysis_texts.py;." ^
     --add-data "config.py;." ^
     --add-data "translations.py;." ^
     --add-data "tax_module.py;." ^

@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.2.0"                            # beim Release anpassen
+APP_VERSION  = "5.2.2"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -329,195 +329,329 @@ except ImportError:
 # Struktur: industry (Yahoo) → (sector, industry_group, sub_industry)
 # Yahoo liefert 'sector' und 'industry' – Industry Group + Sub-Industry via Mapping
 _GICS_HIERARCHY = {
+    # Schlüssel = Yahoo-Industry-String → (GICS-Sektor, Industry Group, Industry, Sub-Industry)
     # ── Energy ──────────────────────────────────────────────────────────────
-    'Oil & Gas Drilling':                          ('Energy',               'Energy',                         'Oil & Gas Drilling'),
-    'Oil & Gas Equipment & Services':              ('Energy',               'Energy',                         'Oil & Gas Equipment & Services'),
-    'Integrated Oil & Gas':                        ('Energy',               'Energy',                         'Integrated Oil & Gas'),
-    'Oil & Gas Exploration & Production':          ('Energy',               'Energy',                         'Oil & Gas Exploration & Production'),
-    'Oil & Gas Refining & Marketing':              ('Energy',               'Energy',                         'Oil & Gas Refining & Marketing'),
-    'Oil & Gas Storage & Transportation':          ('Energy',               'Energy',                         'Oil & Gas Storage & Transportation'),
-    'Coal & Consumable Fuels':                     ('Energy',               'Energy',                         'Coal & Consumable Fuels'),
+    'Oil & Gas Drilling':                          ('Energy',                 'Energy',                                    'Energy Equipment & Services',                          'Oil & Gas Drilling'),
+    'Oil & Gas Equipment & Services':              ('Energy',                 'Energy',                                    'Energy Equipment & Services',                          'Oil & Gas Equipment & Services'),
+    'Integrated Oil & Gas':                        ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Integrated Oil & Gas'),
+    'Oil & Gas Exploration & Production':          ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Exploration & Production'),
+    'Oil & Gas Refining & Marketing':              ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Refining & Marketing'),
+    'Oil & Gas Storage & Transportation':          ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Storage & Transportation'),
+    'Coal & Consumable Fuels':                     ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Coal & Consumable Fuels'),
     # ── Materials ───────────────────────────────────────────────────────────
-    'Commodity Chemicals':                         ('Materials',            'Materials',                      'Commodity Chemicals'),
-    'Diversified Chemicals':                       ('Materials',            'Materials',                      'Diversified Chemicals'),
-    'Fertilizers & Agricultural Chemicals':        ('Materials',            'Materials',                      'Fertilizers & Agricultural Chemicals'),
-    'Industrial Gases':                            ('Materials',            'Materials',                      'Industrial Gases'),
-    'Specialty Chemicals':                         ('Materials',            'Materials',                      'Specialty Chemicals'),
-    'Construction Materials':                      ('Materials',            'Materials',                      'Construction Materials'),
-    'Metal & Glass Containers':                    ('Materials',            'Materials',                      'Metal & Glass Containers'),
-    'Paper Packaging':                             ('Materials',            'Materials',                      'Paper Packaging'),
-    'Aluminum':                                    ('Materials',            'Materials',                      'Aluminum'),
-    'Diversified Metals & Mining':                 ('Materials',            'Materials',                      'Diversified Metals & Mining'),
-    'Copper':                                      ('Materials',            'Materials',                      'Copper'),
-    'Gold':                                        ('Materials',            'Materials',                      'Gold'),
-    'Precious Metals & Minerals':                  ('Materials',            'Materials',                      'Precious Metals & Minerals'),
-    'Silver':                                      ('Materials',            'Materials',                      'Silver'),
-    'Steel':                                       ('Materials',            'Materials',                      'Steel'),
-    'Forest Products':                             ('Materials',            'Materials',                      'Forest Products'),
-    'Paper Products':                              ('Materials',            'Materials',                      'Paper Products'),
+    'Commodity Chemicals':                         ('Materials',              'Materials',                                 'Chemicals',                                            'Commodity Chemicals'),
+    'Diversified Chemicals':                       ('Materials',              'Materials',                                 'Chemicals',                                            'Diversified Chemicals'),
+    'Fertilizers & Agricultural Chemicals':        ('Materials',              'Materials',                                 'Chemicals',                                            'Fertilizers & Agricultural Chemicals'),
+    'Industrial Gases':                            ('Materials',              'Materials',                                 'Chemicals',                                            'Industrial Gases'),
+    'Specialty Chemicals':                         ('Materials',              'Materials',                                 'Chemicals',                                            'Specialty Chemicals'),
+    'Construction Materials':                      ('Materials',              'Materials',                                 'Construction Materials',                               'Construction Materials'),
+    'Metal & Glass Containers':                    ('Materials',              'Materials',                                 'Containers & Packaging',                               'Metal & Glass Containers'),
+    'Paper Packaging':                             ('Materials',              'Materials',                                 'Containers & Packaging',                               'Paper & Plastic Packaging Products & Materials'),
+    'Aluminum':                                    ('Materials',              'Materials',                                 'Metals & Mining',                                      'Aluminum'),
+    'Diversified Metals & Mining':                 ('Materials',              'Materials',                                 'Metals & Mining',                                      'Diversified Metals & Mining'),
+    'Copper':                                      ('Materials',              'Materials',                                 'Metals & Mining',                                      'Copper'),
+    'Gold':                                        ('Materials',              'Materials',                                 'Metals & Mining',                                      'Gold'),
+    'Precious Metals & Minerals':                  ('Materials',              'Materials',                                 'Metals & Mining',                                      'Precious Metals & Minerals'),
+    'Silver':                                      ('Materials',              'Materials',                                 'Metals & Mining',                                      'Silver'),
+    'Steel':                                       ('Materials',              'Materials',                                 'Metals & Mining',                                      'Steel'),
+    'Forest Products':                             ('Materials',              'Materials',                                 'Paper & Forest Products',                              'Forest Products & Timber'),
+    'Paper Products':                              ('Materials',              'Materials',                                 'Paper & Forest Products',                              'Paper Products'),
     # ── Industrials ─────────────────────────────────────────────────────────
-    'Aerospace & Defense':                         ('Industrials',          'Capital Goods',                  'Aerospace & Defense'),
-    'Building Products':                           ('Industrials',          'Capital Goods',                  'Building Products'),
-    'Construction & Engineering':                  ('Industrials',          'Capital Goods',                  'Construction & Engineering'),
-    'Electrical Components & Equipment':           ('Industrials',          'Capital Goods',                  'Electrical Components & Equipment'),
-    'Heavy Electrical Equipment':                  ('Industrials',          'Capital Goods',                  'Heavy Electrical Equipment'),
-    'Industrial Conglomerates':                    ('Industrials',          'Capital Goods',                  'Industrial Conglomerates'),
-    'Construction Machinery & Heavy Trucks':       ('Industrials',          'Capital Goods',                  'Construction Machinery & Heavy Trucks'),
-    'Agricultural & Farm Machinery':               ('Industrials',          'Capital Goods',                  'Agricultural & Farm Machinery'),
-    'Industrial Machinery & Supplies':             ('Industrials',          'Capital Goods',                  'Industrial Machinery & Supplies'),
-    'Trading Companies & Distributors':            ('Industrials',          'Capital Goods',                  'Trading Companies & Distributors'),
-    'Commercial Printing':                         ('Industrials',          'Commercial & Professional Services', 'Commercial Printing'),
-    'Environmental & Facilities Services':         ('Industrials',          'Commercial & Professional Services', 'Environmental & Facilities Services'),
-    'Office Services & Supplies':                  ('Industrials',          'Commercial & Professional Services', 'Office Services & Supplies'),
-    'Diversified Support Services':                ('Industrials',          'Commercial & Professional Services', 'Diversified Support Services'),
-    'Security & Alarm Services':                   ('Industrials',          'Commercial & Professional Services', 'Security & Alarm Services'),
-    'Human Resource & Employment Services':        ('Industrials',          'Commercial & Professional Services', 'Human Resource & Employment Services'),
-    'Research & Consulting Services':              ('Industrials',          'Commercial & Professional Services', 'Research & Consulting Services'),
-    'Airlines':                                    ('Industrials',          'Transportation',                 'Airlines'),
-    'Marine Transportation':                       ('Industrials',          'Transportation',                 'Marine Transportation'),
-    'Rail Transportation':                         ('Industrials',          'Transportation',                 'Rail Transportation'),
-    'Cargo Ground Transportation':                 ('Industrials',          'Transportation',                 'Cargo Ground Transportation'),
-    'Passenger Ground Transportation':             ('Industrials',          'Transportation',                 'Passenger Ground Transportation'),
-    'Airport Services':                            ('Industrials',          'Transportation',                 'Airport Services'),
-    'Highways & Railtracks':                       ('Industrials',          'Transportation',                 'Highways & Railtracks'),
-    'Marine Ports & Services':                     ('Industrials',          'Transportation',                 'Marine Ports & Services'),
-    'Air Freight & Logistics':                     ('Industrials',          'Transportation',                 'Air Freight & Logistics'),
+    'Aerospace & Defense':                         ('Industrials',            'Capital Goods',                             'Aerospace & Defense',                                  'Aerospace & Defense'),
+    'Building Products':                           ('Industrials',            'Capital Goods',                             'Building Products',                                    'Building Products'),
+    'Construction & Engineering':                  ('Industrials',            'Capital Goods',                             'Construction & Engineering',                           'Construction & Engineering'),
+    'Electrical Components & Equipment':           ('Industrials',            'Capital Goods',                             'Electrical Equipment',                                 'Electrical Components & Equipment'),
+    'Heavy Electrical Equipment':                  ('Industrials',            'Capital Goods',                             'Electrical Equipment',                                 'Heavy Electrical Equipment'),
+    'Industrial Conglomerates':                    ('Industrials',            'Capital Goods',                             'Industrial Conglomerates',                             'Industrial Conglomerates'),
+    'Construction Machinery & Heavy Trucks':       ('Industrials',            'Capital Goods',                             'Machinery',                                            'Construction Machinery & Heavy Trucks'),
+    'Agricultural & Farm Machinery':               ('Industrials',            'Capital Goods',                             'Machinery',                                            'Agricultural & Farm Machinery'),
+    'Industrial Machinery & Supplies':             ('Industrials',            'Capital Goods',                             'Machinery',                                            'Industrial Machinery & Supplies & Components'),
+    'Trading Companies & Distributors':            ('Industrials',            'Capital Goods',                             'Trading Companies & Distributors',                     'Trading Companies & Distributors'),
+    'Commercial Printing':                         ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Commercial Printing'),
+    'Environmental & Facilities Services':         ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Environmental & Facilities Services'),
+    'Office Services & Supplies':                  ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Office Services & Supplies'),
+    'Diversified Support Services':                ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Diversified Support Services'),
+    'Security & Alarm Services':                   ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Security & Alarm Services'),
+    'Human Resource & Employment Services':        ('Industrials',            'Commercial & Professional Services',        'Professional Services',                                'Human Resource & Employment Services'),
+    'Research & Consulting Services':              ('Industrials',            'Commercial & Professional Services',        'Professional Services',                                'Research & Consulting Services'),
+    'Airlines':                                    ('Industrials',            'Transportation',                            'Passenger Airlines',                                   'Passenger Airlines'),
+    'Marine Transportation':                       ('Industrials',            'Transportation',                            'Marine Transportation',                                'Marine Transportation'),
+    'Rail Transportation':                         ('Industrials',            'Transportation',                            'Ground Transportation',                                'Rail Transportation'),
+    'Cargo Ground Transportation':                 ('Industrials',            'Transportation',                            'Ground Transportation',                                'Cargo Ground Transportation'),
+    'Passenger Ground Transportation':             ('Industrials',            'Transportation',                            'Ground Transportation',                                'Passenger Ground Transportation'),
+    'Airport Services':                            ('Industrials',            'Transportation',                            'Transportation Infrastructure',                        'Airport Services'),
+    'Highways & Railtracks':                       ('Industrials',            'Transportation',                            'Transportation Infrastructure',                        'Highways & Railtracks'),
+    'Marine Ports & Services':                     ('Industrials',            'Transportation',                            'Transportation Infrastructure',                        'Marine Ports & Services'),
+    'Air Freight & Logistics':                     ('Industrials',            'Transportation',                            'Air Freight & Logistics',                              'Air Freight & Logistics'),
     # ── Consumer Discretionary ──────────────────────────────────────────────
-    'Automobile Manufacturers':                    ('Consumer Cyclical',    'Automobiles & Components',       'Automobile Manufacturers'),
-    'Motorcycle Manufacturers':                    ('Consumer Cyclical',    'Automobiles & Components',       'Motorcycle Manufacturers'),
-    'Auto Parts & Equipment':                      ('Consumer Cyclical',    'Automobiles & Components',       'Auto Parts & Equipment'),
-    'Tires & Rubber':                              ('Consumer Cyclical',    'Automobiles & Components',       'Tires & Rubber'),
-    'Consumer Electronics':                        ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Consumer Electronics'),
-    'Home Furnishings':                            ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Home Furnishings'),
-    'Homebuilding':                                ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Homebuilding'),
-    'Household Appliances':                        ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Household Appliances'),
-    'Housewares & Specialties':                    ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Housewares & Specialties'),
-    'Leisure Products':                            ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Leisure Products'),
-    'Apparel, Accessories & Luxury Goods':         ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Apparel, Accessories & Luxury Goods'),
-    'Footwear':                                    ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Footwear'),
-    'Textiles':                                    ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Textiles'),
-    'Casinos & Gaming':                            ('Consumer Cyclical',    'Consumer Services',              'Casinos & Gaming'),
-    'Hotels, Resorts & Cruise Lines':              ('Consumer Cyclical',    'Consumer Services',              'Hotels, Resorts & Cruise Lines'),
-    'Leisure Facilities':                          ('Consumer Cyclical',    'Consumer Services',              'Leisure Facilities'),
-    'Restaurants':                                 ('Consumer Cyclical',    'Consumer Services',              'Restaurants'),
-    'Education Services':                          ('Consumer Cyclical',    'Consumer Services',              'Education Services'),
-    'Specialized Consumer Services':               ('Consumer Cyclical',    'Consumer Services',              'Specialized Consumer Services'),
-    'Distributors':                                ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Distributors'),
-    'Internet & Direct Marketing Retail':          ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Broadline Retail'),
-    'Broadline Retail':                            ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Broadline Retail'),
-    'Apparel Retail':                              ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
-    'Computer & Electronics Retail':               ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
-    'Home Improvement Retail':                     ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
-    'Other Specialty Retail':                      ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
-    'Specialty Retail':                            ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
-    'Automotive Retail':                           ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
+    'Automobile Manufacturers':                    ('Consumer Discretionary', 'Automobiles & Components',                  'Automobiles',                                          'Automobile Manufacturers'),
+    'Motorcycle Manufacturers':                    ('Consumer Discretionary', 'Automobiles & Components',                  'Automobiles',                                          'Motorcycle Manufacturers'),
+    'Auto Parts & Equipment':                      ('Consumer Discretionary', 'Automobiles & Components',                  'Automobile Components',                                'Auto Parts & Equipment'),
+    'Tires & Rubber':                              ('Consumer Discretionary', 'Automobiles & Components',                  'Automobile Components',                                'Tires & Rubber'),
+    'Consumer Electronics':                        ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Consumer Electronics'),
+    'Home Furnishings':                            ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Home Furnishings'),
+    'Homebuilding':                                ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Homebuilding'),
+    'Household Appliances':                        ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Household Appliances'),
+    'Housewares & Specialties':                    ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Housewares & Specialties'),
+    'Leisure Products':                            ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Leisure Products',                                     'Leisure Products'),
+    'Apparel, Accessories & Luxury Goods':         ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Apparel, Accessories & Luxury Goods'),
+    'Footwear':                                    ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Footwear'),
+    'Textiles':                                    ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Textiles'),
+    'Casinos & Gaming':                            ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Casinos & Gaming'),
+    'Hotels, Resorts & Cruise Lines':              ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Hotels, Resorts & Cruise Lines'),
+    'Leisure Facilities':                          ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Leisure Facilities'),
+    'Restaurants':                                 ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Restaurants'),
+    'Education Services':                          ('Consumer Discretionary', 'Consumer Services',                         'Diversified Consumer Services',                        'Education Services'),
+    'Specialized Consumer Services':               ('Consumer Discretionary', 'Consumer Services',                         'Diversified Consumer Services',                        'Specialized Consumer Services'),
+    'Distributors':                                ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Distributors',                                     'Distributors'),
+    'Internet & Direct Marketing Retail':          ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Broadline Retail',                                 'Broadline Retail'),
+    'Broadline Retail':                            ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Broadline Retail',                                 'Broadline Retail'),
+    'Apparel Retail':                              ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Apparel Retail'),
+    'Computer & Electronics Retail':               ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Computer & Electronics Retail'),
+    'Home Improvement Retail':                     ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Home Improvement Retail'),
+    'Other Specialty Retail':                      ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Specialty Retail'),
+    'Specialty Retail':                            ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Specialty Retail'),
+    'Automotive Retail':                           ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Automotive Retail'),
     # ── Consumer Staples ────────────────────────────────────────────────────
-    'Drug Retail':                                 ('Consumer Defensive',   'Consumer Staples Distribution & Retail', 'Drug Retail'),
-    'Food Distributors':                           ('Consumer Defensive',   'Consumer Staples Distribution & Retail', 'Food Distributors'),
-    'Food Retail':                                 ('Consumer Defensive',   'Consumer Staples Distribution & Retail', 'Food Retail'),
-    'Consumer Staples Merchandise Retail':         ('Consumer Defensive',   'Consumer Staples Distribution & Retail', 'Consumer Staples Merchandise Retail'),
-    'Brewers':                                     ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Brewers'),
-    'Distillers & Vintners':                       ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Distillers & Vintners'),
-    'Soft Drinks & Non-alcoholic Beverages':       ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Soft Drinks & Non-alcoholic Beverages'),
-    'Agricultural Products & Services':            ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Agricultural Products & Services'),
-    'Meat, Poultry & Fish':                        ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Meat, Poultry & Fish'),
-    'Packaged Foods & Meats':                      ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Packaged Foods & Meats'),
-    'Tobacco':                                     ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Tobacco'),
-    'Household Products':                          ('Consumer Defensive',   'Household & Personal Products',  'Household Products'),
-    'Personal Care Products':                      ('Consumer Defensive',   'Household & Personal Products',  'Personal Care Products'),
+    'Drug Retail':                                 ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Drug Retail'),
+    'Food Distributors':                           ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Food Distributors'),
+    'Food Retail':                                 ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Food Retail'),
+    'Consumer Staples Merchandise Retail':         ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Consumer Staples Merchandise Retail'),
+    'Brewers':                                     ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Brewers'),
+    'Distillers & Vintners':                       ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Distillers & Vintners'),
+    'Soft Drinks & Non-alcoholic Beverages':       ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Soft Drinks & Non-alcoholic Beverages'),
+    'Agricultural Products & Services':            ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Agricultural Products & Services'),
+    'Meat, Poultry & Fish':                        ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Meat, Poultry & Fish'),
+    'Packaged Foods & Meats':                      ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Packaged Foods & Meats'),
+    'Tobacco':                                     ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Tobacco',                                              'Tobacco'),
+    'Household Products':                          ('Consumer Staples',       'Household & Personal Products',             'Household Products',                                   'Household Products'),
+    'Personal Care Products':                      ('Consumer Staples',       'Household & Personal Products',             'Personal Care Products',                               'Personal Care Products'),
     # ── Health Care ─────────────────────────────────────────────────────────
-    'Health Care Equipment':                       ('Healthcare',           'Health Care Equipment & Services', 'Health Care Equipment'),
-    'Health Care Supplies':                        ('Healthcare',           'Health Care Equipment & Services', 'Health Care Supplies'),
-    'Health Care Distributors':                    ('Healthcare',           'Health Care Equipment & Services', 'Health Care Distributors'),
-    'Health Care Services':                        ('Healthcare',           'Health Care Equipment & Services', 'Health Care Services'),
-    'Health Care Facilities':                      ('Healthcare',           'Health Care Equipment & Services', 'Health Care Facilities'),
-    'Managed Health Care':                         ('Healthcare',           'Health Care Equipment & Services', 'Managed Health Care'),
-    'Biotechnology':                               ('Healthcare',           'Pharmaceuticals, Biotechnology & Life Sciences', 'Biotechnology'),
-    'Pharmaceuticals':                             ('Healthcare',           'Pharmaceuticals, Biotechnology & Life Sciences', 'Pharmaceuticals'),
-    'Life Sciences Tools & Services':              ('Healthcare',           'Pharmaceuticals, Biotechnology & Life Sciences', 'Life Sciences Tools & Services'),
+    'Health Care Equipment':                       ('Health Care',            'Health Care Equipment & Services',          'Health Care Equipment & Supplies',                     'Health Care Equipment'),
+    'Health Care Supplies':                        ('Health Care',            'Health Care Equipment & Services',          'Health Care Equipment & Supplies',                     'Health Care Supplies'),
+    'Health Care Distributors':                    ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Distributors'),
+    'Health Care Services':                        ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Services'),
+    'Health Care Facilities':                      ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Facilities'),
+    'Managed Health Care':                         ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Managed Health Care'),
+    'Biotechnology':                               ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Biotechnology',                                 'Biotechnology'),
+    'Pharmaceuticals':                             ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Pharmaceuticals',                               'Pharmaceuticals'),
+    'Life Sciences Tools & Services':              ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Life Sciences Tools & Services',                'Life Sciences Tools & Services'),
     # ── Financials ──────────────────────────────────────────────────────────
-    'Diversified Banks':                           ('Financial Services',   'Banks',                          'Diversified Banks'),
-    'Regional Banks':                              ('Financial Services',   'Banks',                          'Regional Banks'),
-    'Financial Exchanges & Data':                  ('Financial Services',   'Financial Services',             'Financial Exchanges & Data'),
-    'Asset Management & Custody Banks':            ('Financial Services',   'Financial Services',             'Asset Management & Custody Banks'),
-    'Investment Banking & Brokerage':              ('Financial Services',   'Financial Services',             'Investment Banking & Brokerage'),
-    'Diversified Capital Markets':                 ('Financial Services',   'Financial Services',             'Diversified Capital Markets'),
-    'Mortgage REITs':                              ('Financial Services',   'Financial Services',             'Mortgage REITs'),
-    'Consumer Finance':                            ('Financial Services',   'Financial Services',             'Consumer Finance'),
-    'Specialized Finance':                         ('Financial Services',   'Financial Services',             'Specialized Finance'),
-    'Commercial & Residential Mortgage Finance':   ('Financial Services',   'Financial Services',             'Commercial & Residential Mortgage Finance'),
-    'Transaction & Payment Processing Services':   ('Financial Services',   'Financial Services',             'Transaction & Payment Processing Services'),
-    'Insurance Brokers':                           ('Financial Services',   'Insurance',                      'Insurance Brokers'),
-    'Life & Health Insurance':                     ('Financial Services',   'Insurance',                      'Life & Health Insurance'),
-    'Multi-line Insurance':                        ('Financial Services',   'Insurance',                      'Multi-line Insurance'),
-    'Property & Casualty Insurance':               ('Financial Services',   'Insurance',                      'Property & Casualty Insurance'),
-    'Reinsurance':                                 ('Financial Services',   'Insurance',                      'Reinsurance'),
+    'Diversified Banks':                           ('Financials',             'Banks',                                     'Banks',                                                'Diversified Banks'),
+    'Regional Banks':                              ('Financials',             'Banks',                                     'Banks',                                                'Regional Banks'),
+    'Financial Exchanges & Data':                  ('Financials',             'Financial Services',                        'Capital Markets',                                      'Financial Exchanges & Data'),
+    'Asset Management & Custody Banks':            ('Financials',             'Financial Services',                        'Capital Markets',                                      'Asset Management & Custody Banks'),
+    'Investment Banking & Brokerage':              ('Financials',             'Financial Services',                        'Capital Markets',                                      'Investment Banking & Brokerage'),
+    'Diversified Capital Markets':                 ('Financials',             'Financial Services',                        'Capital Markets',                                      'Diversified Capital Markets'),
+    'Mortgage REITs':                              ('Financials',             'Financial Services',                        'Mortgage Real Estate Investment Trusts (REITs)',        'Mortgage REITs'),
+    'Consumer Finance':                            ('Financials',             'Financial Services',                        'Consumer Finance',                                     'Consumer Finance'),
+    'Specialized Finance':                         ('Financials',             'Financial Services',                        'Diversified Financial Services',                       'Specialized Finance'),
+    'Commercial & Residential Mortgage Finance':   ('Financials',             'Financial Services',                        'Diversified Financial Services',                       'Commercial & Residential Mortgage Finance'),
+    'Transaction & Payment Processing Services':   ('Financials',             'Financial Services',                        'Diversified Financial Services',                       'Transaction & Payment Processing Services'),
+    'Insurance Brokers':                           ('Financials',             'Insurance',                                 'Insurance',                                            'Insurance Brokers'),
+    'Life & Health Insurance':                     ('Financials',             'Insurance',                                 'Insurance',                                            'Life & Health Insurance'),
+    'Multi-line Insurance':                        ('Financials',             'Insurance',                                 'Insurance',                                            'Multi-line Insurance'),
+    'Property & Casualty Insurance':               ('Financials',             'Insurance',                                 'Insurance',                                            'Property & Casualty Insurance'),
+    'Reinsurance':                                 ('Financials',             'Insurance',                                 'Insurance',                                            'Reinsurance'),
     # ── Information Technology ──────────────────────────────────────────────
-    'IT Consulting & Other Services':              ('Technology',           'Software & Services',            'IT Consulting & Other Services'),
-    'Data Processing & Outsourced Services':       ('Technology',           'Software & Services',            'Data Processing & Outsourced Services'),
-    'Application Software':                        ('Technology',           'Software & Services',            'Application Software'),
-    'Systems Software':                            ('Technology',           'Software & Services',            'Systems Software'),
-    'Technology Distributors':                     ('Technology',           'Technology Hardware & Equipment', 'Technology Distributors'),
-    'Electronic Equipment & Instruments':          ('Technology',           'Technology Hardware & Equipment', 'Electronic Equipment & Instruments'),
-    'Electronic Components':                       ('Technology',           'Technology Hardware & Equipment', 'Electronic Components'),
-    'Electronic Manufacturing Services':           ('Technology',           'Technology Hardware & Equipment', 'Electronic Manufacturing Services'),
-    'Technology Hardware, Storage & Peripherals':  ('Technology',           'Technology Hardware & Equipment', 'Technology Hardware, Storage & Peripherals'),
-    'Semiconductor Materials & Equipment':         ('Technology',           'Semiconductors & Semiconductor Equipment', 'Semiconductor Materials & Equipment'),
-    'Semiconductors':                              ('Technology',           'Semiconductors & Semiconductor Equipment', 'Semiconductors'),
+    'IT Consulting & Other Services':              ('Information Technology', 'Software & Services',                       'IT Services',                                          'IT Consulting & Other Services'),
+    'Data Processing & Outsourced Services':       ('Information Technology', 'Software & Services',                       'IT Services',                                          'Data Processing & Outsourced Services'),
+    'Application Software':                        ('Information Technology', 'Software & Services',                       'Software',                                             'Application Software'),
+    'Systems Software':                            ('Information Technology', 'Software & Services',                       'Software',                                             'Systems Software'),
+    'Communication Equipment':                     ('Information Technology', 'Technology Hardware & Equipment',           'Communications Equipment',                             'Communications Equipment'),
+    'Technology Distributors':                     ('Information Technology', 'Technology Hardware & Equipment',           'Electronic Equipment, Instruments & Components',       'Technology Distributors'),
+    'Electronic Equipment & Instruments':          ('Information Technology', 'Technology Hardware & Equipment',           'Electronic Equipment, Instruments & Components',       'Electronic Equipment & Instruments'),
+    'Electronic Components':                       ('Information Technology', 'Technology Hardware & Equipment',           'Electronic Equipment, Instruments & Components',       'Electronic Components'),
+    'Electronic Manufacturing Services':           ('Information Technology', 'Technology Hardware & Equipment',           'Electronic Equipment, Instruments & Components',       'Electronic Manufacturing Services'),
+    'Technology Hardware, Storage & Peripherals':  ('Information Technology', 'Technology Hardware & Equipment',           'Technology Hardware, Storage & Peripherals',           'Technology Hardware, Storage & Peripherals'),
+    'Semiconductor Materials & Equipment':         ('Information Technology', 'Semiconductors & Semiconductor Equipment',  'Semiconductors & Semiconductor Equipment',             'Semiconductor Materials & Equipment'),
+    'Semiconductors':                              ('Information Technology', 'Semiconductors & Semiconductor Equipment',  'Semiconductors & Semiconductor Equipment',             'Semiconductors'),
     # ── Communication Services ──────────────────────────────────────────────
-    'Alternative Carriers':                        ('Communication Services','Telecommunication Services',    'Alternative Carriers'),
-    'Integrated Telecommunication Services':       ('Communication Services','Telecommunication Services',    'Integrated Telecommunication Services'),
-    'Wireless Telecommunication Services':         ('Communication Services','Telecommunication Services',    'Wireless Telecommunication Services'),
-    'Advertising':                                 ('Communication Services','Media & Entertainment',         'Advertising'),
-    'Broadcasting':                                ('Communication Services','Media & Entertainment',         'Broadcasting'),
-    'Cable & Satellite':                           ('Communication Services','Media & Entertainment',         'Cable & Satellite'),
-    'Publishing':                                  ('Communication Services','Media & Entertainment',         'Publishing'),
-    'Movies & Entertainment':                      ('Communication Services','Media & Entertainment',         'Movies & Entertainment'),
-    'Interactive Home Entertainment':              ('Communication Services','Media & Entertainment',         'Interactive Home Entertainment'),
-    'Interactive Media & Services':                ('Communication Services','Media & Entertainment',         'Interactive Media & Services'),
+    'Alternative Carriers':                        ('Communication Services', 'Telecommunication Services',                'Diversified Telecommunication Services',                'Alternative Carriers'),
+    'Integrated Telecommunication Services':       ('Communication Services', 'Telecommunication Services',                'Diversified Telecommunication Services',                'Integrated Telecommunication Services'),
+    'Wireless Telecommunication Services':         ('Communication Services', 'Telecommunication Services',                'Wireless Telecommunication Services',                  'Wireless Telecommunication Services'),
+    'Advertising':                                 ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Advertising'),
+    'Broadcasting':                                ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Broadcasting'),
+    'Cable & Satellite':                           ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Cable & Satellite'),
+    'Publishing':                                  ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Publishing'),
+    'Movies & Entertainment':                      ('Communication Services', 'Media & Entertainment',                     'Entertainment',                                        'Movies & Entertainment'),
+    'Interactive Home Entertainment':              ('Communication Services', 'Media & Entertainment',                     'Entertainment',                                        'Interactive Home Entertainment'),
+    'Interactive Media & Services':                ('Communication Services', 'Media & Entertainment',                     'Interactive Media & Services',                         'Interactive Media & Services'),
     # ── Utilities ───────────────────────────────────────────────────────────
-    'Electric Utilities':                          ('Utilities',            'Utilities',                      'Electric Utilities'),
-    'Gas Utilities':                               ('Utilities',            'Utilities',                      'Gas Utilities'),
-    'Multi-Utilities':                             ('Utilities',            'Utilities',                      'Multi-Utilities'),
-    'Water Utilities':                             ('Utilities',            'Utilities',                      'Water Utilities'),
-    'Independent Power Producers & Energy Traders':('Utilities',            'Utilities',                      'Independent Power Producers & Energy Traders'),
-    'Renewable Electricity':                       ('Utilities',            'Utilities',                      'Renewable Electricity'),
+    'Electric Utilities':                          ('Utilities',              'Utilities',                                 'Electric Utilities',                                   'Electric Utilities'),
+    'Gas Utilities':                               ('Utilities',              'Utilities',                                 'Gas Utilities',                                        'Gas Utilities'),
+    'Multi-Utilities':                             ('Utilities',              'Utilities',                                 'Multi-Utilities',                                      'Multi-Utilities'),
+    'Water Utilities':                             ('Utilities',              'Utilities',                                 'Water Utilities',                                      'Water Utilities'),
+    'Independent Power Producers & Energy Traders':('Utilities',              'Utilities',                                 'Independent Power and Renewable Electricity Producers','Independent Power Producers & Energy Traders'),
+    'Renewable Electricity':                       ('Utilities',              'Utilities',                                 'Independent Power and Renewable Electricity Producers','Renewable Electricity'),
     # ── Real Estate ─────────────────────────────────────────────────────────
-    'Diversified REITs':                           ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Diversified REITs'),
-    'Industrial REITs':                            ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Industrial REITs'),
-    'Hotel & Resort REITs':                        ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Hotel & Resort REITs'),
-    'Office REITs':                                ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Office REITs'),
-    'Health Care REITs':                           ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Health Care REITs'),
-    'Residential REITs':                           ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Residential REITs'),
-    'Retail REITs':                                ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Retail REITs'),
-    'Specialized REITs':                           ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Specialized REITs'),
-    'Real Estate Management & Development':        ('Real Estate',          'Real Estate Management & Development', 'Real Estate Management & Development'),
-    'Diversified Real Estate Activities':          ('Real Estate',          'Real Estate Management & Development', 'Diversified Real Estate Activities'),
-    'Real Estate Operating Companies':             ('Real Estate',          'Real Estate Management & Development', 'Real Estate Operating Companies'),
-    'Real Estate Development':                     ('Real Estate',          'Real Estate Management & Development', 'Real Estate Development'),
+    'Diversified REITs':                           ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Diversified REITs',                                'Diversified REITs'),
+    'Industrial REITs':                            ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Industrial REITs',                                 'Industrial REITs'),
+    'Hotel & Resort REITs':                        ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Hotel & Resort REITs',                             'Hotel & Resort REITs'),
+    'Office REITs':                                ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Office REITs',                                     'Office REITs'),
+    'Health Care REITs':                           ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Health Care REITs',                                'Health Care REITs'),
+    'Residential REITs':                           ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Residential REITs',                                'Residential REITs'),
+    'Retail REITs':                                ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Retail REITs',                                     'Retail REITs'),
+    'Specialized REITs':                           ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Specialized REITs',                                'Specialized REITs'),
+    'Real Estate Management & Development':        ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Real Estate Services'),
+    'Diversified Real Estate Activities':          ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Diversified Real Estate Activities'),
+    'Real Estate Operating Companies':             ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Real Estate Operating Companies'),
+    'Real Estate Development':                     ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Real Estate Development'),
 }
 
-# Schnelle Lookup: sector-string (wie Yahoo ihn liefert) → kanonischer Name
+# ── Zusätzliche Yahoo-Varianten (andere Schreibweisen / Kürzel) ──────────────
+# Schlüssel = exakter Yahoo-industry-String → gleiche 4-Tupel-Struktur wie oben
+_GICS_YAHOO_ALIASES = {
+    # ── Energy ──────────────────────────────────────────────────────────────
+    'Oil & Gas E&P':                               ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Exploration & Production'),
+    'Oil & Gas Integrated':                        ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Integrated Oil & Gas'),
+    'Oil & Gas Midstream':                         ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Storage & Transportation'),
+    'Oil & Gas Refining & Marketing':              ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Refining & Marketing'),
+    'Coal':                                        ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Coal & Consumable Fuels'),
+    'Uranium':                                     ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Coal & Consumable Fuels'),
+    # ── Materials ───────────────────────────────────────────────────────────
+    'Agricultural Inputs':                         ('Materials',              'Materials',                                 'Chemicals',                                            'Fertilizers & Agricultural Chemicals'),
+    'Chemicals':                                   ('Materials',              'Materials',                                 'Chemicals',                                            'Specialty Chemicals'),
+    'Lumber & Wood Production':                    ('Materials',              'Materials',                                 'Paper & Forest Products',                              'Forest Products & Timber'),
+    'Paper & Paper Products':                      ('Materials',              'Materials',                                 'Paper & Forest Products',                              'Paper Products'),
+    'Other Industrial Metals & Mining':            ('Materials',              'Materials',                                 'Metals & Mining',                                      'Diversified Metals & Mining'),
+    'Other Precious Metals & Mining':              ('Materials',              'Materials',                                 'Metals & Mining',                                      'Precious Metals & Minerals'),
+    'Mining':                                      ('Materials',              'Materials',                                 'Metals & Mining',                                      'Diversified Metals & Mining'),
+    # ── Industrials ─────────────────────────────────────────────────────────
+    'Aerospace & Defense':                         ('Industrials',            'Capital Goods',                             'Aerospace & Defense',                                  'Aerospace & Defense'),
+    'Building Products & Equipment':               ('Industrials',            'Capital Goods',                             'Building Products',                                    'Building Products'),
+    'Electrical Equipment & Parts':                ('Industrials',            'Capital Goods',                             'Electrical Equipment',                                 'Electrical Components & Equipment'),
+    'Farm & Heavy Construction Machinery':         ('Industrials',            'Capital Goods',                             'Machinery',                                            'Agricultural & Farm Machinery'),
+    'Industrial Distribution':                     ('Industrials',            'Capital Goods',                             'Trading Companies & Distributors',                     'Trading Companies & Distributors'),
+    'Specialty Industrial Machinery':              ('Industrials',            'Capital Goods',                             'Machinery',                                            'Industrial Machinery & Supplies & Components'),
+    'Conglomerates':                               ('Industrials',            'Capital Goods',                             'Industrial Conglomerates',                             'Industrial Conglomerates'),
+    'Waste Management':                            ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Environmental & Facilities Services'),
+    'Staffing & Employment Services':              ('Industrials',            'Commercial & Professional Services',        'Professional Services',                                'Human Resource & Employment Services'),
+    'Consulting Services':                         ('Industrials',            'Commercial & Professional Services',        'Professional Services',                                'Research & Consulting Services'),
+    'Specialty Business Services':                 ('Industrials',            'Commercial & Professional Services',        'Professional Services',                                'Research & Consulting Services'),
+    'Integrated Freight & Logistics':              ('Industrials',            'Transportation',                            'Air Freight & Logistics',                              'Air Freight & Logistics'),
+    'Trucking':                                    ('Industrials',            'Transportation',                            'Ground Transportation',                                'Cargo Ground Transportation'),
+    'Railroads':                                   ('Industrials',            'Transportation',                            'Ground Transportation',                                'Rail Transportation'),
+    'Marine Shipping':                             ('Industrials',            'Transportation',                            'Marine Transportation',                                'Marine Transportation'),
+    'Airports & Air Services':                     ('Industrials',            'Transportation',                            'Transportation Infrastructure',                        'Airport Services'),
+    # ── Consumer Discretionary ──────────────────────────────────────────────
+    'Auto Manufacturers':                          ('Consumer Discretionary', 'Automobiles & Components',                  'Automobiles',                                          'Automobile Manufacturers'),
+    'Auto & Truck Dealerships':                    ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Automotive Retail'),
+    'Auto Parts':                                  ('Consumer Discretionary', 'Automobiles & Components',                  'Automobile Components',                                'Auto Parts & Equipment'),
+    'Residential Construction':                    ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Homebuilding'),
+    'Furnishings, Fixtures & Appliances':          ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Home Furnishings'),
+    'Luxury Goods':                                ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Apparel, Accessories & Luxury Goods'),
+    'Apparel Manufacturing':                       ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Apparel, Accessories & Luxury Goods'),
+    'Footwear & Accessories':                      ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Footwear'),
+    'Textile Manufacturing':                       ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Textiles'),
+    'Leisure':                                     ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Leisure Facilities'),
+    'Travel Services':                             ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Hotels, Resorts & Cruise Lines'),
+    'Gambling':                                    ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Casinos & Gaming'),
+    'Lodging':                                     ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Hotels, Resorts & Cruise Lines'),
+    'Entertainment':                               ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Leisure Facilities'),
+    'Personal Services':                           ('Consumer Discretionary', 'Consumer Services',                         'Diversified Consumer Services',                        'Specialized Consumer Services'),
+    'Internet Retail':                             ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Broadline Retail',                                 'Broadline Retail'),
+    'Department Stores':                           ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Broadline Retail',                                 'Broadline Retail'),
+    # ── Consumer Staples ────────────────────────────────────────────────────
+    'Discount Stores':                             ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Consumer Staples Merchandise Retail'),
+    'Grocery Stores':                              ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Food Retail'),
+    'Packaged Foods':                              ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Packaged Foods & Meats'),
+    'Confectioners':                               ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Packaged Foods & Meats'),
+    'Farm Products':                               ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Agricultural Products & Services'),
+    'Agricultural Products':                       ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Agricultural Products & Services'),
+    'Meat Products':                               ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Meat, Poultry & Fish'),
+    'Beverages - Non-Alcoholic':                   ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Soft Drinks & Non-alcoholic Beverages'),
+    'Beverages - Alcoholic':                       ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Distillers & Vintners'),
+    'Beverages - Brewers':                         ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Brewers'),
+    'Household & Personal Products':               ('Consumer Staples',       'Household & Personal Products',             'Household Products',                                   'Household Products'),
+    # ── Health Care ─────────────────────────────────────────────────────────
+    'Medical Devices':                             ('Health Care',            'Health Care Equipment & Services',          'Health Care Equipment & Supplies',                     'Health Care Equipment'),
+    'Medical Instruments & Supplies':              ('Health Care',            'Health Care Equipment & Services',          'Health Care Equipment & Supplies',                     'Health Care Supplies'),
+    'Medical Care Facilities':                     ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Facilities'),
+    'Health Information Services':                 ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Services'),
+    'Healthcare Plans':                            ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Managed Health Care'),
+    'Medical Distribution':                        ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Distributors'),
+    'Drug Manufacturers - General':                ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Pharmaceuticals',                               'Pharmaceuticals'),
+    'Drug Manufacturers - Specialty & Generic':    ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Pharmaceuticals',                               'Pharmaceuticals'),
+    'Diagnostics & Research':                      ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Life Sciences Tools & Services',                'Life Sciences Tools & Services'),
+    # ── Financials ──────────────────────────────────────────────────────────
+    'Banks - Diversified':                         ('Financials',             'Banks',                                     'Banks',                                                'Diversified Banks'),
+    'Banks - Regional':                            ('Financials',             'Banks',                                     'Banks',                                                'Regional Banks'),
+    'Capital Markets':                             ('Financials',             'Financial Services',                        'Capital Markets',                                      'Diversified Capital Markets'),
+    'Asset Management':                            ('Financials',             'Financial Services',                        'Capital Markets',                                      'Asset Management & Custody Banks'),
+    'Financial Data & Stock Exchanges':            ('Financials',             'Financial Services',                        'Capital Markets',                                      'Financial Exchanges & Data'),
+    'Credit Services':                             ('Financials',             'Financial Services',                        'Consumer Finance',                                     'Consumer Finance'),
+    'Mortgage Finance':                            ('Financials',             'Financial Services',                        'Diversified Financial Services',                       'Commercial & Residential Mortgage Finance'),
+    'Insurance - Life':                            ('Financials',             'Insurance',                                 'Insurance',                                            'Life & Health Insurance'),
+    'Insurance - Property & Casualty':             ('Financials',             'Insurance',                                 'Insurance',                                            'Property & Casualty Insurance'),
+    'Insurance - Diversified':                     ('Financials',             'Insurance',                                 'Insurance',                                            'Multi-line Insurance'),
+    'Insurance - Specialty':                       ('Financials',             'Insurance',                                 'Insurance',                                            'Insurance Brokers'),
+    'Insurance - Reinsurance':                     ('Financials',             'Insurance',                                 'Insurance',                                            'Reinsurance'),
+    # ── Information Technology ──────────────────────────────────────────────
+    'Software - Application':                      ('Information Technology', 'Software & Services',                       'Software',                                             'Application Software'),
+    'Software - Infrastructure':                   ('Information Technology', 'Software & Services',                       'Software',                                             'Systems Software'),
+    'Information Technology Services':             ('Information Technology', 'Software & Services',                       'IT Services',                                          'IT Consulting & Other Services'),
+    'Computer Hardware':                           ('Information Technology', 'Technology Hardware & Equipment',           'Technology Hardware, Storage & Peripherals',           'Technology Hardware, Storage & Peripherals'),
+    'Semiconductor Equipment & Materials':         ('Information Technology', 'Semiconductors & Semiconductor Equipment',  'Semiconductors & Semiconductor Equipment',             'Semiconductor Materials & Equipment'),
+    # ── Communication Services ──────────────────────────────────────────────
+    'Internet Content & Information':              ('Communication Services', 'Media & Entertainment',                     'Interactive Media & Services',                         'Interactive Media & Services'),
+    'Telecom Services':                            ('Communication Services', 'Telecommunication Services',                'Diversified Telecommunication Services',                'Integrated Telecommunication Services'),
+    'Electronic Gaming & Multimedia':              ('Communication Services', 'Media & Entertainment',                     'Entertainment',                                        'Interactive Home Entertainment'),
+    'Advertising Agencies':                        ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Advertising'),
+    'Pay TV':                                      ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Cable & Satellite'),
+    # ── Utilities ───────────────────────────────────────────────────────────
+    'Utilities - Regulated Electric':              ('Utilities',              'Utilities',                                 'Electric Utilities',                                   'Electric Utilities'),
+    'Utilities - Regulated Gas':                   ('Utilities',              'Utilities',                                 'Gas Utilities',                                        'Gas Utilities'),
+    'Utilities - Regulated Water':                 ('Utilities',              'Utilities',                                 'Water Utilities',                                      'Water Utilities'),
+    'Utilities - Independent Power Producers':     ('Utilities',              'Utilities',                                 'Independent Power and Renewable Electricity Producers','Independent Power Producers & Energy Traders'),
+    'Utilities - Renewable':                       ('Utilities',              'Utilities',                                 'Independent Power and Renewable Electricity Producers','Renewable Electricity'),
+    'Utilities - Diversified':                     ('Utilities',              'Utilities',                                 'Multi-Utilities',                                      'Multi-Utilities'),
+    # ── Real Estate ─────────────────────────────────────────────────────────
+    'REIT - Industrial':                           ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Industrial REITs',                                 'Industrial REITs'),
+    'REIT - Retail':                               ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Retail REITs',                                     'Retail REITs'),
+    'REIT - Office':                               ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Office REITs',                                     'Office REITs'),
+    'REIT - Healthcare Facilities':                ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Health Care REITs',                                'Health Care REITs'),
+    'REIT - Residential':                          ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Residential REITs',                                'Residential REITs'),
+    'REIT - Specialty':                            ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Specialized REITs',                                'Specialized REITs'),
+    'REIT - Hotel & Motel':                        ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Hotel & Resort REITs',                             'Hotel & Resort REITs'),
+    'REIT - Diversified':                          ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Diversified REITs',                                'Diversified REITs'),
+    'REIT - Mortgage':                             ('Financials',             'Financial Services',                        'Mortgage Real Estate Investment Trusts (REITs)',        'Mortgage REITs'),
+    'Real Estate Services':                        ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Real Estate Services'),
+    'Real Estate - Development':                   ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Real Estate Development'),
+    'Real Estate - Diversified':                   ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Diversified Real Estate Activities'),
+}
+# Beide Dicts zusammenführen (Aliase ergänzen, nicht überschreiben)
+_GICS_HIERARCHY = {**_GICS_YAHOO_ALIASES, **_GICS_HIERARCHY}
+
+# Schnelle Lookup: sector-string (Yahoo oder intern) → offizieller GICS-Sektorname
 _SECTOR_ALIASES = {
-    'Energy': 'Energy',
-    'Materials': 'Materials', 'Basic Materials': 'Materials',
-    'Industrials': 'Industrials',
-    'Consumer Discretionary': 'Consumer Cyclical', 'Consumer Cyclical': 'Consumer Cyclical',
-    'Consumer Staples': 'Consumer Defensive', 'Consumer Defensive': 'Consumer Defensive',
-    'Health Care': 'Healthcare', 'Healthcare': 'Healthcare',
-    'Financials': 'Financial Services', 'Financial Services': 'Financial Services',
-    'Information Technology': 'Technology', 'Technology': 'Technology',
-    'Communication Services': 'Communication Services',
-    'Utilities': 'Utilities',
-    'Real Estate': 'Real Estate',
+    # Offizielle GICS-Namen (11 Sektoren)
+    'Energy':                  'Energy',
+    'Materials':               'Materials',
+    'Industrials':             'Industrials',
+    'Consumer Discretionary':  'Consumer Discretionary',
+    'Consumer Staples':        'Consumer Staples',
+    'Health Care':             'Health Care',
+    'Financials':              'Financials',
+    'Information Technology':  'Information Technology',
+    'Communication Services':  'Communication Services',
+    'Utilities':               'Utilities',
+    'Real Estate':             'Real Estate',
+    # Yahoo-Varianten → GICS-Mapping
+    'Basic Materials':         'Materials',
+    'Consumer Cyclical':       'Consumer Discretionary',
+    'Consumer Defensive':      'Consumer Staples',
+    'Healthcare':              'Health Care',
+    'Financial Services':      'Financials',
+    'Technology':              'Information Technology',
 }
 
 def _gics_lookup(sector: str, industry: str) -> tuple:
-    """Gibt (sector, industry_group, sub_industry) zurück – alle englisch, offizielle GICS-Namen."""
+    """Gibt (sector, industry_group, gics_industry, sub_industry) zurück – offizielle GICS-Namen."""
     canonical_sector = _SECTOR_ALIASES.get(sector, sector) if sector else ''
     if industry and industry in _GICS_HIERARCHY:
-        s, ig, si = _GICS_HIERARCHY[industry]
-        return (canonical_sector or s, ig, industry, si)
+        s, ig, gi, si = _GICS_HIERARCHY[industry]
+        return (canonical_sector or s, ig, gi, si)
     # Fallback: nur Sektor bekannt
     return (canonical_sector, '', industry, '')
 
@@ -5207,7 +5341,7 @@ class StockChartWidget(QFrame):
                         lines.append(f"<b>{company}</b>")
                     lines.append(f"Sector:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {sector_canon}")
                     if ind_group:
-                        lines.append(f"Industry Group:  {ind_group}")
+                        lines.append(f"Industry&nbsp;Group:&nbsp; {ind_group}")
                     if industry_disp:
                         lines.append(f"Industry:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {industry_disp}")
                     if sub_industry and sub_industry != industry_disp:
@@ -8098,13 +8232,16 @@ class PortfolioDialog(QMainWindow):
             first_k, first_v = next(iter(self._sector_cache.items()))
             print(f"[DEBUG sector_cache] {len(self._sector_cache)} Einträge, Beispiel: {first_k!r} → {first_v!r}", flush=True)
             # Sicherheitscheck: wenn Werte nicht in bekannten englischen GICS-Sektoren, Cache leeren
-            _VALID_EN = {'Energy','Materials','Industrials','Consumer Cyclical',
-                         'Consumer Defensive','Healthcare','Financial Services',
-                         'Technology','Communication Services','Utilities',
-                         'Real Estate','Unknown',
-                         # Yahoo-Varianten
-                         'Consumer Discretionary','Consumer Staples','Health Care',
-                         'Financials','Information Technology','Basic Materials'}
+            _VALID_EN = {
+                         # Offizielle GICS-Sektornamen
+                         'Energy','Materials','Industrials',
+                         'Consumer Discretionary','Consumer Staples',
+                         'Health Care','Financials','Information Technology',
+                         'Communication Services','Utilities','Real Estate',
+                         'Unknown',
+                         # Yahoo-Varianten (rückwärtskompatibel für alten Cache)
+                         'Consumer Cyclical','Consumer Defensive','Healthcare',
+                         'Financial Services','Technology','Basic Materials'}
             _bad = [v for v in list(self._sector_cache.values())[:5]
                     if v and v not in _VALID_EN]
             if _bad:
@@ -8134,10 +8271,11 @@ class PortfolioDialog(QMainWindow):
                 'SEK':('SEKUSD=X',False),'SGD':('SGDUSD=X',False),'TWD':('TWD=X',True),
             }
 
-            def __init__(self, portfolio_data, sector_cache, parent=None):
+            def __init__(self, portfolio_data, sector_cache, industry_cache=None, parent=None):
                 super().__init__(parent)
                 self._pdata  = portfolio_data
-                self._scache = dict(sector_cache)  # Kopie
+                self._scache = dict(sector_cache)   # Kopie
+                self._icache = dict(industry_cache or {})
 
             def _get_fx(self, cur, cache_usd, cache_chf):
                 """Gibt (fx_to_usd, fx_to_chf) zurück – gecacht."""
@@ -8307,7 +8445,9 @@ class PortfolioDialog(QMainWindow):
                     fx_chf['USD_CHF'] = 0.9
 
                 # ── SCHRITT 2: Branchen (nur fehlende, parallel mit hartem Timeout) ──
-                missing_sectors = [s for s in real_syms if s not in self._scache and not _is_commodity(s)]
+                missing_sectors = [s for s in real_syms
+                                   if (s not in self._scache or s not in self._icache)
+                                   and not _is_commodity(s)]
                 new_sectors    = {}
                 new_industries = {}
                 _company_names = {}
@@ -8453,7 +8593,8 @@ class PortfolioDialog(QMainWindow):
                 self._company_names = _company_names
                 self.done.emit(price_result, overview_result, sector_result, industry_result)
 
-        worker = MasterWorker(self.portfolio_data, self._sector_cache, parent=self)
+        worker = MasterWorker(self.portfolio_data, self._sector_cache,
+                              self._industry_cache, parent=self)
         self._master_worker = worker
 
         def on_master_done(price_result, overview_result, sector_result, industry_result):
