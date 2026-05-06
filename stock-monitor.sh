@@ -1,6 +1,6 @@
 #!/bin/bash
 # Stock Monitor Launcher
-APP_VERSION="5.2.0"
+APP_VERSION="5.2.3"
 USER_LIB="${XDG_DATA_HOME:-$HOME/.local/share}/stock-monitor/lib"
 mkdir -p "$USER_LIB"
 export SM_LOG_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/stock-monitor"

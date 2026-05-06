@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.2.2"                            # beim Release anpassen
+APP_VERSION  = "5.2.3"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -14307,7 +14307,12 @@ class PortfolioDialog(QMainWindow):
                     (TR("mc_row_p75"),    p75[-1], v0),
                     (TR("mc_row_p90"),    p90[-1], v0),
                 ]
-                ROW_COLORS = ['#f8f9fa','#fdecea','#fef5ec','#eaf6fb','#eafaf1','#d5f5e3']
+                if _dm_mc:
+                    ROW_COLORS = ['#1e2a35','#2d1515','#2d1f0a','#0d2030','#0d2a1a','#0a2015']
+                    _tbl_txt = "#cdd6f4"
+                else:
+                    ROW_COLORS = ['#f8f9fa','#fdecea','#fef5ec','#eaf6fb','#eafaf1','#d5f5e3']
+                    _tbl_txt = "#2c3e50"
                 result_table.setRowCount(len(ROWS))
                 for i, (lbl, val, base) in enumerate(ROWS):
                     pct     = (val - base) / base * 100 if base > 0 and i > 0 else 0
@@ -14321,9 +14326,12 @@ class PortfolioDialog(QMainWindow):
                     item_pct.setTextAlignment(
                         Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                     from PyQt6.QtGui import QColor
-                    if i > 0: item_pct.setForeground(QColor(pct_col))
+                    row_bg = QColor(ROW_COLORS[i])
                     for item in (item_lbl, item_val, item_pct):
-                        item.setBackground(QColor(ROW_COLORS[i]))
+                        item.setBackground(row_bg)
+                        item.setForeground(QColor(_tbl_txt))
+                    if i > 0:
+                        item_pct.setForeground(QColor(pct_col))
                     result_table.setItem(i, 0, item_lbl)
                     result_table.setItem(i, 1, item_val)
                     result_table.setItem(i, 2, item_pct)
@@ -21973,10 +21981,12 @@ class PortfolioDialog(QMainWindow):
 
         def _make_section(title_text, beta_val, scope, bg_color):
             """Erstellt einen Abschnitt mit Beta-Wert und Erklärung."""
+            _rs_border = "#3a4255" if _dm_beta else "#d0d0d0"
+            _rs_txt    = "#cdd6f4" if _dm_beta else "#2c3e50"
             frame = QFrame()
             frame.setStyleSheet(
                 f"QFrame {{ background: {bg_color}; border-radius: 10px; "
-                f"border: 1px solid #d0d0d0; }}"
+                f"border: 1px solid {_rs_border}; }}"
             )
             fl = QVBoxLayout(frame)
             fl.setSpacing(8)
@@ -21999,7 +22009,7 @@ class PortfolioDialog(QMainWindow):
             exp = QLabel(_beta_explanation(beta_val, scope))
             exp.setWordWrap(True)
             exp.setStyleSheet(
-                "font-size: 13px; color: #2c3e50; border: none; background: transparent; "
+                f"font-size: 13px; color: {_rs_txt}; border: none; background: transparent; "
                 "padding: 6px 0px; line-height: 1.5;"
             )
             fl.addWidget(exp)
