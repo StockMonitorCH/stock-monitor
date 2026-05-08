@@ -376,6 +376,10 @@ _HTML_DE = """
         <div class="tip"><b>Tipp:</b> Der Button steht in jedem Chart – egal ob 4, 8 oder 16 Charts angezeigt werden.</div>
         <div class="warning"><b>Hinweis:</b> Für ETFs, Krypto oder weniger bekannte Titel können Nachrichten fehlen oder spärlich sein.</div>
 
+        <a name="etf-holdings"><h2>&#128202; ETF/Fonds-Zusammensetzung</h2></a>
+        <p>Bei ETFs und Investmentfonds erscheint automatisch ein <b>„Hold."</b>-Button im Chart-Bereich. Ein Klick öffnet einen Dialog mit den <b>Top-Holdings</b> des Fonds &mdash; inklusive Gewichtung und Anzahl Anteile.</p>
+        <div class="tip"><b>Tipp:</b> Der Button wird nur bei ETFs und Fonds eingeblendet &ndash; bei Aktien oder Krypto ist er nicht sichtbar.</div>
+
         <a name="vergleich"><h2>&#9878; Vergleich</h2></a>
         <p>Mehrere Aktien als Overlay übereinanderlegen &mdash; ideal um relative Performance zu vergleichen.</p>
 
@@ -1194,6 +1198,10 @@ _HTML_EN = """
         <div class="tip"><b>Tip:</b> The button is available in every chart – whether 4, 8 or 16 charts are shown.</div>
         <div class="warning"><b>Note:</b> For ETFs, crypto or lesser-known stocks, news may be sparse or unavailable.</div>
 
+        <a name="etf-holdings"><h2>&#128202; ETF/Fund Composition</h2></a>
+        <p>For ETFs and mutual funds, a <b>"Hold."</b> button appears automatically in the chart area. Clicking it opens a dialog showing the fund's <b>top holdings</b> &mdash; including weighting and number of shares.</p>
+        <div class="tip"><b>Tip:</b> The button is only shown for ETFs and funds &ndash; it is not visible for stocks or crypto.</div>
+
         <a name="vergleich"><h2>&#9878; Comparison</h2></a>
         <p>Overlay multiple stocks for comparison &mdash; ideal for comparing relative performance.</p>
 
@@ -1806,6 +1814,7 @@ _TOC_DE = [
     "Finanzdaten",
     "Finment",
     "Nachrichten",
+    "ETF/Fonds-Holdings",
     "KI-Analyse",
     "RSI – Vertiefung",
     "Bollinger-Bänder – Vertiefung",
@@ -1883,6 +1892,7 @@ _TOC_EN = [
     "Financial Data",
     "Finment",
     "News",
+    "ETF/Fund Holdings",
     "AI Analysis",
     "RSI – Deep Dive",
     "Bollinger Bands – Deep Dive",
@@ -1961,6 +1971,7 @@ _ANCHOR_DE = {
     "firmeninfo":                 "firmeninfo",
     "finanzdaten":                "finanzdaten",
     "finment":                    "finment",
+    "etf/fonds-holdings":        "etf-holdings",
     "ki-analyse":                 "ki-analyse",
     "rsi – vertiefung":           "rsi-analyse",
     "bollinger-bänder – vertiefung": "bb-analyse",
@@ -2045,6 +2056,7 @@ _ANCHOR_EN = {
     "company info":               "firmeninfo",
     "financial data":             "finanzdaten",
     "finment":                    "finment",
+    "etf/fund holdings":          "etf-holdings",
     "ai analysis":                "ki-analyse",
     "rsi – deep dive":            "rsi-analyse",
     "bollinger bands – deep dive": "bb-analyse",

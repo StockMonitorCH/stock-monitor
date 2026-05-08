@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.2.3"                            # beim Release anpassen
+APP_VERSION  = "5.3.0"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -5240,6 +5240,14 @@ class StockChartWidget(QFrame):
         self.info_btn.clicked.connect(self.show_analyst_info)
         controls_row.addWidget(self.info_btn)
 
+        # Holdings-Button (nur für ETFs/Fonds sichtbar – wird in update_chart gesetzt)
+        self.holdings_btn = QPushButton(TR("btn_etf_holdings"))
+        self.holdings_btn.setMaximumWidth(80)
+        self.holdings_btn.setToolTip(TR("tip_etf_holdings"))
+        self.holdings_btn.setVisible(False)
+        self.holdings_btn.clicked.connect(self._show_etf_holdings)
+        controls_row.addWidget(self.holdings_btn)
+
         # Full HD: Nachrichten-Button in unterer Zeile rechts neben Info
         if self.compact_mode:
             controls_row.addWidget(self.news_btn)
@@ -5368,6 +5376,51 @@ class StockChartWidget(QFrame):
         w.done.connect(lambda _: self._sector_workers.remove(w)
                        if w in self._sector_workers else None)
         w.start()
+
+    def _update_holdings_visibility(self):
+        """Prüft im Hintergrund ob das Symbol ein ETF/Fonds ist und zeigt/versteckt den Holdings-Button."""
+        if not hasattr(self, 'holdings_btn') or not self.symbol:
+            return
+        sym = self.symbol
+        btn_ref = self.holdings_btn
+
+        class _TypeWorker(QThread):
+            done = pyqtSignal(bool)
+            def __init__(self, s):
+                super().__init__()
+                self._sym = s
+            def run(self):
+                try:
+                    info  = yf.Ticker(self._sym).info
+                    qtype = (info.get("quoteType") or "").upper()
+                    self.done.emit(qtype in ("ETF", "MUTUALFUND"))
+                except Exception:
+                    self.done.emit(False)
+
+        def _apply(is_fund):
+            try:
+                btn_ref.setVisible(is_fund)
+            except RuntimeError:
+                pass
+
+        w = _TypeWorker(sym)
+        if not hasattr(self, '_type_workers'):
+            self._type_workers = []
+        self._type_workers.append(w)
+        w.done.connect(_apply)
+        w.done.connect(lambda _: self._type_workers.remove(w)
+                       if w in self._type_workers else None)
+        w.start()
+
+    def _show_etf_holdings(self):
+        """Öffnet den ETF/Fonds-Holdings-Dialog."""
+        try:
+            from etf_holdings import show_etf_holdings_dialog
+        except ImportError:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Fehler", "etf_holdings.py nicht gefunden.")
+            return
+        show_etf_holdings_dialog(self.symbol, parent=self)
 
     def open_name_search(self):
         """Namenssuche-Dialog öffnen"""
@@ -5993,6 +6046,11 @@ class StockChartWidget(QFrame):
             # Firmenname übernehmen falls noch unbekannt
             if not self.company_name and company_name:
                 self.company_name = company_name
+
+            # Holdings-Button: zunächst verstecken, dann ETF-Check im Hintergrund
+            if hasattr(self, 'holdings_btn'):
+                self.holdings_btn.setVisible(False)
+                QTimer.singleShot(700, self._update_holdings_visibility)
             
             if self.data.empty:
                 # Rohstoffe (XAU/XAG) brauchen keine Suffix-Erkennung
@@ -8765,10 +8823,10 @@ class PortfolioDialog(QMainWindow):
         lay.addWidget(btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
         dlg.adjustSize()
-        _pg = self.geometry()
+        _screen = QApplication.primaryScreen().availableGeometry()
         dlg.move(
-            _pg.center().x() - dlg.width() // 2,
-            _pg.center().y() - dlg.height() // 2
+            _screen.x() + (_screen.width()  - dlg.width())  // 2,
+            _screen.y() + (_screen.height() - dlg.height()) // 2,
         )
         dlg.exec()
 

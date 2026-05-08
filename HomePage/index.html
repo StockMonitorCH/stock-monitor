@@ -6,11 +6,14 @@
 
 <!-- PRIMARY META -->
 <title>Stock Monitor – Portfolio Tracker & Finanz-App für Privatanleger</title>
-<meta name="description" content="Stock Monitor – kostenlose Portfolio-App für Privatanleger. Portfolio Tracker mit 16 Charts, KI-Analyse, Monte Carlo Simulation, ECY, Dividenden-Kalender, Steuer-Assistent (CH/DE/AT/UK/US), CSV-Import, Kryptowährungen, Edelmetalle. Für Windows & Linux (Ubuntu, Debian, Fedora, Mint). Open Source. Free Portfolio Tracker for private investors with AI analysis, tax assistant and dividend calendar.">
-<meta name="keywords" content="Portfolio Tracker, Finanz App, Aktien Portfolio, Portfolio Verwaltung, Portfolio Manager, Portfolio Analyse, Anlage Tool, Depot, Depot Verwaltung, Depotanalyse, Wertschriftendepot, Wertschriften, Aktien verwalten, Aktien App, Dividenden Tracker, Dividenden Kalender, Steuer Assistent Aktien, Charts Aktien, mehrere Charts gleichzeitig, Portfolio Software, Kryptowährungen Portfolio, Cryptos Portfolio, Edelmetalle Portfolio, Währungsrechner, Monte Carlo Simulation Portfolio, ECY Earnings Current Yield, Alpha Beta Sharpe Ratio, Bollinger Bands RSI, TWR MWR IRR, KI Analyse Portfolio, AI Portfolio Analysis, GICS Sektoren, CSV Import, CSV Import Aktien, CSV Import Bank, Swissquote CSV, DeGiro CSV, Flatex CSV, Portfolio Weltkarte, Weltkarte Aktien, Stock Portfolio, Investment Tracker, Portfolio Analysis, Stock Monitor, Open Source Portfolio, Free Portfolio Manager, Investment Portfolio App, Stock Portfolio Tracker, Cryptocurrency Portfolio, Precious Metals Portfolio, Tax Assistant Stocks, Dividend History, Monte Carlo Simulation Stocks, Portfolio Rebalancing, CSV import stocks, world map portfolio, ETF, ETFs, SMI, DAX, S&P 500, Candlestick, Benchmark Indizes, Benchmark Indices, Linux Portfolio App, Linux Aktien App, rpm Download, deb Download, Flatpak Portfolio, Ubuntu Portfolio App, Debian Portfolio App, Fedora Portfolio App, Linux Mint Portfolio App, openSUSE Portfolio App, Nobara Portfolio App, portfolio app linux, stock tracker linux, finanz app linux">
+<meta name="description" content="Stock Monitor – kostenlose Portfolio-App für Privatanleger. Portfolio Tracker mit 16 Charts, KI-Analyse, Monte Carlo Simulation, ECY, Dividenden-Kalender, Steuer-Assistent (CH/DE/AT/UK/US), CSV-Import, Kryptowährungen, Edelmetalle. Für Windows & Linux (Fedora, openSUSE, Nobara). Open Source. Free Portfolio Tracker for private investors with AI analysis, tax assistant and dividend calendar.">
+<meta name="keywords" content="Portfolio Tracker, Finanz App, Aktien Portfolio, Portfolio Verwaltung, Portfolio Manager, Portfolio Analyse, Anlage Tool, Depot, Depot Verwaltung, Depotanalyse, Wertschriftendepot, Wertschriften, Aktien verwalten, Aktien App, Dividenden Tracker, Dividenden Kalender, Steuer Assistent Aktien, Charts Aktien, mehrere Charts gleichzeitig, Portfolio Software, Kryptowährungen Portfolio, Cryptos Portfolio, Edelmetalle Portfolio, Währungsrechner, Monte Carlo Simulation Portfolio, ECY Earnings Current Yield, Alpha Beta Sharpe Ratio, Bollinger Bands RSI, TWR MWR IRR, KI Analyse Portfolio, AI Portfolio Analysis, GICS Sektoren, CSV Import, CSV Import Aktien, CSV Import Bank, Swissquote CSV, DeGiro CSV, Flatex CSV, Portfolio Weltkarte, Weltkarte Aktien, Stock Portfolio, Investment Tracker, Portfolio Analysis, Stock Monitor, Open Source Portfolio, Free Portfolio Manager, Investment Portfolio App, Stock Portfolio Tracker, Cryptocurrency Portfolio, Precious Metals Portfolio, Tax Assistant Stocks, Dividend History, Monte Carlo Simulation Stocks, Portfolio Rebalancing, CSV import stocks, world map portfolio, ETF, ETFs, SMI, DAX, S&P 500, Candlestick, Benchmark Indizes, Benchmark Indices, Linux Portfolio App, Linux Aktien App, rpm Download, Flatpak Portfolio, Fedora Portfolio App, openSUSE Portfolio App, Nobara Portfolio App, portfolio app linux, stock tracker linux, finanz app linux">
 <meta name="author" content="Timm">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://www.stock-monitor.ch/">
+<link rel="alternate" hreflang="de" href="https://www.stock-monitor.ch/">
+<link rel="alternate" hreflang="en" href="https://www.stock-monitor.ch/en/">
+<link rel="alternate" hreflang="x-default" href="https://www.stock-monitor.ch/">
 
 <!-- OPEN GRAPH (LinkedIn, Facebook, WhatsApp) -->
 <meta property="og:type" content="website">
@@ -48,7 +51,7 @@
   },
   "url": "https://www.stock-monitor.ch/",
   "downloadUrl": "https://github.com/StockMonitorCH/stock-monitor/releases",
-  "softwareVersion": "5.0.7",
+  "softwareVersion": "5.3.0",
   "screenshot": "https://www.stock-monitor.ch/screenshots/dashboard_DE.png"
 }
 </script>
@@ -136,7 +139,8 @@ body {
 }
 .lang-btn:hover { border-color: var(--green); color: var(--text); }
 .lang-btn.active { border-color: var(--green); color: var(--green); background: var(--green-dim); }
-.lang-btn .flag { font-size: 1.8rem; }
+.flag-svg { display:inline-block; vertical-align:middle; border-radius:2px; overflow:hidden; line-height:1; }
+
 
 /* HERO */
 .hero {
@@ -656,12 +660,45 @@ footer a:hover { color: var(--green); }
   .coming-soon-card { padding: 36px 24px; }
   .lang-bar { padding: 10px 16px; }
   .hero p.sub { font-size: 1.1rem; }
+  .footer-links { flex-wrap: wrap; gap: 14px; }
+
+  /* Hero: alles zentrieren */
+  .hero { align-items: center; text-align: center; }
+  .hero h1 { text-align: center; width: 100%; font-size: clamp(1.9rem, 8vw, 2.8rem); }
+  .hero p.sub { text-align: center; width: 100%; }
+  .hero > div { align-items: center !important; width: 100%; }
+  .hero > div > div { justify-content: center !important; width: 100%; }
+
+  /* Showcase / Features: Texte zentrieren */
+  .showcase { text-align: center; }
+  .showcase .section-label,
+  .showcase .section-title,
+  .showcase .section-sub { text-align: center; max-width: 100%; }
+  .features { text-align: center; }
+  .features .section-label,
+  .features .section-title,
+  .features .section-sub { text-align: center; max-width: 100%; }
+
+  /* Highlight-Sections: Text zentrieren wenn einspaltig */
+  .highlight-text { text-align: center; }
+  .highlight-text h3 { text-align: center; padding-left: 0; text-indent: 0; font-size: 2rem; }
+  .highlight-text p { text-align: center; }
+  .feature-list { align-items: center; }
+  .feature-list li { justify-content: center; text-align: left; max-width: 400px; }
+
+  /* Bilder in Highlights: volle Breite */
+  .highlight-img-wrap { max-width: 100%; }
+
+  /* Coming Soon / Notify */
+  .coming-soon { padding: 60px 16px; }
+  .platform-badges { justify-content: center; }
 }
 
 /* HIDDEN LANG */
 [data-lang="en"] { display: none; }
 body.lang-en [data-lang="de"] { display: none; }
 body.lang-en [data-lang="en"] { display: block; }
+body.lang-en span[data-lang="en"] { display: inline; }
 body.lang-en .btn-primary[data-lang="en"],
 body.lang-en .btn-secondary[data-lang="en"],
 body.lang-en .badge[data-lang="en"],
@@ -769,7 +806,7 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
   max-width: 1100px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
 }
 .trust-item {
@@ -812,10 +849,10 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
 <div class="lang-bar">
   <div class="logo-small">Stock<span>Monitor</span></div>
   <button class="lang-btn active" id="btn-de" onclick="setLang('de')">
-    <span class="flag">🇩🇪</span> DE
+    <span class="flag"><svg width="28" height="20" viewBox="0 0 28 20" style="display:block;border-radius:2px;"><rect width="28" height="6.67" y="0" fill="#000"/><rect width="28" height="6.67" y="6.67" fill="#D00"/><rect width="28" height="6.67" y="13.33" fill="#FFCE00"/></svg></span> DE
   </button>
   <button class="lang-btn" id="btn-en" onclick="setLang('en')">
-    <span class="flag">🇺🇸</span> EN
+    <span class="flag"><svg width="28" height="20" viewBox="0 0 28 20" style="display:block;border-radius:2px;"><rect width="28" height="20" fill="#B22234"/><rect width="28" height="1.54" y="1.54" fill="#fff"/><rect width="28" height="1.54" y="4.62" fill="#fff"/><rect width="28" height="1.54" y="7.69" fill="#fff"/><rect width="28" height="1.54" y="10.77" fill="#fff"/><rect width="28" height="1.54" y="13.85" fill="#fff"/><rect width="28" height="1.54" y="16.92" fill="#fff"/><rect width="11.2" height="10.77" fill="#3C3B6E"/></svg></span> EN
   </button>
 </div>
 
@@ -827,22 +864,22 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
   <h1 data-lang="de">Dein Wertschriftendepot<br><em>Endlich professionell analysiert.</em></h1>
   <h1 data-lang="en">Your securities portfolio<br><em>Finally professionally analysed.</em></h1>
 
-  <p class="sub" data-lang="de">Stock Monitor ist eine leistungsstarke Desktop-App für Privatanleger mit Charts, KI-Analyse, CSV-Import, Steuer-Assistent und mehr. Aktien, ETFs und Kryptowährungen auf einen Blick. Kursdaten via Yahoo Finance (15 Min. verzögert). Für Privatanleger kostenlos. Open Source.</p>
-  <p class="sub" data-lang="en">Stock Monitor is a powerful desktop app for private investors with charts, AI analysis, CSV import, tax assistant and more. Stocks, ETFs and cryptocurrencies at a glance. Price data via Yahoo Finance (~15 min. delayed). Free for private investors. Open Source.</p>
+  <p class="sub" data-lang="de">Stock Monitor ist eine leistungsstarke Desktop-App für Privatanleger mit Charts, KI-Analyse, geführtem CSV-Import, Steuer-Assistent und mehr. Aktien, ETFs und Kryptowährungen auf einen Blick. Kursdaten via Yahoo Finance (15 Min. verzögert). Für Privatanleger kostenlos. Open Source.</p>
+  <p class="sub" data-lang="en">Stock Monitor is a powerful desktop app for private investors with charts, AI analysis, guided CSV import, tax assistant and more. Stocks, ETFs and cryptocurrencies at a glance. Price data via Yahoo Finance (~15 min. delayed). Free for private investors. Open Source.</p>
 
   <div style="display:flex; flex-direction:column; align-items:center; gap:16px; animation: fadeUp 0.7s 0.3s ease both;">
     <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
       <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.0.7/stock_monitor.zip" class="btn-primary" data-lang="de"><span style="font-size:1.4em; line-height:1;">🪟</span> Download für Windows</a>
-        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.0.7/stock_monitor.zip" class="btn-primary" data-lang="en"><span style="font-size:1.4em; line-height:1;">🪟</span> Download for Windows</a>
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock_monitor.zip" class="btn-primary" data-lang="de"><span style="font-size:1.4em; line-height:1;">🪟</span> Download für Windows</a>
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock_monitor.zip" class="btn-primary" data-lang="en"><span style="font-size:1.4em; line-height:1;">🪟</span> Download for Windows</a>
         <div data-lang="de" style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">ZIP entpacken → .exe starten · Kein Setup<br>Erster Start ~20 Sek.</div>
         <div data-lang="en" style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">Extract ZIP → run .exe · No setup<br>First launch ~20 sec.</div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-        <a href="#download" class="btn-primary" data-lang="de"><span style="font-size:1.4em; line-height:1;">🐧</span> Download für Linux</a>
-        <a href="#download" class="btn-primary" data-lang="en"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
-        <div data-lang="de" style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.rpm & .deb verfügbar · Flatpak in Arbeit</div>
-        <div data-lang="en" style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.rpm & .deb available · Flatpak in progress</div>
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock-monitor-5.3.0.x86_64.rpm" class="btn-primary" data-lang="de"><span style="font-size:1.4em; line-height:1;">🐧</span> Download für Linux</a>
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock-monitor-5.3.0.x86_64.rpm" class="btn-primary" data-lang="en"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
+        <div data-lang="de" style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.rpm verfügbar (Fedora, openSUSE, Nobara)</div>
+        <div data-lang="en" style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.rpm available (Fedora, openSUSE, Nobara)</div>
       </div>
     </div>
     <a href="#stats" class="btn-secondary" data-lang="de" style="border-color:var(--text3); color:var(--text2);">Features entdecken ↓</a>
@@ -909,6 +946,16 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
       <div class="trust-item-title">Kostenlos & Open Source</div>
       <div class="trust-item-desc">Vollständig gratis, kein Abo, kein Freemium. Der Quellcode ist offen einsehbar auf GitHub.</div>
     </div>
+    <div class="trust-item" data-lang="de">
+      <span class="ti">📥</span>
+      <div class="trust-item-title">CSV-Import mit geführtem Mapping</div>
+      <div class="trust-item-desc">Deine Bank dabei? Einfach importieren. Format unbekannt? In wenigen Klicks die Spalten zuordnen — Stock Monitor führt dich Schritt für Schritt.</div>
+    </div>
+    <div class="trust-item" data-lang="de">
+      <span class="ti">📋</span>
+      <div class="trust-item-title">Portfolio-Bewertung</div>
+      <div class="trust-item-desc">Regelbasierte Bewertung: Diversifikation, Klumpenrisiken, GICS-Sektoren, Stärken und Schwächen — ohne KI, ohne Cloud.</div>
+    </div>
     <div class="trust-item" data-lang="en">
       <span class="ti">🔒</span>
       <div class="trust-item-title">Data stays local</div>
@@ -926,9 +973,20 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
     </div>
     <div class="trust-item" data-lang="en">
       <span class="ti">⭐</span>
-      <div class="trust-item-title">Free & Open Source</div>
+      <div class="trust-item-title">Free &amp; Open Source</div>
       <div class="trust-item-desc">Completely free, no subscription, no freemium. Source code is fully open on GitHub.</div>
     </div>
+    <div class="trust-item" data-lang="en">
+      <span class="ti">📥</span>
+      <div class="trust-item-title">CSV Import with Guided Mapping</div>
+      <div class="trust-item-desc">Your bank supported? Just import. Unknown format? Map your columns in a few clicks — Stock Monitor walks you through it step by step.</div>
+    </div>
+    <div class="trust-item" data-lang="en">
+      <span class="ti">📋</span>
+      <div class="trust-item-title">Portfolio Assessment</div>
+      <div class="trust-item-desc">Rule-based assessment: diversification, concentration risks, GICS sectors, strengths and weaknesses — without AI, without cloud.</div>
+    </div>
+
   </div>
 </div>
 
@@ -945,8 +1003,8 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
     <img class="clickable-img" src="screenshots/dashboard_DE.png" data-src-de="screenshots/dashboard_DE.png" data-src-en="screenshots/dashboard_EN.png" alt="Stock Monitor Dashboard" onerror="this.parentElement.style.background='var(--card)'; this.style.display='none'; this.parentElement.querySelector('.placeholder').style.display='flex'">
     <div class="placeholder" style="display:none; height:320px; align-items:center; justify-content:center; color:var(--text3); font-family:'DM Mono',monospace; font-size:0.85rem;">[ screenshot: 16-chart dashboard ]</div>
   </div>
-  <div class="screenshot-caption-below" data-lang="de">Stock Monitor v5.0.7 ·16 Charts · MA 20/50/200 · Trend · Beta · KI-Analyse · Yahoo Finance · Steuer-Assistent CH/DE/AT/UK/US</div>
-  <div class="screenshot-caption-below" data-lang="en">Stock Monitor v5.0.7 ·16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
+  <div class="screenshot-caption-below" data-lang="de">Stock Monitor v5.3.0 ·16 Charts · MA 20/50/200 · Trend · Beta · KI-Analyse · Yahoo Finance · Steuer-Assistent CH/DE/AT/UK/US</div>
+  <div class="screenshot-caption-below" data-lang="en">Stock Monitor v5.3.0 ·16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
 </section>
 
 <!-- FEATURES ALS HIGHLIGHT-SECTIONS -->
@@ -965,6 +1023,34 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
       <h3 data-lang="en">📊 Portfolio Overview</h3>
       <p data-lang="de">Vollständige Übersicht mit Einstandspreis, Tageswert, aktuellem Wert, P&L, Gewichtung, Sektorzuordnung (GICS) und 52-Wochen-Hoch/Tief. In einer Ansicht: Aktien, ETFs, Kryptowährungen und Edelmetalle.<br>Und vieles mehr.</p>
       <p data-lang="en">Complete overview with average cost basis, daily value, current value, P&L, weight, sector assignment (GICS) and 52-week high/low. In one view: stocks, ETFs, cryptocurrencies and precious metals.<br>And much more.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Portfolio-Bewertung -->
+<section class="highlight fade-in" style="background: linear-gradient(135deg, rgba(245,158,11,0.05) 0%, var(--bg2) 60%); border-top: 1px solid rgba(245,158,11,0.2); border-bottom: 1px solid rgba(245,158,11,0.2);">
+  <div class="highlight-inner reverse">
+    <div class="highlight-img-wrap" style="box-shadow: 0 24px 80px rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.2);">
+      <img class="clickable-img" src="screenshots/pf_bewertung_DE.png" data-src-de="screenshots/pf_bewertung_DE.png" data-src-en="screenshots/pf_bewertung_EN.png" alt="Portfolio Bewertung" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'">
+    </div>
+    <div class="highlight-text">
+      <span class="tag tag-gold" data-lang="de">Portfolio-Bewertung</span>
+      <span class="tag tag-gold" data-lang="en">Portfolio Assessment</span>
+      <h3 data-lang="de">📋 Portfolio-Bewertung — auf einen Blick</h3>
+      <h3 data-lang="en">📋 Portfolio Assessment — at a Glance</h3>
+      <p data-lang="de">Sofortige Gesamteinschätzung deines Portfolios: Wie gut diversifiziert bist du wirklich? Stock Monitor bewertet automatisch Sektorverteilung, Klumpenrisiken und Stärken — übersichtlich zusammengefasst, ohne manuellen Aufwand. Keine KI, keine Cloud — rein regelbasiert auf deinen eigenen Daten.</p>
+      <p data-lang="en">Instant overall assessment of your portfolio: how well diversified are you really? Stock Monitor automatically evaluates sector distribution, concentration risks and strengths — clearly summarised, without any manual effort. No AI, no cloud — purely rule-based on your own data.</p>
+      <ul class="feature-list">
+        <li data-lang="de">GICS-Sektoren-Analyse: Verteilung und Klumpenrisiken</li>
+        <li data-lang="en">GICS sector analysis: distribution and concentration risks</li>
+        <li data-lang="de">Stärken & Schwächen automatisch identifiziert</li>
+        <li data-lang="en">Strengths & weaknesses automatically identified</li>
+        <li data-lang="de">Regionale Diversifikation über die interaktive Weltkarte</li>
+        <li data-lang="en">Regional diversification via the interactive world map</li>
+        <li data-lang="de">Kein API-Key, kein Account erforderlich</li>
+        <li data-lang="en">No API key, no account required</li>
+      </ul>
+
     </div>
   </div>
 </section>
@@ -1211,7 +1297,7 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
           this.parentElement.style.display='flex';
           this.parentElement.style.alignItems='center';
           this.parentElement.style.justifyContent='center';
-          this.parentElement.innerHTML='<div style=\'text-align:center; padding:32px\'><div style=\'font-size:3rem; margin-bottom:16px\'>🧾</div><div style=\'font-family:DM Serif Display,serif; font-size:1.3rem; color:var(--text); margin-bottom:20px\' data-lang=\'de\'>Steuer-Assistent · PDF-Export</div><div style=\'font-size:2rem; letter-spacing:0.3em\'>🇨🇭 🇩🇪 🇦🇹 🇬🇧 🇺🇸</div><div style=\'font-family:DM Mono,monospace; font-size:0.78rem; color:var(--text3); margin-top:14px; line-height:1.8\'>DA-1 &nbsp;·&nbsp; Anlage KAP &nbsp;·&nbsp; E1kv &nbsp;·&nbsp; SA108 &nbsp;·&nbsp; Form 1040</div></div>'
+          this.parentElement.innerHTML='<div style=\'text-align:center; padding:32px\'><div style=\'font-size:3rem; margin-bottom:16px\'>🧾</div><div style=\'font-family:DM Serif Display,serif; font-size:1.3rem; color:var(--text); margin-bottom:20px\' data-lang=\'de\'>Steuer-Assistent · PDF-Export</div><div style=\'font-size:2rem; letter-spacing:0.3em\'>CH · DE · AT · GB · US</div><div style=\'font-family:DM Mono,monospace; font-size:0.78rem; color:var(--text3); margin-top:14px; line-height:1.8\'>DA-1 &nbsp;·&nbsp; Anlage KAP &nbsp;·&nbsp; E1kv &nbsp;·&nbsp; SA108 &nbsp;·&nbsp; Form 1040</div></div>'
         ">
     </div>
     <div class="highlight-text">
@@ -1271,19 +1357,19 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
     <div class="highlight-text" style="max-width:100%">
       <span class="tag tag-green" data-lang="de">Datenimport</span>
       <span class="tag tag-green" data-lang="en">Data Import</span>
-      <h3 data-lang="de">📥 CSV-Import — Bankdaten direkt übernehmen</h3>
-      <h3 data-lang="en">📥 CSV Import — Bring Your Bank Data</h3>
-      <p data-lang="de">Bereits Transaktionen in einer anderen App? Kein Problem. Stock Monitor importiert CSV-Exporte direkt — mit automatischer Bank-Erkennung oder geführtem Spalten-Mapping für unbekannte Formate.</p>
-      <p data-lang="en">Already tracking transactions elsewhere? No problem. Stock Monitor imports CSV exports directly — with automatic bank detection or guided column mapping for unknown formats.</p>
+      <h3 data-lang="de">📥 CSV-Import — mit geführtem Spalten-Mapping</h3>
+      <h3 data-lang="en">📥 CSV Import — with Guided Column Mapping</h3>
+      <p data-lang="de">Bankformat bekannt? Einfach importieren. Format unbekannt? Stock Monitor erkennt Spalten automatisch — oder führt dich Schritt für Schritt durch ein interaktives Mapping-Assistent. Keine Fehlersuche, keine manuellen Anpassungen.</p>
+      <p data-lang="en">Known bank format? Just import. Unknown format? Stock Monitor auto-detects columns — or walks you through an interactive mapping wizard step by step. No troubleshooting, no manual tweaks.</p>
       <ul class="feature-list">
         <li data-lang="de">Swissquote — vollständig unterstützt inkl. Währungsumrechnung & FX-Kurse</li>
         <li data-lang="en">Swissquote — fully supported including currency conversion & FX rates</li>
         <li data-lang="de">DeGiro, Comdirect / ING, Flatex, Interactive Brokers, Trading 212 und mehr</li>
         <li data-lang="en">DeGiro, Comdirect / ING, Flatex, Interactive Brokers, Trading 212 and more</li>
-        <li data-lang="de">Unbekanntes Format? Geführtes Spalten-Mapping in wenigen Klicks</li>
-        <li data-lang="en">Unknown format? Guided column mapping in just a few clicks</li>
-        <li data-lang="de">Käufe, Verkäufe, Splits und Dividenden werden automatisch erkannt</li>
-        <li data-lang="en">Buys, sells, splits and dividends are automatically detected</li>
+        <li data-lang="de">Unbekanntes Format? Geführtes Spalten-Mapping — du klickst, Stock Monitor versteht</li>
+        <li data-lang="en">Unknown format? Guided column mapping — you click, Stock Monitor understands</li>
+        <li data-lang="de">Käufe, Verkäufe, Splits und Dividenden werden automatisch erkannt & korrekt zugeordnet</li>
+        <li data-lang="en">Buys, sells, splits and dividends automatically detected & correctly assigned</li>
         <li data-lang="de">Kryptowährungen und Edelmetalle werden automatisch korrekt zugeordnet</li>
         <li data-lang="en">Cryptocurrencies and precious metals are automatically mapped correctly</li>
       </ul>
@@ -1322,24 +1408,22 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
   <div class="coming-soon fade-in">
     <div class="coming-soon-card">
       <span class="cs-icon">⬇️</span>
-      <h2 data-lang="de">Download — v5.0.7</h2>
-      <h2 data-lang="en">Download — v5.0.7</h2>
+      <h2 data-lang="de">Download — v5.3.0</h2>
+      <h2 data-lang="en">Download — v5.3.0</h2>
       <p data-lang="de">Kostenlos, Open Source, keine Installation nötig.</p>
       <p data-lang="en">Free, open source, no installation required.</p>
 
       <!-- WINDOWS -->
       <div style="width:100%; margin-bottom:28px;">
-        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.0.7/stock_monitor.zip"
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock_monitor.zip"
            class="btn-primary" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
           <span style="font-size:1.5em; line-height:1;">🪟</span> <span data-lang="de">Download für Windows</span><span data-lang="en">Download for Windows</span>
         </a>
         <div data-lang="de" style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
-          ZIP entpacken → <code style="background:var(--bg3); padding:1px 6px; border-radius:4px; font-family:'DM Mono',monospace;">stock_monitor.exe</code> starten — fertig. Keine Installation nötig.<br>
-          <span style="color:var(--gold);">⚠</span> Beim ersten Start kann der Ladevorgang ca. 20 Sekunden dauern — das ist normal.
+          ZIP entpacken → <code style="background:var(--bg3); padding:1px 6px; border-radius:4px; font-family:'DM Mono',monospace;">stock_monitor.exe</code> starten — fertig. Keine Installation nötig. Erster Start: ca. 20 Sek. Ladezeit.
         </div>
         <div data-lang="en" style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
-          Extract ZIP → run <code style="background:var(--bg3); padding:1px 6px; border-radius:4px; font-family:'DM Mono',monospace;">stock_monitor.exe</code> — that's it. No installation required.<br>
-          <span style="color:var(--gold);">⚠</span> The first launch may take up to 20 seconds — this is normal.
+          Extract ZIP → run <code style="background:var(--bg3); padding:1px 6px; border-radius:4px; font-family:'DM Mono',monospace;">stock_monitor.exe</code> — that's it. No installation required. First launch: ~20 sec. loading time.
         </div>
       </div>
 
@@ -1349,35 +1433,16 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
         <div data-lang="en" style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:left; margin-bottom:10px; padding:0 4px;">🐧 Linux</div>
 
         <!-- RPM -->
-        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.0.7/stock-monitor-5.0.7.x86_64.rpm"
-           class="btn-primary" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:6px; display:flex; gap:10px;">
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock-monitor-5.3.0.x86_64.rpm"
+           class="btn-primary" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:16px; display:flex; gap:10px;">
           <span style="font-size:1.3em; line-height:1;">⬇</span>
           <span data-lang="de">.rpm herunterladen (Fedora, openSUSE, Nobara u.a.)</span>
           <span data-lang="en">Download .rpm (Fedora, openSUSE, Nobara & more)</span>
         </a>
 
-        <!-- DEB -->
-        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.0.7/stock-monitor_5.0.7_amd64.deb"
-           class="btn-primary" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:16px; display:flex; gap:10px;">
-          <span style="font-size:1.3em; line-height:1;">⬇</span>
-          <span data-lang="de">.deb herunterladen (Ubuntu, Debian, Mint u.a.)</span>
-          <span data-lang="en">Download .deb (Ubuntu, Debian, Mint & more)</span>
-        </a>
 
-        <!-- Flatpak (disabled, coming soon) -->
-        <div style="position:relative; margin-bottom:6px;">
-          <div style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; display:flex; gap:10px; background:var(--card2); border:1px solid var(--border); color:var(--text3); opacity:0.55; cursor:not-allowed; pointer-events:none;">
-            <span style="font-size:1.3em; line-height:1;">📦</span>
-            <span data-lang="de">Flatpak — demnächst via Flathub</span>
-            <span data-lang="en">Flatpak — coming soon via Flathub</span>
-          </div>
-        </div>
-        <div data-lang="de" style="font-size:1rem; color:var(--text); line-height:1.5; text-align:left; padding:0 4px; margin-bottom:4px;">
-          ⏳ Flathub-Einreichung läuft — Freischaltung ausstehend.
-        </div>
-        <div data-lang="en" style="font-size:1rem; color:var(--text); line-height:1.5; text-align:left; padding:0 4px; margin-bottom:4px;">
-          ⏳ Flathub submission in progress — approval pending.
-        </div>
+
+
       </div>
 
       <!-- SOURCE -->
@@ -1393,21 +1458,21 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
         <div data-lang="de" style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:center; margin-bottom:10px;">📄 Dokumentation</div>
         <div data-lang="en" style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:center; margin-bottom:10px;">📄 Documentation</div>
         <div id="doc-grid-de" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <a href="docs/StockMonitor_Features_v5.0.1_DE.pdf" target="_blank"
+          <a href="docs/StockMonitor_Features_v5.3.0_DE.pdf" target="_blank"
              class="btn-secondary" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);">
             📋 Feature-Übersicht
           </a>
-          <a href="docs/StockMonitor_Anleitung_v5.0.1_DE.pdf" target="_blank"
+          <a href="docs/StockMonitor_Anleitung_v5.3.0_DE.pdf" target="_blank"
              class="btn-secondary" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);">
             📖 Benutzeranleitung
           </a>
         </div>
         <div id="doc-grid-en" style="display:none; grid-template-columns:1fr 1fr; gap:8px;">
-          <a href="docs/StockMonitor_Features_v5.0.1_EN.pdf" target="_blank"
+          <a href="docs/StockMonitor_Features_v5.3.0_EN.pdf" target="_blank"
              class="btn-secondary" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);">
             📋 Feature List
           </a>
-          <a href="docs/StockMonitor_Manual_v5.0.1_EN.pdf" target="_blank"
+          <a href="docs/StockMonitor_Manual_v5.3.0_EN.pdf" target="_blank"
              class="btn-secondary" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);">
             📖 User Manual
           </a>

@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<!-- PRIMARY META -->
+<title>Stock Monitor – Portfolio Tracker &amp; Finance App for Private Investors</title>
+<meta content="Stock Monitor – free portfolio app for private investors. Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, ECY, dividend calendar, tax assistant (CH/DE/AT/UK/US), CSV import, cryptocurrencies, precious metals. For Windows &amp; Linux (Fedora, openSUSE, Nobara). Open Source." name="description"/>
+<meta content="Portfolio Tracker, Finanz App, Aktien Portfolio, Portfolio Verwaltung, Portfolio Manager, Portfolio Analyse, Anlage Tool, Depot, Depot Verwaltung, Depotanalyse, Wertschriftendepot, Wertschriften, Aktien verwalten, Aktien App, Dividenden Tracker, Dividenden Kalender, Steuer Assistent Aktien, Charts Aktien, mehrere Charts gleichzeitig, Portfolio Software, Kryptowährungen Portfolio, Cryptos Portfolio, Edelmetalle Portfolio, Währungsrechner, Monte Carlo Simulation Portfolio, ECY Earnings Current Yield, Alpha Beta Sharpe Ratio, Bollinger Bands RSI, TWR MWR IRR, KI Analyse Portfolio, AI Portfolio Analysis, GICS Sektoren, CSV Import, CSV Import Aktien, CSV Import Bank, Swissquote CSV, DeGiro CSV, Flatex CSV, Portfolio Weltkarte, Weltkarte Aktien, Stock Portfolio, Investment Tracker, Portfolio Analysis, Stock Monitor, Open Source Portfolio, Free Portfolio Manager, Investment Portfolio App, Stock Portfolio Tracker, Cryptocurrency Portfolio, Precious Metals Portfolio, Tax Assistant Stocks, Dividend History, Monte Carlo Simulation Stocks, Portfolio Rebalancing, CSV import stocks, world map portfolio, ETF, ETFs, SMI, DAX, S&amp;P 500, Candlestick, Benchmark Indizes, Benchmark Indices, Linux Portfolio App, Linux Aktien App, rpm Download, Flatpak Portfolio, Fedora Portfolio App, openSUSE Portfolio App, Nobara Portfolio App, portfolio app linux, stock tracker linux, finanz app linux" name="keywords"/>
+<meta content="Timm" name="author"/>
+<meta content="index, follow" name="robots"/>
+<link href="https://www.stock-monitor.ch/en/" rel="canonical"/><link href="https://www.stock-monitor.ch/" hreflang="de" rel="alternate"/><link href="https://www.stock-monitor.ch/en/" hreflang="en" rel="alternate"/><link href="https://www.stock-monitor.ch/" hreflang="x-default" rel="alternate"/>
+<!-- OPEN GRAPH (LinkedIn, Facebook, WhatsApp) -->
+<meta content="website" property="og:type"/>
+<meta content="https://www.stock-monitor.ch/en/" property="og:url"/>
+<meta content="Stock Monitor – Portfolio Tracker &amp; Finance App" property="og:title"/>
+<meta content="Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, dividend calendar, tax assistant (CH/DE/AT/UK/US) and CSV import. Cryptocurrencies &amp; precious metals. Windows &amp; Linux. Open Source." property="og:description"/>
+<meta content="https://www.stock-monitor.ch/screenshots/dashboard_DE.png" property="og:image"/>
+<meta content="en_US" property="og:locale"/>
+<meta content="en_US" property="og:locale:alternate"/>
+<meta content="Stock Monitor" property="og:site_name"/>
+<!-- TWITTER / X -->
+<meta content="summary_large_image" name="twitter:card"/>
+<meta content="Stock Monitor – Portfolio Tracker &amp; Finance App" name="twitter:title"/>
+<meta content="Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, dividend calendar, tax assistant and CSV import. Cryptocurrencies &amp; precious metals. Windows &amp; Linux. Open Source." name="twitter:description"/>
+<meta content="https://www.stock-monitor.ch/screenshots/dashboard_DE.png" name="twitter:image"/>
+<!-- STRUCTURED DATA (Google Software App) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Stock Monitor",
+  "operatingSystem": "Windows, Linux",
+  "applicationCategory": "FinanceApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "CHF"
+  },
+  "description": "Desktop app for portfolio management with charts, AI analysis, tax assistant, dividend calendar and guided CSV import for private investors.",
+  "author": {
+    "@type": "Person",
+    "name": "Timm"
+  },
+  "url": "https://www.stock-monitor.ch/",
+  "downloadUrl": "https://github.com/StockMonitorCH/stock-monitor/releases",
+  "softwareVersion": "5.3.0",
+  "screenshot": "https://www.stock-monitor.ch/screenshots/dashboard_DE.png"
+}
+</script>
+<!-- Cloudflare Web Analytics -->
+<script data-cf-beacon='{"token": "148d754028fe414e9912b6d4aa4700dd"}' defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+<!-- End Cloudflare Web Analytics -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&amp;family=DM+Mono:wght@400;500&amp;family=DM+Sans:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0a0e14;
+  --bg2: #0f1520;
+  --bg3: #141c2b;
+  --card: #131a27;
+  --card2: #192135;
+  --border: #1e2d45;
+  --border2: #253652;
+  --green: #22c55e;
+  --green2: #16a34a;
+  --green-dim: rgba(34,197,94,0.12);
+  --red: #ef4444;
+  --red-dim: rgba(239,68,68,0.1);
+  --gold: #f59e0b;
+  --gold-dim: rgba(245,158,11,0.12);
+  --blue: #3b82f6;
+  --blue-dim: rgba(59,130,246,0.1);
+  --text: #f4f8ff;
+  --text2: #ccdaee;
+  --text3: #8aabca;
+  --accent: #22c55e;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 20px;
+  line-height: 1.75;
+  overflow-x: hidden;
+}
+
+/* LANG TOGGLE */
+.lang-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px 32px;
+  background: rgba(10,14,20,0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.lang-bar .logo-small {
+  margin-right: auto;
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.45rem;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+.lang-bar .logo-small span { color: var(--green); }
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 10px;
+}
+.lang-btn:hover { border-color: var(--green); color: var(--text); }
+.lang-btn.active { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+.lang-btn .flag { font-size: 1.8rem; }
+
+/* HERO */
+.hero {
+  min-height: 78vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 100px 24px 60px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,197,94,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 80% 80%, rgba(59,130,246,0.05) 0%, transparent 60%);
+  pointer-events: none;
+}
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.25;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 80%);
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--green-dim);
+  border: 1px solid rgba(34,197,94,0.3);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 28px;
+  animation: fadeUp 0.7s ease both;
+}
+.badge .dot {
+  width: 7px; height: 7px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+.hero h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(2.8rem, 6vw, 5.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  max-width: 820px;
+  margin-bottom: 22px;
+  animation: fadeUp 0.7s 0.1s ease both;
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--green);
+}
+.hero p.sub {
+  font-size: 1.35rem;
+  color: var(--text);
+  max-width: 600px;
+  line-height: 1.7;
+  margin-bottom: 40px;
+  animation: fadeUp 0.7s 0.2s ease both;
+}
+.hero-ctas {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: fadeUp 0.7s 0.3s ease both;
+}
+.btn-primary {
+  padding: 13px 28px;
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-primary:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(34,197,94,0.25); }
+.btn-secondary {
+  padding: 13px 28px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-secondary:hover { border-color: var(--green); color: var(--green); background: var(--card2); }
+
+/* STATS ROW */
+.stats-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  animation: fadeUp 0.7s 0.4s ease both;
+  margin-top: 60px;
+}
+.stat-item {
+  padding: 22px 40px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  flex: 1;
+  min-width: 160px;
+}
+.stat-item:last-child { border-right: none; }
+
+@media (max-width: 600px) {
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+  }
+  .stat-item {
+    padding: 18px 8px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    min-width: 0;
+  }
+  .stat-item:nth-child(3) { border-right: none; }
+  .stat-item:nth-child(4),
+  .stat-item:nth-child(5),
+  .stat-item:nth-child(6) { border-bottom: none; }
+  .stat-item:nth-child(6) { border-right: none; }
+  .stat-num {
+    font-size: 1.6rem;
+  }
+  /* AES-256 and DE/EN are too long at 1.6rem on narrow columns */
+  .stat-item:nth-child(5) .stat-num,
+  .stat-item:nth-child(6) .stat-num {
+    font-size: 1.15rem;
+    line-height: 1.3;
+  }
+  .stat-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.03em;
+    word-break: break-word;
+    hyphens: auto;
+  }
+}
+.stat-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 2.4rem;
+  font-weight: 500;
+  color: var(--green);
+  display: block;
+}
+.stat-label {
+  font-size: 1.05rem;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+  display: block;
+}
+
+/* SCREENSHOT SHOWCASE */
+.showcase {
+  padding: 80px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.section-label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.section-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  line-height: 1.1;
+  color: var(--text);
+  margin-bottom: 14px;
+}
+.section-sub {
+  font-size: 1.3rem;
+  color: var(--text);
+  max-width: 580px;
+  line-height: 1.7;
+}
+
+.main-screenshot {
+  margin-top: 40px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,197,94,0.05);
+  position: relative;
+}
+.main-screenshot img {
+  width: 100%;
+  display: block;
+}
+.screenshot-caption {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 20px 24px;
+  background: linear-gradient(transparent, rgba(10,14,20,0.95));
+  font-size: 0.85rem;
+  color: var(--text2);
+}
+
+.screenshot-caption-below {
+  margin-top: 14px;
+  font-size: 1.0rem;
+  color: var(--text);
+  text-align: center;
+}
+
+/* FEATURES GRID */
+.features {
+  padding: 80px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 20px;
+  margin-top: 48px;
+}
+.feature-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.feature-card:hover { border-color: var(--border2); transform: translateY(-3px); }
+.feature-img {
+  width: 100%;
+  display: block;
+  border-bottom: 1px solid var(--border);
+}
+.feature-body {
+  padding: 20px 22px;
+}
+.feature-icon {
+  font-size: 1.7rem;
+  margin-bottom: 10px;
+  display: block;
+}
+.feature-title {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 9px;
+}
+.feature-desc {
+  font-size: 1.02rem;
+  color: var(--text2);
+  line-height: 1.65;
+}
+
+/* FEATURE HIGHLIGHT */
+.highlight {
+  padding: 80px 24px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.highlight-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+.highlight-inner.reverse { direction: rtl; }
+.highlight-inner.reverse > * { direction: ltr; }
+.highlight-img-wrap {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.highlight-img-wrap img { width: 100%; display: block; }
+.highlight-text .tag {
+  display: inline-block;
+  padding: 5px 13px;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.tag-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+.tag-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+.tag-gold { background: var(--gold-dim); color: var(--gold); border: 1px solid rgba(245,158,11,0.2); }
+.highlight-text h3 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 2.8rem;
+  line-height: 1.15;
+  color: var(--text);
+  margin-bottom: 14px;
+  padding-left: 1.6em;
+  text-indent: -1.6em;
+}
+.highlight-text p {
+  font-size: 1.2rem;
+  color: var(--text);
+  line-height: 1.75;
+  margin-bottom: 20px;
+}
+.feature-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 1.12rem;
+  color: var(--text);
+}
+.feature-list li::before {
+  content: '✓';
+  color: var(--green);
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* TAX COUNTRIES */
+.tax-countries {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.tax-country {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  transition: border-color 0.2s;
+}
+.tax-country:hover { border-color: var(--border2); }
+.tax-flag { font-size: 1.5rem; line-height: 1; flex-shrink: 0; }
+.tax-country-name { font-size: 0.94rem; font-weight: 600; color: var(--text); }
+.tax-country-form { font-size: 0.83rem; color: var(--text3); font-family: 'DM Mono', monospace; margin-top: 1px; }
+
+/* COMING SOON */
+.coming-soon {
+  padding: 100px 24px;
+  max-width: 700px;
+  margin: 0 auto;
+  text-align: center;
+}
+.coming-soon-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 52px 44px;
+  position: relative;
+  overflow: hidden;
+}
+.coming-soon-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+}
+.cs-icon { font-size: 3rem; margin-bottom: 18px; display: block; }
+.coming-soon-card h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 2.2rem;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.coming-soon-card p {
+  font-size: 0.97rem;
+  color: var(--text2);
+  line-height: 1.7;
+  margin-bottom: 32px;
+}
+.platform-badges {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+.platform-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text2);
+}
+.platform-badge .pi { font-size: 1.1rem; }
+.notify-form {
+  display: flex;
+  gap: 10px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+.notify-input {
+  flex: 1;
+  padding: 12px 16px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 9px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.notify-input:focus { border-color: var(--green); }
+.notify-input::placeholder { color: var(--text2); }
+.notify-btn {
+  padding: 12px 20px;
+  background: var(--green);
+  color: #000;
+  border: none;
+  border-radius: 9px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.notify-btn:hover { background: var(--green2); }
+.notify-note {
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-top: 12px;
+}
+
+/* FOOTER */
+footer {
+  padding: 36px 24px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--text3);
+  font-size: 0.82rem;
+}
+footer a { color: var(--text2); text-decoration: none; }
+footer a:hover { color: var(--green); }
+.footer-links { display: flex; justify-content: center; gap: 24px; margin-top: 10px; }
+
+/* ANIMATIONS */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .highlight-inner { grid-template-columns: 1fr; gap: 30px; }
+  .highlight-inner.reverse { direction: ltr; }
+  .stat-item { min-width: 100px; padding: 18px 20px; }
+  .notify-form { flex-direction: column; }
+  .features-grid { grid-template-columns: 1fr; }
+  .coming-soon-card { padding: 36px 24px; }
+  .lang-bar { padding: 10px 16px; }
+  .hero p.sub { font-size: 1.1rem; }
+  .footer-links { flex-wrap: wrap; gap: 14px; }
+
+  /* Hero: alles zentrieren */
+  .hero { align-items: center; text-align: center; }
+  .hero h1, .hero p.sub { text-align: center; width: 100%; }
+  .hero > div { align-items: center !important; width: 100%; }
+  .hero > div > div { justify-content: center !important; width: 100%; }
+
+  /* Showcase / Features: Texte zentrieren */
+  .showcase { text-align: center; }
+  .showcase .section-label,
+  .showcase .section-title,
+  .showcase .section-sub { text-align: center; max-width: 100%; }
+  .features { text-align: center; }
+  .features .section-label,
+  .features .section-title,
+  .features .section-sub { text-align: center; max-width: 100%; }
+
+  /* Highlight-Sections: Text zentrieren wenn einspaltig */
+  .highlight-text { text-align: center; }
+  .highlight-text h3 { text-align: center; padding-left: 0; text-indent: 0; font-size: 2rem; }
+  .highlight-text p { text-align: center; }
+  .feature-list { align-items: center; }
+  .feature-list li { justify-content: center; text-align: left; max-width: 400px; }
+
+  /* Bilder in Highlights: volle Breite */
+  .highlight-img-wrap { max-width: 100%; }
+
+  /* Coming Soon / Notify */
+  .coming-soon { padding: 60px 16px; }
+  .platform-badges { justify-content: center; }
+}
+
+/* EN PAGE - all content visible by default */
+/* Lang toggle still works for any residual elements */
+
+/* LIGHTBOX */
+.lightbox-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+  cursor: zoom-out;
+  animation: lbFadeIn 0.2s ease;
+}
+.lightbox-overlay.open { display: flex; }
+@keyframes lbFadeIn {
+  from { opacity: 0; } to { opacity: 1; }
+}
+.lightbox-overlay img {
+  max-width: 92vw;
+  max-height: 88vh;
+  border-radius: 12px;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.8);
+  cursor: default;
+  animation: lbScaleIn 0.2s ease;
+}
+@keyframes lbScaleIn {
+  from { transform: scale(0.93); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.lightbox-close {
+  position: absolute;
+  top: 20px; right: 24px;
+  font-size: 2rem;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.lightbox-close:hover { color: #fff; }
+
+/* CLICKABLE IMAGES */
+.clickable-img {
+  cursor: zoom-in;
+  transition: opacity 0.2s;
+}
+.clickable-img:hover { opacity: 0.88; }
+
+/* FEATURED HIGHLIGHT (Monte Carlo) */
+.highlight-featured {
+  background: linear-gradient(135deg, rgba(59,130,246,0.07) 0%, var(--bg2) 60%);
+  border-top: 1px solid rgba(59,130,246,0.25);
+  border-bottom: 1px solid rgba(59,130,246,0.25);
+  position: relative;
+  overflow: hidden;
+}
+.highlight-featured::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blue), transparent);
+}
+.highlight-featured .highlight-img-wrap {
+  box-shadow: 0 24px 80px rgba(59,130,246,0.18);
+  border-color: rgba(59,130,246,0.25);
+}
+.highlight-featured h3 { font-size: 3rem; }
+
+.trust-banner {
+  padding: 52px 24px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.trust-banner-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.trust-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 28px 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color 0.2s;
+}
+.trust-item:hover { border-color: var(--border2); }
+.trust-item span.ti { font-size: 2.8rem; line-height: 1; }
+.trust-item-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.trust-item-desc {
+  font-size: 1.05rem;
+  color: var(--text);
+  line-height: 1.6;
+}
+@media (max-width: 768px) {
+  .trust-banner-inner { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .trust-banner-inner { grid-template-columns: 1fr; }
+}
+
+</style>
+</head>
+<body>
+<!-- LANG BAR -->
+<div class="lang-bar">
+<div class="logo-small">Stock<span>Monitor</span></div>
+<button class="lang-btn active" id="btn-de" onclick="setLang('de')">
+<span class="flag"><svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15"><rect width="20" height="5" fill="#000"/><rect width="20" height="5" y="5" fill="#D00"/><rect width="20" height="5" y="10" fill="#FFCE00"/></svg></span> DE
+  </button>
+<button class="lang-btn" id="btn-en" onclick="setLang('en')">
+<span class="flag"><svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15"><rect width="20" height="15" fill="#B22234"/><rect width="20" height="1.15" y="1.15" fill="#fff"/><rect width="20" height="1.15" y="3.46" fill="#fff"/><rect width="20" height="1.15" y="5.77" fill="#fff"/><rect width="20" height="1.15" y="8.08" fill="#fff"/><rect width="20" height="1.15" y="10.38" fill="#fff"/><rect width="20" height="1.15" y="12.69" fill="#fff"/><rect width="8" height="8.08" fill="#3C3B6E"/></svg></span> EN
+  </button>
+</div>
+<!-- HERO -->
+<section class="hero">
+<div class="hero-bg"></div>
+<div class="hero-grid"></div>
+
+<h1>Your securities portfolio<br/><em>Finally professionally analysed.</em></h1>
+
+<p class="sub">Stock Monitor is a powerful desktop app for private investors with charts, AI analysis, guided CSV import, tax assistant and more. Stocks, ETFs and cryptocurrencies at a glance. Price data via Yahoo Finance (~15 min. delayed). Free for private investors. Open Source.</p>
+<div style="display:flex; flex-direction:column; align-items:center; gap:16px; animation: fadeUp 0.7s 0.3s ease both;">
+<div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
+<div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock_monitor.zip"><span style="font-size:1.4em; line-height:1;">🪟</span> Download for Windows</a>
+
+<div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">Extract ZIP → run .exe · No setup<br/>First launch ~20 sec.</div>
+</div>
+<div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock-monitor-5.3.0.x86_64.rpm"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
+
+<div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.rpm available (Fedora, openSUSE, Nobara)</div>
+</div>
+</div>
+
+<a class="btn-secondary" href="#stats" style="border-color:var(--text3); color:var(--text2);">Explore Features ↓</a>
+
+<div class="badge" style="margin-bottom:0; margin-top:4px;"><span class="dot"></span> Open Source · Switzerland 🇨🇭</div>
+</div>
+</section>
+<!-- STATS -->
+<div class="stats-row fade-in" id="stats" style="scroll-margin-top: 70px;">
+<div class="stat-item">
+<span class="stat-num">16×</span>
+
+<span class="stat-label">Charts simultaneously</span>
+</div>
+<div class="stat-item">
+<span class="stat-num">5</span>
+
+<span class="stat-label">Tax Assistant for 5 Countries</span>
+</div>
+<div class="stat-item">
+<span class="stat-num">27+</span>
+
+<span class="stat-label">Currencies, Cryptos &amp; Precious Metals</span>
+</div>
+<div class="stat-item">
+<span class="stat-num">10K</span>
+
+<span class="stat-label">Monte Carlo Paths</span>
+</div>
+<div class="stat-item">
+<span class="stat-num">AES-256</span>
+
+<span class="stat-label">Bank-grade Encryption</span>
+</div>
+<div class="stat-item">
+<span class="stat-num">DE / EN</span>
+
+<span class="stat-label">Fully bilingual</span>
+</div>
+</div>
+<!-- TRUST BANNER -->
+<div class="trust-banner fade-in">
+<div class="trust-banner-inner">
+
+
+
+
+<div class="trust-item">
+<span class="ti">🔒</span>
+<div class="trust-item-title">Data stays local</div>
+<div class="trust-item-desc">Your portfolio is encrypted and stored on your device only. Nothing leaves your computer.</div>
+</div>
+<div class="trust-item">
+<span class="ti">🚫</span>
+<div class="trust-item-title">No telemetry</div>
+<div class="trust-item-desc">No tracking, no analytics, no user data. Zero ads — now and forever.</div>
+</div>
+<div class="trust-item">
+<span class="ti"><svg class="flag-svg" width="36" height="36" viewBox="0 0 36 36"><rect width="36" height="36" fill="#D52B1E"/><rect x="15" y="6" width="6" height="24" fill="#fff"/><rect x="6" y="15" width="24" height="6" fill="#fff"/></svg></span>
+<div class="trust-item-title">Made in Switzerland</div>
+<div class="trust-item-desc">Built by a private investor for private investors — with a focus on privacy and quality.</div>
+</div>
+<div class="trust-item">
+<span class="ti">⭐</span>
+<div class="trust-item-title">Free &amp; Open Source</div>
+<div class="trust-item-desc">Completely free, no subscription, no freemium. Source code is fully open on GitHub.</div>
+</div>
+<div class="trust-item">
+<span class="ti">📥</span>
+<div class="trust-item-title">CSV Import with Guided Mapping</div>
+<div class="trust-item-desc">Your bank supported? Just import. Unknown format? Map your columns in a few clicks — Stock Monitor walks you through it step by step.</div>
+</div>
+<div class="trust-item">
+<span class="ti">📋</span>
+<div class="trust-item-title">Portfolio Assessment</div>
+<div class="trust-item-desc">Rule-based assessment: diversification, concentration risks, GICS sectors, strengths and weaknesses — without AI, without cloud.</div>
+</div>
+</div>
+</div>
+<!-- MAIN SCREENSHOT -->
+<section class="showcase fade-in" id="features">
+
+<div class="section-label">The Dashboard</div>
+
+<div class="section-title">Up to 16 Charts at a Glance</div>
+
+<p class="section-sub">Monitor all your positions simultaneously — with Moving Averages, trend lines, RSI, Bollinger Bands, Beta, Alpha and Sharpe Ratio. Zoom into any chart for detailed analysis.</p>
+<div class="main-screenshot">
+<img alt="Stock Monitor Dashboard" class="clickable-img" data-src-de="screenshots/dashboard_DE.png" data-src-en="screenshots/dashboard_EN.png" onerror="this.parentElement.style.background='var(--card)'; this.style.display='none'; this.parentElement.querySelector('.placeholder').style.display='flex'" src="screenshots/dashboard_DE.png"/>
+<div class="placeholder" style="display:none; height:320px; align-items:center; justify-content:center; color:var(--text3); font-family:'DM Mono',monospace; font-size:0.85rem;">[ screenshot: 16-chart dashboard ]</div>
+</div>
+
+<div class="screenshot-caption-below">Stock Monitor v5.3.0 ·16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
+</section>
+<!-- FEATURES ALS HIGHLIGHT-SECTIONS -->
+<div id="features" style="padding-top:1px; margin-top:-1px;"></div>
+<!-- Portfolio-Übersicht -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
+<div class="highlight-img-wrap">
+<img alt="Portfolio" class="clickable-img" data-src-de="screenshots/portfolio_DE.png" data-src-en="screenshots/portfolio_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/portfolio_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-green">Overview</span>
+
+<h3>📊 Portfolio Overview</h3>
+
+<p>Complete overview with average cost basis, daily value, current value, P&amp;L, weight, sector assignment (GICS) and 52-week high/low. In one view: stocks, ETFs, cryptocurrencies and precious metals.<br/>And much more.</p>
+</div>
+</div>
+</section>
+<!-- Portfolio Assessment -->
+<section class="highlight fade-in" style="background: linear-gradient(135deg, rgba(245,158,11,0.05) 0%, var(--bg2) 60%); border-top: 1px solid rgba(245,158,11,0.2); border-bottom: 1px solid rgba(245,158,11,0.2);">
+<div class="highlight-inner reverse">
+<div class="highlight-img-wrap" style="box-shadow: 0 24px 80px rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.2);">
+<img alt="Portfolio Assessment" class="clickable-img" data-src-de="screenshots/pf_bewertung_DE.png" data-src-en="screenshots/pf_bewertung_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/pf_bewertung_EN.png"/>
+</div>
+<div class="highlight-text">
+<span class="tag tag-gold">Portfolio Assessment</span>
+<h3>📋 Portfolio Assessment — at a Glance</h3>
+<p>Instant overall assessment of your portfolio: how well diversified are you really? Stock Monitor automatically evaluates sector distribution, concentration risks and strengths — clearly summarised, without any manual effort. No AI, no cloud — purely rule-based on your own data.</p>
+<ul class="feature-list">
+<li>GICS sector analysis: distribution and concentration risks</li>
+<li>Strengths &amp; weaknesses automatically identified</li>
+<li>Regional diversification via the interactive world map</li>
+<li>No API key, no account required</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Portfolio Performance -->
+<section class="highlight fade-in">
+<div class="highlight-inner reverse">
+<div class="highlight-img-wrap">
+<img alt="Performance" class="clickable-img" data-src-de="screenshots/performance_DE.png" data-src-en="screenshots/performance_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/performance_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-green">Portfolio Analysis</span>
+
+<h3>📈 Portfolio Performance</h3>
+
+<p>TWR and MWR (IRR) calculation.<br/>Comparison with the most important benchmark indices (S&amp;P 500, SMI, DAX and more).<br/>Alpha, Beta, Sharpe Ratio and Max. Drawdown are calculated automatically.</p>
+</div>
+</div>
+</section>
+<!-- AI Balance -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
+<div class="highlight-img-wrap">
+<img alt="AI Balance" class="clickable-img" data-src-de="screenshots/ai-balance_DE.png" data-src-en="screenshots/ai-balance_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/ai-balance_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-blue">AI Analysis</span>
+
+<h3>⚖️ AI Balance &amp; Rebalancing</h3>
+
+<p>Optionally AI-powered rebalancing combines historical performance with analyst consensus (Strong Buy→Sell) and current news sentiment of the last 30 days. AI support can be disabled at any time. Targeted rebalancing with filtering by GICS sector or currency is supported.</p>
+</div>
+</div>
+</section>
+<!-- Dividenden-Kalender -->
+<section class="highlight fade-in">
+<div class="highlight-inner reverse">
+<div class="highlight-img-wrap">
+<img alt="Dividends" class="clickable-img" data-src-de="screenshots/dividends_DE.png" data-src-en="screenshots/dividends_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/dividends_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-gold">Dividends</span>
+
+<h3>📅 Dividend Calendar</h3>
+
+<p>All dividend payments in your portfolio at a glance: ex-div dates, pay dates, dividend per share and expected total yield.<br/>Sorted by next payment date.</p>
+</div>
+</div>
+</section>
+<!-- ═══ BLOCK 1: PORTFOLIO KERN ═══ -->
+<!-- HIGHLIGHT: Dividendenhistorie — direkt nach Dividenden-Kalender -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
+<div class="highlight-img-wrap">
+<img alt="Dividend History" class="clickable-img" data-src-de="screenshots/dividend_history_DE.png" data-src-en="screenshots/dividend_history_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/dividend_history_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-green">Dividend History</span>
+
+<h3>💰 Dividend History &amp; Growth Analysis</h3>
+
+<p>Detailed history of all dividend payments with automatically calculated growth rate, stability score and forecast. See at a glance how reliably a stock pays out.</p>
+<ul class="feature-list">
+
+<li>Annual &amp; multi-year dividend growth (CAGR)</li>
+
+<li>Stability rating and payout analysis</li>
+
+<li>Dividend forecast based on historical data</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Regionen-Weltkarte -->
+<section class="highlight fade-in">
+<div class="highlight-inner reverse">
+<div class="highlight-img-wrap">
+<img alt="World Map" class="clickable-img" data-src-de="screenshots/worldmap_DE.png" data-src-en="screenshots/worldmap_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/worldmap_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-blue">Visualization</span>
+
+<h3>🌍 Regional World Map</h3>
+
+<p>Interactive world map shows your geographic portfolio distribution. Click a marker to open position details including company address and website.</p>
+</div>
+</div>
+</section>
+<!-- HIGHLIGHT: Monte Carlo — FEATURED -->
+<section class="highlight highlight-featured fade-in">
+<div class="highlight-inner reverse">
+<div class="highlight-img-wrap">
+<img alt="Monte Carlo Simulation" class="clickable-img" data-src-de="screenshots/montecarlo_DE.png" data-src-en="screenshots/montecarlo_EN.png" onerror="this.parentElement.style.minHeight='300px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/montecarlo_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-blue">Portfolio Forecast</span>
+
+<h3>🎲 Monte Carlo Simulation</h3>
+
+<p>Stochastic portfolio forecast using Geometric Brownian Motion (GBM). Simulate 10,000 possible price paths and get realistic growth ranges for your portfolio — from bearish to bullish.</p>
+<ul class="feature-list">
+
+<li>10,000 simulation paths, configurable time horizon (1–30 years)</li>
+
+<li>5% / 50% / 95% percentile bands — Bear / Base / Bull case</li>
+
+<li>Based on historical volatility &amp; drift via NumPy / GBM</li>
+
+<li>Directly integrated into the Portfolio Performance view</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- HIGHLIGHT: Excess CAPE Yield (ECY) -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
+<div class="highlight-img-wrap">
+<img alt="Excess CAPE Yield" class="clickable-img" data-src-de="screenshots/ECY_DE.png" data-src-en="screenshots/ECY_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/ECY_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-gold">Market Valuation</span>
+
+<h3>📊 Excess CAPE Yield (ECY)</h3>
+
+<p>Is the stock market currently cheap or expensive — compared to safe bonds? The ECY (earnings yield minus real 10Y bond yield) gives a historically validated answer. With colour-coded valuation zones and chart since 1988.</p>
+<ul class="feature-list">
+
+<li>🟢 &gt;3% attractive · 🟡 1–3% neutral · 🟠 0–1% elevated · 🔴 &lt;0% expensive</li>
+
+<li>No API key — data calculated directly via Yahoo Finance</li>
+
+<li>Not a buy/sell signal — a long-term orientation value</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- HIGHLIGHT: Sharpe / Risiko -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
+<div class="highlight-img-wrap">
+<img alt="Sharpe Ratio" class="clickable-img" data-src-de="screenshots/sharpe_DE.png" data-src-en="screenshots/sharpe_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/sharpe_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-gold">Risk Analysis</span>
+
+<h3>⚖️ Sharpe, Alpha &amp; Beta — calculated automatically</h3>
+
+<p>Institutional risk metrics for private investors: Sharpe Ratio separately for stocks, crypto and commodities. Jensen's Alpha and Beta vs. S&amp;P 500.</p>
+<ul class="feature-list">
+
+<li>Sharpe Ratio with assessment (Excellent / Good / …)</li>
+
+<li>Alpha: excess return vs. benchmark</li>
+
+<li>Beta: market risk coefficient per position</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- HIGHLIGHT: Vergleichs-Charts -->
+<section class="highlight fade-in">
+<div class="highlight-inner reverse">
+<div class="highlight-img-wrap">
+<img alt="Vergleichs-Charts" class="clickable-img" data-src-de="screenshots/compare_DE.png" data-src-en="screenshots/compare_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/compare_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-blue">Right at Startup</span>
+
+<h3>🔀 Comparison Charts — 2 to 6 Stocks at Once</h3>
+
+<p>The comparison chart is visible right at app startup. Normalized scale so you immediately see who's really ahead — regardless of absolute price levels.</p>
+<ul class="feature-list">
+
+<li>2–6 symbols simultaneously on normalized basis (100 = start)</li>
+
+<li>Candlestick and line charts for stocks, ETFs and indices</li>
+
+<li>Crosshair tooltip shows all values at once</li>
+
+<li>Y-axis lock &amp; session persistence of symbols</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- ═══ BLOCK 3: VERGLEICH & VISUALISIERUNG ═══ -->
+<!-- HIGHLIGHT: Währungs-Konverter -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
+<div class="highlight-img-wrap">
+<img alt="Currency Converter" class="clickable-img" data-src-de="screenshots/currency_DE.png" data-src-en="screenshots/currency_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/currency_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-blue">Currency Converter</span>
+
+<h3>💱 27+ Currencies, Cryptos &amp; Precious Metals</h3>
+
+<p>Price data via Yahoo Finance, ~15 min. delayed. Including cryptocurrencies (BTC, ETH, XRP, SOL) and precious metals (Gold, Silver, Platinum, Palladium, Copper).</p>
+<ul class="feature-list">
+
+<li>USD, CHF, EUR, GBP, JPY, CAD, AUD and more</li>
+
+<li>XAU, XAG, XPT, XPD, XCU (Precious Metals)</li>
+
+<li>15-minute price delay, swap function</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- ═══ BLOCK 4: STEUER (spezialisiert, für ernsthafte Nutzer) ═══ -->
+<!-- HIGHLIGHT: Tax Module -->
+<section class="highlight fade-in">
+<div class="highlight-inner reverse">
+<div class="highlight-img-wrap">
+<img alt="Tax Module" class="clickable-img" data-src-de="screenshots/tax_DE.png" data-src-en="screenshots/tax_EN.png" onerror="
+          this.style.display='none';
+          this.parentElement.style.background='var(--bg3)';
+          this.parentElement.style.minHeight='340px';
+          this.parentElement.style.display='flex';
+          this.parentElement.style.alignItems='center';
+          this.parentElement.style.justifyContent='center';
+          this.parentElement.innerHTML='&lt;div style=\'text-align:center; padding:32px\'&gt;&lt;div style=\'font-size:3rem; margin-bottom:16px\'&gt;🧾&lt;/div&gt;&lt;div style=\'font-family:DM Serif Display,serif; font-size:1.3rem; color:var(--text); margin-bottom:20px\' data-lang=\'de\'&gt;Steuer-Assistent · PDF-Export&lt;/div&gt;&lt;div style=\'font-size:2rem; letter-spacing:0.3em\'&gt;CH · DE · AT · GB · US&lt;/div&gt;&lt;div style=\'font-family:DM Mono,monospace; font-size:0.78rem; color:var(--text3); margin-top:14px; line-height:1.8\'&gt;DA-1  ·  Anlage KAP  ·  E1kv  ·  SA108  ·  Form 1040&lt;/div&gt;&lt;/div&gt;'
+        " src="screenshots/tax_DE.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-green">Tax Assistant</span>
+
+<h3>🧾 Tax Assistant — 5 Countries, PDF Export</h3>
+
+<p>Stock Monitor automatically calculates dividends, withholding taxes and wealth taxes and exports country-specific tax forms as PDF orientation aids.</p>
+<div class="tax-countries">
+<div class="tax-country">
+<span class="tax-flag"><svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15"><rect width="20" height="15" fill="#D52B1E"/><rect x="8.5" y="3" width="3" height="9" fill="#fff"/><rect x="3" y="6.5" width="14" height="3" fill="#fff"/></svg></span>
+<div>
+<div class="tax-country-name">Schweiz</div>
+
+<div class="tax-country-form">DA-1 / Securities Schedule</div>
+</div>
+</div>
+<div class="tax-country">
+<span class="tax-flag"><svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15"><rect width="20" height="5" fill="#000"/><rect width="20" height="5" y="5" fill="#D00"/><rect width="20" height="5" y="10" fill="#FFCE00"/></svg></span>
+<div>
+<div class="tax-country-name">Deutschland</div>
+<div class="tax-country-form">Anlage KAP</div>
+</div>
+</div>
+<div class="tax-country">
+<span class="tax-flag"><svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15"><rect width="20" height="5" fill="#ED2939"/><rect width="20" height="5" y="5" fill="#fff"/><rect width="20" height="5" y="10" fill="#ED2939"/></svg></span>
+<div>
+<div class="tax-country-name">Österreich</div>
+<div class="tax-country-form">E1kv-Nachweis</div>
+</div>
+</div>
+<div class="tax-country">
+<span class="tax-flag"><svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15"><rect width="20" height="15" fill="#012169"/><path d="M0,0 L20,15 M20,0 L0,15" stroke="#fff" stroke-width="3"/><path d="M0,0 L20,15 M20,0 L0,15" stroke="#C8102E" stroke-width="1.5"/><path d="M10,0 V15 M0,7.5 H20" stroke="#fff" stroke-width="5"/><path d="M10,0 V15 M0,7.5 H20" stroke="#C8102E" stroke-width="3"/></svg></span>
+<div>
+<div class="tax-country-name">United Kingdom</div>
+<div class="tax-country-form">SA108</div>
+</div>
+</div>
+<div class="tax-country">
+<span class="tax-flag"><svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15"><rect width="20" height="15" fill="#B22234"/><rect width="20" height="1.15" y="1.15" fill="#fff"/><rect width="20" height="1.15" y="3.46" fill="#fff"/><rect width="20" height="1.15" y="5.77" fill="#fff"/><rect width="20" height="1.15" y="8.08" fill="#fff"/><rect width="20" height="1.15" y="10.38" fill="#fff"/><rect width="20" height="1.15" y="12.69" fill="#fff"/><rect width="8" height="8.08" fill="#3C3B6E"/></svg></span>
+<div>
+<div class="tax-country-name">United States</div>
+<div class="tax-country-form">Schedule B / Form 1040</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- CSV Import -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
+<div class="highlight-text" style="max-width:100%">
+<span class="tag tag-green">Data Import</span>
+<h3>📥 CSV Import — with Guided Column Mapping</h3>
+<p>Known bank format? Just import. Unknown format? Stock Monitor auto-detects columns — or walks you through an interactive mapping wizard step by step. No troubleshooting, no manual tweaks.</p>
+<ul class="feature-list">
+<li>Swissquote — fully supported including currency conversion &amp; FX rates</li>
+<li>DeGiro, Comdirect / ING, Flatex, Interactive Brokers, Trading 212 and more</li>
+<li>Unknown format? Guided column mapping — you click, Stock Monitor understands</li>
+<li>Buys, sells, splits and dividends automatically detected &amp; correctly assigned</li>
+<li>Cryptocurrencies and precious metals are automatically mapped correctly</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Börsenzeiten -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
+<div class="highlight-text" style="max-width:100%">
+
+<span class="tag tag-blue">Chart Detail</span>
+
+<h3>🕐 Market Hours &amp; Holidays</h3>
+
+<p>Directly in the zoomed chart: Is the market currently open or closed? Stock Monitor shows opening hours, pre-market, after-hours and all market holidays — for over 30 exchanges worldwide, automatically detected from the ticker symbol.</p>
+<ul class="feature-list">
+
+<li>🟢 / 🔴 / 🟡 Real-time status — open, closed, pre-market or after-hours</li>
+
+<li>Local exchange time and your local time at a glance</li>
+
+<li>All market holidays for the current year — including next opening day</li>
+
+<li>30+ exchanges: NYSE/NASDAQ, SIX, XETRA, LSE, Euronext, Tokyo, Hong Kong, ASX and more</li>
+
+<li>Cryptocurrencies: 24/7 — always open</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- DOWNLOAD -->
+<section id="download">
+<div class="coming-soon fade-in">
+<div class="coming-soon-card">
+<span class="cs-icon">⬇️</span>
+
+<h2>Download — v5.3.0</h2>
+
+<p>Free, open source, no installation required.</p>
+<!-- WINDOWS -->
+<div style="width:100%; margin-bottom:28px;">
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock_monitor.zip" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
+<span style="font-size:1.5em; line-height:1;">🪟</span> <span>Download for Windows</span>
+</a>
+
+<div style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
+          Extract ZIP → run <code style="background:var(--bg3); padding:1px 6px; border-radius:4px; font-family:'DM Mono',monospace;">stock_monitor.exe</code> — that's it. No installation required. First launch: ~20 sec. loading time.
+        </div>
+</div>
+<!-- LINUX -->
+<div style="width:100%; margin-bottom:28px;">
+
+<div style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:left; margin-bottom:10px; padding:0 4px;">🐧 Linux</div>
+<!-- RPM -->
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock-monitor-5.3.0.x86_64.rpm" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:16px; display:flex; gap:10px;">
+<span style="font-size:1.3em; line-height:1;">⬇</span>
+
+<span>Download .rpm (Fedora, openSUSE, Nobara &amp; more)</span>
+</a>
+
+</div>
+<!-- SOURCE -->
+<div style="width:100%; margin-bottom:32px;">
+<a class="btn-secondary" href="https://github.com/StockMonitorCH/stock-monitor" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; display:flex; background:var(--card2);" target="_blank">
+          ⭐ <span>Source Code on GitHub</span>
+</a>
+</div>
+<!-- DOKUMENTATION -->
+<div style="width:100%; margin-bottom:28px;">
+
+<div style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:center; margin-bottom:10px;">📄 Documentation</div>
+<div id="doc-grid-de" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+<a class="btn-secondary" href="docs/StockMonitor_Features_v5.3.0_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+            📋 Feature-Übersicht
+          </a>
+<a class="btn-secondary" href="docs/StockMonitor_Anleitung_v5.3.0_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+            📖 Benutzeranleitung
+          </a>
+</div>
+<div id="doc-grid-en" style="display:none; grid-template-columns:1fr 1fr; gap:8px;">
+<a class="btn-secondary" href="docs/StockMonitor_Features_v5.3.0_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+            📋 Feature List
+          </a>
+<a class="btn-secondary" href="docs/StockMonitor_Manual_v5.3.0_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+            📖 User Manual
+          </a>
+</div>
+</div>
+<!-- EMAIL NOTIFY -->
+<div style="border-top:1px solid var(--border); padding-top:24px; width:100%;">
+
+<div style="font-size:1rem; color:var(--text); margin-bottom:14px;">Get notified about new releases:</div>
+<div class="notify-form">
+<input class="notify-input" data-placeholder-de="deine@email.ch" data-placeholder-en="your@email.com" id="email-input" placeholder="deine@email.ch" type="email"/>
+<button class="notify-btn" onclick="handleNotify()">
+
+<span>Notify me</span>
+</button>
+</div>
+
+<div class="notify-note">No spam. New releases only. Never shared with third parties.</div>
+
+<div style="margin-top:12px; font-size:1rem; color:var(--text2);">Questions &amp; Feedback: <a href="mailto:info@stock-monitor.ch" style="color:var(--green); text-decoration:none; font-weight:600;">info@stock-monitor.ch</a></div>
+</div>
+</div>
+</div>
+</section>
+<!-- ÜBER DEN ENTWICKLER -->
+<section class="highlight fade-in" style="background:var(--bg);">
+<div style="max-width:700px; margin:0 auto; padding:80px 24px; text-align:center;">
+<img alt="Timm" onerror="this.style.display='none'" src="screenshots/timm.jpg" style="width:130px; height:130px; border-radius:50%; object-fit:cover; object-position:center 82%; border:3px solid var(--border2); margin-bottom:28px; display:block; margin-left:auto; margin-right:auto;"/>
+<div id="about-de">
+<div style="font-size:0.88rem; font-weight:700; color:var(--green); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px;">Über den Entwickler</div>
+<h3 style="font-family:'DM Serif Display',serif; font-size:2rem; color:var(--text); margin-bottom:18px;">Timm — Entwickler &amp; Privatanleger</h3>
+<p style="font-size:1.05rem; color:var(--text2); line-height:1.8; margin-bottom:28px;">
+        Ich bin Privatanleger und habe jahrelang verschiedene Portfolio-Tools ausprobiert — entweder fehlten wichtige Funktionen, die Bedienung war zu komplex, oder der CSV-Import funktionierte nicht wie erhofft. Dazu kam das manuelle Nachpflegen von Kursen, Splits und Dividenden. So entwickelte ich Stock Monitor — mit automatischen Kursdaten via Yahoo Finance. Dein Portfolio bleibt immer aktuell, ohne manuelles Nachpflegen. Als Kollegen die App sahen und sie ebenfalls nutzen wollten, entschied ich mich, sie als Open-Source-Projekt zu veröffentlichen.
+      </p>
+<div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 20px; font-size:0.88rem; color:var(--text); line-height:1.7;">
+        ⚠️ <strong style="color:var(--text);">Haftungsausschluss:</strong> Stock Monitor ist ein Werkzeug zur persönlichen Portfolio-Analyse — keine Anlageberatung. Alle Investitionsentscheidungen liegen ausschliesslich beim Anleger. Der Entwickler übernimmt keine Haftung für finanzielle Verluste.
+      </div>
+</div>
+<div id="about-en" style="display:none;">
+<div style="font-size:0.88rem; font-weight:700; color:var(--green); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px;">About the Developer</div>
+<h3 style="font-family:'DM Serif Display',serif; font-size:2rem; color:var(--text); margin-bottom:18px;">Timm — Developer &amp; Private Investor</h3>
+<p style="font-size:1.05rem; color:var(--text2); line-height:1.8; margin-bottom:28px;">
+        I'm a private investor who spent years trying different portfolio tools — either the features I needed weren't there, the interface was too complex, or the CSV import didn't work as expected. On top of that came the constant manual updating of prices, splits and dividends. So I developed Stock Monitor — with automatic price data via Yahoo Finance. Your portfolio stays up to date at all times, without any manual maintenance. When colleagues saw the app and wanted to use it too, I decided to release it as an open-source project.
+      </p>
+<div style="background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 20px; font-size:0.88rem; color:var(--text); line-height:1.7;">
+        ⚠️ <strong style="color:var(--text);">Disclaimer:</strong> Stock Monitor is a tool for personal portfolio analysis — not financial advice. All investment decisions are solely the responsibility of the investor. The developer accepts no liability for financial losses.
+      </div>
+</div>
+</div>
+</section>
+<!-- FOOTER -->
+<footer>
+
+<div>© 2026 Stock Monitor · Developed in Switzerland 🇨🇭 · Data via Yahoo Finance</div>
+<div class="footer-links">
+
+<a href="#" onclick="openPrivacy(event)">Privacy</a>
+<a href="https://github.com/StockMonitorCH/stock-monitor" target="_blank">GitHub</a>
+<a href="https://github.com/StockMonitorCH/stock-monitor/blob/main/LICENSE" target="_blank">MIT License</a>
+<a href="mailto:info@stock-monitor.ch">info@stock-monitor.ch</a>
+</div>
+</footer>
+<!-- PRIVACY MODAL -->
+<div id="privacy-modal" onclick="closePrivacy(event)" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9998; align-items:center; justify-content:center; backdrop-filter:blur(6px); animation:lbFadeIn 0.2s ease;">
+<div onclick="event.stopPropagation()" style="background:var(--card); border:1px solid var(--border2); border-radius:16px; max-width:480px; width:90%; padding:36px 32px; position:relative; box-shadow:0 32px 80px rgba(0,0,0,0.6);">
+<button onclick="closePrivacy(null, true)" onmouseout="this.style.color='var(--text3)'" onmouseover="this.style.color='var(--text)'" style="position:absolute; top:14px; right:18px; background:none; border:none; color:var(--text3); font-size:1.5rem; cursor:pointer; line-height:1; transition:color 0.15s;">✕</button>
+<div style="font-size:2rem; margin-bottom:14px;">🔒</div>
+<div id="privacy-content-de" style="font-family:inherit;">
+<h3 style="font-family:'DM Serif Display',serif; font-size:1.6rem; color:var(--text); margin-bottom:16px;">Datenschutz</h3>
+<div style="font-size:1rem; color:var(--text2); line-height:1.75; display:flex; flex-direction:column; gap:12px;">
+<p>Stock Monitor speichert dein Portfolio ausschliesslich lokal auf deinem Gerät — verschlüsselt mit AES-256. Es werden keinerlei Portfoliodaten, persönliche Daten oder Nutzungsstatistiken an Server übertragen.</p>
+<p>Deine E-Mail-Adresse wird ausschliesslich für Update-Benachrichtigungen zu neuen Versionen verwendet. Sie wird nicht an Dritte weitergegeben, nicht verkauft und nicht für Werbung genutzt.</p>
+<p>Diese Website verwendet Cloudflare Web Analytics — ohne Cookies, ohne personenbezogene Daten.</p>
+</div>
+</div>
+<div id="privacy-content-en" style="display:none; font-family:inherit;">
+<h3 style="font-family:'DM Serif Display',serif; font-size:1.6rem; color:var(--text); margin-bottom:16px;">Privacy</h3>
+<div style="font-size:1rem; color:var(--text2); line-height:1.75; display:flex; flex-direction:column; gap:12px;">
+<p>Stock Monitor stores your portfolio exclusively on your local device — encrypted with AES-256. No portfolio data, personal data or usage statistics are transmitted to any server.</p>
+<p>Your email address is used solely for update notifications about new versions. It is never shared with third parties, never sold, and never used for advertising.</p>
+<p>This website uses Cloudflare Web Analytics — no cookies, no personal data.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- LIGHTBOX -->
+<div class="lightbox-overlay" id="lightbox" onclick="closeLightbox(event)">
+<img alt="" id="lightbox-img" onclick="closeLightbox(null, true)" src="" style="cursor: zoom-out;"/>
+</div>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+function openPrivacy(e) {
+  if (e) e.preventDefault();
+  const isEn = document.body.classList.contains('lang-en');
+  document.getElementById('privacy-content-de').style.display = isEn ? 'none' : 'block';
+  document.getElementById('privacy-content-en').style.display = isEn ? 'block' : 'none';
+  const m = document.getElementById('privacy-modal');
+  m.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closePrivacy(event, force) {
+  if (force || (event && event.target === document.getElementById('privacy-modal'))) {
+    document.getElementById('privacy-modal').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+}
+
+function setLang(lang) {
+  if (lang === 'en') {
+    document.body.classList.add('lang-en');
+    document.getElementById('btn-de').classList.remove('active');
+    document.getElementById('btn-en').classList.add('active');
+    document.getElementById('email-input').placeholder = 'your@email.com';
+    document.getElementById('about-de').style.display = 'none';
+    document.getElementById('about-en').style.display = 'block';
+    document.getElementById('doc-grid-de').style.display = 'none';
+    document.getElementById('doc-grid-en').style.display = 'grid';
+  } else {
+    document.body.classList.remove('lang-en');
+    document.getElementById('btn-de').classList.add('active');
+    document.getElementById('btn-en').classList.remove('active');
+    document.getElementById('email-input').placeholder = 'deine@email.ch';
+    document.getElementById('about-de').style.display = 'block';
+    document.getElementById('about-en').style.display = 'none';
+    document.getElementById('doc-grid-de').style.display = 'grid';
+    document.getElementById('doc-grid-en').style.display = 'none';
+  }
+  // Update all language-aware images
+  document.querySelectorAll('img[data-src-de]').forEach(img => {
+    img.src = lang === 'en' ? img.dataset.srcEn : img.dataset.srcDe;
+  });
+}
+
+// LIGHTBOX
+function openLightbox(src) {
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lightbox-img');
+  lbImg.src = src;
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox(event, force) {
+  if (force || (event && event.target === document.getElementById('lightbox'))) {
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeLightbox(null, true);
+    closePrivacy(null, true);
+  }
+});
+// Attach click handlers to all clickable images after DOM ready
+document.querySelectorAll('.clickable-img').forEach(img => {
+  img.addEventListener('click', () => openLightbox(img.src));
+});
+
+async function handleNotify() {
+  const email = document.getElementById('email-input').value.trim();
+  const isEn = document.body.classList.contains('lang-en');
+  const btn = document.querySelector('.notify-btn');
+
+  if (!email || !email.includes('@') || !email.includes('.')) {
+    alert(isEn ? 'Please enter a valid email address.' : 'Bitte gib eine gültige E-Mail-Adresse ein.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = isEn ? '<span style="opacity:0.7">Sending...</span>' : '<span style="opacity:0.7">Wird gespeichert...</span>';
+
+  try {
+    const response = await fetch('/subscribe.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    });
+
+    if (!response.ok) throw new Error('Server error');
+
+    document.getElementById('email-input').value = '';
+    document.querySelector('.notify-form').innerHTML = `
+      <div style="text-align:center; padding:16px 0; color:var(--green); font-size:1.1rem; font-weight:600;">
+        ✅ ${isEn ? "You'll be notified at release!" : 'Du wirst beim Release benachrichtigt!'}
+      </div>
+      <div style="text-align:center; color:var(--text3); font-size:0.85rem; margin-top:4px;">
+        ${isEn ? 'One email only. No spam.' : 'Nur eine E-Mail. Kein Spam.'}
+      </div>`;
+  } catch (err) {
+    btn.disabled = false;
+    btn.innerHTML = `Notify me`;
+    alert(isEn ? 'Something went wrong. Please try again.' : 'Etwas ist schiefgelaufen. Bitte nochmal versuchen.');
+  }
+}
+
+// AUTO LANGUAGE DETECTION
+(function() {
+  const lang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  const deLangs = ['de-ch', 'de-de', 'de-at', 'de-li', 'de'];
+  const deTZ = ['europe/zurich', 'europe/berlin', 'europe/vienna', 'europe/vaduz'];
+  const isDE = deLangs.some(l => lang.startsWith(l)) || deTZ.includes(tz.toLowerCase());
+  if (!isDE) setLang('en');
+})();
+// Scroll animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+</script>
+</body>
+</html>

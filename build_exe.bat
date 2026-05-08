@@ -70,6 +70,7 @@ for %%f in (
     help_texts.py
     market_data.py
     world_map.py
+    etf_holdings.py
     dividend_lists.json
 ) do (
     if not exist "%%f" (
@@ -135,6 +136,7 @@ python -m PyInstaller ^
     --add-data "help_texts.py;." ^
     --add-data "market_data.py;." ^
     --add-data "world_map.py;." ^
+    --add-data "etf_holdings.py;." ^
     --add-data "dividend_lists.json;." ^
     --hidden-import "PyQt6.QtCore" ^
     --hidden-import "PyQt6.QtGui" ^

@@ -8,7 +8,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="5.2.3"
+VERSION="5.3.0"
 PKG="stock-monitor"
 PKGDIR="$(mktemp -d)/stock-monitor_${VERSION}_amd64"
 
@@ -36,7 +36,7 @@ mkdir -p "$PKGDIR/usr/share/doc/$PKG"
 # ── App-Dateien ────────────────────────────────────────────────────────────────
 for f in stock_monitor.py portfolio_db.py config.py market_data.py \
           tax_module.py tax_translations.py translations.py help_texts.py \
-          world_map.py dividend_lists.json Demo.smpf; do
+          world_map.py etf_holdings.py dividend_lists.json Demo.smpf; do
     [ -f "$f" ] && cp "$f" "$PKGDIR/opt/stock-monitor/app/$f" \
                 || echo "WARNUNG: $f nicht gefunden"
 done

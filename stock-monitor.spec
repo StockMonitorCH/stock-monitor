@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.2.3
+Version:        5.3.0
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
@@ -48,7 +48,7 @@ install -d %{buildroot}/usr/share/licenses/%{name}
 # ── App-Dateien ────────────────────────────────────────────────────────────────
 for f in stock_monitor.py portfolio_db.py config.py market_data.py \
           tax_module.py tax_translations.py translations.py help_texts.py \
-          world_map.py dividend_lists.json Demo.smpf; do
+          world_map.py etf_holdings.py dividend_lists.json Demo.smpf; do
     install -m 0644 app/$f %{buildroot}/opt/stock-monitor/app/$f
 done
 
