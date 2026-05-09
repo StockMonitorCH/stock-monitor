@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.3.0
+Version:        5.3.1
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT

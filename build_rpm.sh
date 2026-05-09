@@ -7,7 +7,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="5.3.0"
+VERSION="5.3.1"
 PKG="stock-monitor-${VERSION}"
 RPMBUILD="$HOME/rpmbuild"
 

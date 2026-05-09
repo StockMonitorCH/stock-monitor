@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.3.0"                            # beim Release anpassen
+APP_VERSION  = "5.3.1"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -12406,7 +12406,8 @@ class PortfolioDialog(QMainWindow):
                 hdr_layout.addWidget(hdr_spacer)
             b = QPushButton(name)
             b.setFlat(True)
-            b.setMinimumWidth(w); b.setMaximumWidth(w)
+            _bw = w if (key != 'sector' or _ov_is_fullhd) else 500
+            b.setMinimumWidth(_bw); b.setMaximumWidth(_bw)
             b.setStyleSheet(_hdr_btn_style)
             hdr_layout.addWidget(b)
             hdr_btns[key] = (b, name)
@@ -12579,6 +12580,18 @@ class PortfolioDialog(QMainWindow):
                 item = rows_layout.takeAt(0)
                 if item.widget(): item.widget().deleteLater()
 
+            _pf_self = self
+            from PyQt6.QtCore import QObject as _QObject
+            class _SymTipFilter(_QObject):
+                def __init__(self_, sym, parent=None):
+                    super().__init__(parent)
+                    self_._sym = sym
+                def eventFilter(self_, obj, ev):
+                    if ev.type() == QEvent.Type.ToolTip:
+                        _c = getattr(_pf_self, '_company_cache', {}).get(self_._sym, '')
+                        obj.setToolTip(f"{_c}\n{TR('wl_click_hint')}" if _c else TR("wl_click_hint"))
+                    return False
+
             def _make_row(symbol, d, idx):
                 qty       = d['qty']
                 cost_usd  = d['cost_usd']
@@ -12627,10 +12640,8 @@ class PortfolioDialog(QMainWindow):
                         l.setFont(_ov_emoji_font)
                     return l
 
-                _company = getattr(self, '_company_cache', {}).get(symbol, '')
-                _tooltip = f"{_company}\n{TR('wl_click_hint')}" if _company else TR("wl_click_hint")
                 sym_lbl = mk(f"<b>{symbol}</b>", 80, "#2980b9")
-                sym_lbl.setToolTip(_tooltip)
+                sym_lbl.installEventFilter(_SymTipFilter(symbol, sym_lbl))
                 sym_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
                 rl.addWidget(sym_lbl)
                 _qty_txt = f"{_fmt(qty, 4) if qty != int(qty) else str(int(qty))}"
@@ -12826,10 +12837,15 @@ class PortfolioDialog(QMainWindow):
                     else:
                         _sector_canon, _ind_group, _industry_disp, _sub_industry = \
                             _gics_lookup(_raw_sector, _raw_industry)
-                        if _sub_industry and _sub_industry != _sector_canon:
-                            _display_txt = f"{_sector_canon}  ›  {_sub_industry}"
-                        else:
+                        if _ov_is_fullhd:
+                            # Full HD: nur Sektor-Name (1. Ebene), Sub-Industry im Tooltip
                             _display_txt = _sector_canon
+                        else:
+                            # 4K: voller Text mit Sub-Industry
+                            if _sub_industry and _sub_industry != _sector_canon:
+                                _display_txt = f"{_sector_canon}  ›  {_sub_industry}"
+                            else:
+                                _display_txt = _sector_canon
                         _tt = []
                         if _company_name:
                             _tt.append(_company_name); _tt.append("")
@@ -12842,7 +12858,7 @@ class PortfolioDialog(QMainWindow):
 
                 sector_lbl = mk(_display_txt, 300, "#aaa" if _dm_ov else "#555")
                 sector_lbl.setMinimumWidth(160)
-                sector_lbl.setMaximumWidth(400)
+                sector_lbl.setMaximumWidth(300 if _ov_is_fullhd else 16777215)
                 sector_lbl.setContentsMargins(12, 0, 0, 0)
                 if _tooltip_txt:
                     sector_lbl.setToolTip(_tooltip_txt)
