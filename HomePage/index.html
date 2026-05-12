@@ -51,7 +51,7 @@
   },
   "url": "https://www.stock-monitor.ch/",
   "downloadUrl": "https://github.com/StockMonitorCH/stock-monitor/releases",
-  "softwareVersion": "5.3.0",
+  "softwareVersion": "5.3.2",
   "screenshot": "https://www.stock-monitor.ch/screenshots/dashboard_DE.png"
 }
 </script>
@@ -724,6 +724,10 @@ body.lang-en .trust-item[data-lang="en"] { display: flex; }
 .trust-item[data-lang="en"] { display: none; }
 
 /* Fix: grid containers with data-lang */
+.fx-banner[data-lang="en"] { display: none; }
+.fx-banner[data-lang="de"] { display: flex; }
+body.lang-en .fx-banner[data-lang="en"] { display: flex; }
+body.lang-en .fx-banner[data-lang="de"] { display: none; }
 .doc-grid[data-lang="en"] { display: none; }
 body.lang-en .doc-grid[data-lang="de"] { display: none; }
 body.lang-en .doc-grid[data-lang="en"] { display: grid; }
@@ -870,14 +874,14 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
   <div style="display:flex; flex-direction:column; align-items:center; gap:16px; animation: fadeUp 0.7s 0.3s ease both;">
     <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
       <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock_monitor.zip" class="btn-primary" data-lang="de"><span style="font-size:1.4em; line-height:1;">🪟</span> Download für Windows</a>
-        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock_monitor.zip" class="btn-primary" data-lang="en"><span style="font-size:1.4em; line-height:1;">🪟</span> Download for Windows</a>
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.2/stock_monitor.zip" class="btn-primary" data-lang="de"><span style="font-size:1.4em; line-height:1;">🪟</span> Download für Windows</a>
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.2/stock_monitor.zip" class="btn-primary" data-lang="en"><span style="font-size:1.4em; line-height:1;">🪟</span> Download for Windows</a>
         <div data-lang="de" style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">ZIP entpacken → .exe starten · Kein Setup<br>Erster Start ~20 Sek.</div>
         <div data-lang="en" style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">Extract ZIP → run .exe · No setup<br>First launch ~20 sec.</div>
       </div>
       <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock-monitor-5.3.0.x86_64.rpm" class="btn-primary" data-lang="de"><span style="font-size:1.4em; line-height:1;">🐧</span> Download für Linux</a>
-        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock-monitor-5.3.0.x86_64.rpm" class="btn-primary" data-lang="en"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.2/stock-monitor-5.3.2.x86_64.rpm" class="btn-primary" data-lang="de"><span style="font-size:1.4em; line-height:1;">🐧</span> Download für Linux</a>
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.2/stock-monitor-5.3.2.x86_64.rpm" class="btn-primary" data-lang="en"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
         <div data-lang="de" style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.rpm verfügbar (Fedora, openSUSE, Nobara)</div>
         <div data-lang="en" style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.rpm available (Fedora, openSUSE, Nobara)</div>
       </div>
@@ -1003,8 +1007,8 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
     <img class="clickable-img" src="screenshots/dashboard_DE.png" data-src-de="screenshots/dashboard_DE.png" data-src-en="screenshots/dashboard_EN.png" alt="Stock Monitor Dashboard" onerror="this.parentElement.style.background='var(--card)'; this.style.display='none'; this.parentElement.querySelector('.placeholder').style.display='flex'">
     <div class="placeholder" style="display:none; height:320px; align-items:center; justify-content:center; color:var(--text3); font-family:'DM Mono',monospace; font-size:0.85rem;">[ screenshot: 16-chart dashboard ]</div>
   </div>
-  <div class="screenshot-caption-below" data-lang="de">Stock Monitor v5.3.0 ·16 Charts · MA 20/50/200 · Trend · Beta · KI-Analyse · Yahoo Finance · Steuer-Assistent CH/DE/AT/UK/US</div>
-  <div class="screenshot-caption-below" data-lang="en">Stock Monitor v5.3.0 ·16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
+  <div class="screenshot-caption-below" data-lang="de">Stock Monitor v5.3.2 ·16 Charts · MA 20/50/200 · Trend · Beta · KI-Analyse · Yahoo Finance · Steuer-Assistent CH/DE/AT/UK/US</div>
+  <div class="screenshot-caption-below" data-lang="en">Stock Monitor v5.3.2 ·16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
 </section>
 
 <!-- FEATURES ALS HIGHLIGHT-SECTIONS -->
@@ -1408,16 +1412,16 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
   <div class="coming-soon fade-in">
     <div class="coming-soon-card">
       <span class="cs-icon">⬇️</span>
-      <h2 data-lang="de">Download — v5.3.0</h2>
-      <h2 data-lang="en">Download — v5.3.0</h2>
+      <h2 data-lang="de">Download — v5.3.2</h2>
+      <h2 data-lang="en">Download — v5.3.2</h2>
       <p data-lang="de">Kostenlos, Open Source, keine Installation nötig.</p>
       <p data-lang="en">Free, open source, no installation required.</p>
 
       <!-- WINDOWS -->
       <div style="width:100%; margin-bottom:28px;">
-        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock_monitor.zip"
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.2/stock_monitor.zip"
            class="btn-primary" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
-          <span style="font-size:1.5em; line-height:1;">🪟</span> <span data-lang="de">Download für Windows</span><span data-lang="en">Download for Windows</span>
+          <span style="font-size:1.5em; line-height:1;">🪟</span> <span data-lang="de">Download für Windows</span><span data-lang="en">Download for Windows</span> <span style="font-size:1em; opacity:0.7;">→</span>
         </a>
         <div data-lang="de" style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
           ZIP entpacken → <code style="background:var(--bg3); padding:1px 6px; border-radius:4px; font-family:'DM Mono',monospace;">stock_monitor.exe</code> starten — fertig. Keine Installation nötig. Erster Start: ca. 20 Sek. Ladezeit.
@@ -1433,16 +1437,49 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
         <div data-lang="en" style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:left; margin-bottom:10px; padding:0 4px;">🐧 Linux</div>
 
         <!-- RPM -->
-        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.0/stock-monitor-5.3.0.x86_64.rpm"
+        <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.2/stock-monitor-5.3.2.x86_64.rpm"
            class="btn-primary" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:16px; display:flex; gap:10px;">
-          <span style="font-size:1.3em; line-height:1;">⬇</span>
+          <span style="font-size:1.3em; line-height:1;">🐧</span>
           <span data-lang="de">.rpm herunterladen (Fedora, openSUSE, Nobara u.a.)</span>
           <span data-lang="en">Download .rpm (Fedora, openSUSE, Nobara & more)</span>
+          <span style="font-size:1em; opacity:0.7;">→</span>
         </a>
 
 
 
 
+      </div>
+
+      <!-- ANDROID / FX-CALC -->
+      <div style="width:100%; margin-top:8px; margin-bottom:28px; border-top:1px solid var(--border); padding-top:24px;">
+        <div class="fx-banner" data-lang="de" style="align-items:center; gap:10px; margin-bottom:14px; padding:10px 14px; background:var(--gold-dim); border:1px solid rgba(245,158,11,0.25); border-radius:9px;">
+          <span style="font-size:1.3rem; line-height:1;">📱</span>
+          <div style="text-align:center; flex:1;">
+            <div style="font-size:0.88rem; font-weight:700; color:var(--gold); letter-spacing:0.06em; text-transform:uppercase; line-height:1.2;">Version 1.0</div>
+            <div style="font-size:1rem; font-weight:600; color:var(--text); margin-top:2px;">FX-Calc — Währungsrechner für Android</div>
+          </div>
+        </div>
+        <div class="fx-banner" data-lang="en" style="align-items:center; gap:10px; margin-bottom:14px; padding:10px 14px; background:var(--gold-dim); border:1px solid rgba(245,158,11,0.25); border-radius:9px;">
+          <span style="font-size:1.3rem; line-height:1;">📱</span>
+          <div style="text-align:center; flex:1;">
+            <div style="font-size:0.88rem; font-weight:700; color:var(--gold); letter-spacing:0.06em; text-transform:uppercase; line-height:1.2;">Version 1.0</div>
+            <div style="font-size:1rem; font-weight:600; color:var(--text); margin-top:2px;">FX-Calc — Currency Converter for Android</div>
+          </div>
+        </div>
+
+        <a href="https://github.com/StockMonitorCH/fx-calc/releases/latest/download/fx-calc-android.apk"
+           class="btn-secondary" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px; border-color:rgba(245,158,11,0.4); color:var(--gold); background:var(--card2);">
+          <span style="font-size:1.3em; line-height:1;">📱</span>
+          <span data-lang="de">FX-Calc herunterladen (Android)</span>
+          <span data-lang="en">Download FX-Calc (Android)</span>
+          <span style="font-size:1em; opacity:0.7;">→</span>
+        </a>
+        <div data-lang="de" style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
+          Datei öffnen und auf «Installieren» tippen. Installation aus unbekannten Quellen erlauben.
+        </div>
+        <div data-lang="en" style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
+          Open the file and tap "Install". Allow installation from unknown sources.
+        </div>
       </div>
 
       <!-- SOURCE -->
@@ -1458,21 +1495,21 @@ body.lang-en .doc-grid[data-lang="en"] { display: grid; }
         <div data-lang="de" style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:center; margin-bottom:10px;">📄 Dokumentation</div>
         <div data-lang="en" style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:center; margin-bottom:10px;">📄 Documentation</div>
         <div id="doc-grid-de" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <a href="docs/StockMonitor_Features_v5.3.0_DE.pdf" target="_blank"
+          <a href="docs/StockMonitor_Features_v5.3.2_DE.pdf" target="_blank"
              class="btn-secondary" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);">
             📋 Feature-Übersicht
           </a>
-          <a href="docs/StockMonitor_Anleitung_v5.3.0_DE.pdf" target="_blank"
+          <a href="docs/StockMonitor_Anleitung_v5.3.2_DE.pdf" target="_blank"
              class="btn-secondary" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);">
             📖 Benutzeranleitung
           </a>
         </div>
         <div id="doc-grid-en" style="display:none; grid-template-columns:1fr 1fr; gap:8px;">
-          <a href="docs/StockMonitor_Features_v5.3.0_EN.pdf" target="_blank"
+          <a href="docs/StockMonitor_Features_v5.3.2_EN.pdf" target="_blank"
              class="btn-secondary" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);">
             📋 Feature List
           </a>
-          <a href="docs/StockMonitor_Manual_v5.3.0_EN.pdf" target="_blank"
+          <a href="docs/StockMonitor_Manual_v5.3.2_EN.pdf" target="_blank"
              class="btn-secondary" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);">
             📖 User Manual
           </a>

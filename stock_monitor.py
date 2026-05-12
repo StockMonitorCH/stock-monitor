@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.3.1"                            # beim Release anpassen
+APP_VERSION  = "5.3.2"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -5373,8 +5373,9 @@ class StockChartWidget(QFrame):
             self._sector_workers = []
         self._sector_workers.append(w)
         w.done.connect(_apply)
-        w.done.connect(lambda _: self._sector_workers.remove(w)
-                       if w in self._sector_workers else None)
+        w.finished.connect(w.deleteLater)
+        w.finished.connect(lambda: self._sector_workers.remove(w)
+                           if w in self._sector_workers else None)
         w.start()
 
     def _update_holdings_visibility(self):
@@ -5408,8 +5409,9 @@ class StockChartWidget(QFrame):
             self._type_workers = []
         self._type_workers.append(w)
         w.done.connect(_apply)
-        w.done.connect(lambda _: self._type_workers.remove(w)
-                       if w in self._type_workers else None)
+        w.finished.connect(w.deleteLater)
+        w.finished.connect(lambda: self._type_workers.remove(w)
+                           if w in self._type_workers else None)
         w.start()
 
     def _show_etf_holdings(self):
@@ -6128,8 +6130,9 @@ class StockChartWidget(QFrame):
                         self._fx_workers = []
                     self._fx_workers.append(_fw)
                     _fw.done.connect(lambda usd: setattr(_self_ref, '_last_price_usd', usd))
-                    _fw.done.connect(lambda _: self._fx_workers.remove(_fw)
-                                     if _fw in self._fx_workers else None)
+                    _fw.finished.connect(_fw.deleteLater)
+                    _fw.finished.connect(lambda: self._fx_workers.remove(_fw)
+                                         if _fw in self._fx_workers else None)
                     _fw.start()
                     self._last_price_usd = _close_val  # vorläufig ohne FX
             
@@ -15755,10 +15758,11 @@ class PortfolioDialog(QMainWindow):
                 except RuntimeError:
                     pass
                 ext_btn.setEnabled(True)
-                if worker in _ext_workers:
-                    _ext_workers.remove(worker)
 
             worker.done.connect(_on_done)
+            worker.finished.connect(worker.deleteLater)
+            worker.finished.connect(lambda: _ext_workers.remove(worker)
+                                    if worker in _ext_workers else None)
             worker.start()
 
         ext_btn.clicked.connect(_run_extended)
