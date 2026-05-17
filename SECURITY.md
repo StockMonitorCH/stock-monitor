@@ -2,20 +2,17 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Alle Versionen ab 5.0.2 werden mit Sicherheitsupdates versorgt und können problemlos aktualisiert werden.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| Version  | Unterstützt        |
+| -------- | ------------------ |
+| >= 5.0.2 | :white_check_mark: |
+| < 5.0.2  | :x:                |
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+Sicherheitslücken bitte vertraulich über GitHub melden:
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+**[Security Advisory erstellen](https://github.com/StockMonitorCH/stock-monitor/security/advisories/new)**
+
+Wir bemühen uns, gemeldete Schwachstellen innerhalb weniger Tage zu bestätigen und zeitnah zu beheben.
