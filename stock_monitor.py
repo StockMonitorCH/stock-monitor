@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.3.2"                            # beim Release anpassen
+APP_VERSION  = "5.3.3"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -8210,7 +8210,7 @@ class PortfolioDialog(QMainWindow):
                     _purge_caches()
                     self._sector_cache = {}
                 else:
-                    self._sector_cache = _loaded
+                    self._sector_cache = {k: _SECTOR_ALIASES.get(v, v) for k, v in _loaded.items()}
             else:
                 self._sector_cache = {}
         except Exception:
@@ -8668,7 +8668,7 @@ class PortfolioDialog(QMainWindow):
             # Branchen-Cache: nur erfolgreiche Einträge speichern (nicht 'Unknown')
             for sym, raw_sector in sector_result.items():
                 if raw_sector and raw_sector != 'Unknown':
-                    self._sector_cache[sym] = raw_sector
+                    self._sector_cache[sym] = _SECTOR_ALIASES.get(raw_sector, raw_sector)
             successful_sectors = {k: v for k, v in self._sector_cache.items() if v != 'Unknown'}
             if successful_sectors:
                 try:
@@ -10853,6 +10853,26 @@ class PortfolioDialog(QMainWindow):
 
         col_options = ["— nicht vorhanden —"] + header_cols
 
+        if not _dm_gm:
+            from PyQt6.QtWidgets import QStyledItemDelegate as _SID, QStyle as _QST
+            from PyQt6.QtGui import QColor as _QCfx
+            from PyQt6.QtCore import Qt as _Qtfx
+
+            class _ComboDelegate(_SID):
+                def paint(self, painter, option, index):
+                    if option.state & _QST.StateFlag.State_Selected:
+                        painter.save()
+                        painter.fillRect(option.rect, _QCfx('#d6eaf8'))
+                        painter.setPen(_QCfx('#1a252f'))
+                        painter.drawText(option.rect.adjusted(6, 0, -4, 0),
+                                         _Qtfx.AlignmentFlag.AlignVCenter,
+                                         index.data() or '')
+                        painter.restore()
+                    else:
+                        super().paint(painter, option, index)
+        else:
+            _ComboDelegate = None
+
         def make_row(label_text, hint, profile_key, col_name_fallback):
             """Erstellt eine Zeile mit Label + ComboBox + Hinweis."""
             row_w = QWidget()
@@ -10866,6 +10886,8 @@ class PortfolioDialog(QMainWindow):
             combo = QComboBox()
             combo.addItems(col_options)
             combo.setMinimumWidth(240)
+            if _ComboDelegate is not None:
+                combo.setItemDelegate(_ComboDelegate(combo))
             # Auto-select: erst aus Profil, dann fuzzy
             auto_idx = 0
             if matched_profile and profile_key in matched_profile:
@@ -10951,6 +10973,8 @@ class PortfolioDialog(QMainWindow):
         dec_h = QHBoxLayout()
         dec_h.addWidget(QLabel("<b>Dezimaltrennzeichen:</b>"))
         cmb_decimal = QComboBox()
+        if _ComboDelegate is not None:
+            cmb_decimal.setItemDelegate(_ComboDelegate(cmb_decimal))
         cmb_decimal.addItems([TR("combo_csv_comma"), TR("combo_csv_dot")])
         if matched_profile:
             cmb_decimal.setCurrentIndex(0 if matched_profile.get('decimal_sep', ',') == ',' else 1)
@@ -11221,6 +11245,8 @@ class PortfolioDialog(QMainWindow):
                 lbl2.setMinimumWidth(200)
                 row_h2.addWidget(lbl2)
                 cmb2 = QComboBox()
+                if _ComboDelegate is not None:
+                    cmb2.setItemDelegate(_ComboDelegate(cmb2))
                 cmb2.addItems([TR("combo_skip"), TR("lbl_tx_as_buy"), TR("lbl_tx_as_sell"),
                                TR("lbl_tx_as_split"), TR("lbl_tx_as_div")])
                 row_h2.addWidget(cmb2)
@@ -23958,7 +23984,7 @@ class PortfolioDialog(QMainWindow):
                                 info = yf.Ticker(sym).info
                                 sector = info.get('sector','') or ''; industry = info.get('industry','') or ''
                             except Exception: pass
-                        sector_map[sym] = sector if sector else 'Unknown'
+                        sector_map[sym] = _SECTOR_ALIASES.get(sector, sector) if sector else 'Unknown'
                         if industry: industry_map[sym] = industry
                     _FX_PAIRS = {
                         'JPY':('JPY=X',True),'KRW':('KRW=X',True),'HKD':('HKD=X',True),
@@ -25881,7 +25907,8 @@ class StockMonitorApp(QMainWindow):
                 except Exception:
                     pass
             dialog.update_selection_label()
-            dialog.compare_charts()
+            if sum(1 for cb in dialog.chart_checkboxes if cb.isChecked()) >= 2:
+                dialog.compare_charts()
 
         import sys as _sys_cmp2
         if _sys_cmp2.platform == 'win32':

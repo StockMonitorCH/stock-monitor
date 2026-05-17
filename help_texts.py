@@ -546,6 +546,8 @@ _HTML_DE = """
             <li>Rendite pro Risikoeinheit (Standardabweichung), annualisiert</li>
             <li>Faustregel: &gt; 1.0 = gut &bull; &gt; 2.0 = sehr gut &bull; &lt; 0 = schlechter als risikofreie Anlage</li>
         </ul>
+        <div class="tip">&#128270; <b>Vertiefung:</b> Formel, Grenzen der Sharpe-Ratio, Sortino-Ratio als Alternative &rarr;
+        <a href="#sharpe-vertiefung">Sharpe-Ratio – Analyse-Vertiefung</a></div>
         <div class="warning">Alle Kennzahlen basieren auf historischen Daten. Keine Anlageberatung!</div>
 
         <a name="ai-balance"><h2>&#9878; AI-Balance (Rebalancing)</h2></a>
@@ -634,6 +636,10 @@ _HTML_DE = """
 
         <a name="dividenden-details"><h2>&#128176; Dividenden Details</h2></a>
         <p>Detailansicht je Aktie mit Dividendenhistorie, CAGR, Stabilitätskennzahl und Aristokrat-Titeln.</p>
+        <div class="tip"><b>Hinweis zu Dividenden-Titeln (Aristokrat, King usw.):</b> Die Einstufungen werden
+        konservativ vergeben – <b>Sonderdividenden</b> werden <b>nicht</b> berücksichtigt, da Yahoo Finance
+        diese nicht zuverlässig als solche ausweist. Eine Aktie kann daher tatsächlich einen höheren Titel
+        verdienen als hier angezeigt.</div>
 
         <a name="pf-bewertung"><h2>&#128203; Portfolio-Bewertung</h2></a>
         <div class="new">Feature: Regelbasierte Portfolio-Analyse – kein API-Key erforderlich</div>
@@ -1368,6 +1374,8 @@ _HTML_EN = """
             <li>Return per unit of risk (standard deviation), annualised</li>
             <li>Rule of thumb: &gt; 1.0 = good &bull; &gt; 2.0 = excellent &bull; &lt; 0 = worse than risk-free investment</li>
         </ul>
+        <div class="tip">&#128270; <b>Deep dive:</b> Formula, limitations of the Sharpe Ratio, Sortino Ratio as alternative &rarr;
+        <a href="#sharpe-vertiefung">Sharpe Ratio – Analysis Deep Dive</a></div>
         <div class="warning">All metrics are based on historical data. Not investment advice!</div>
 
         <a name="ai-balance"><h2>&#9878; AI Balance (Rebalancing)</h2></a>
@@ -1451,6 +1459,9 @@ _HTML_EN = """
 
         <a name="dividenden-details"><h2>&#128176; Dividend Details</h2></a>
         <p>Detailed view per stock with dividend history, CAGR, stability metric, and aristocrat titles.</p>
+        <div class="tip"><b>Note on dividend titles (Aristocrat, King, etc.):</b> These designations are assigned
+        conservatively – <b>special dividends</b> are <b>not</b> taken into account, as Yahoo Finance does not
+        reliably identify them as such. A stock may therefore deserve a higher title than shown here.</div>
 
         <a name="pf-bewertung"><h2>&#128203; Portfolio Assessment</h2></a>
         <div class="new">Feature: Rule-based portfolio analysis – no API key required</div>
