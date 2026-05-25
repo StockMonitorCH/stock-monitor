@@ -21,6 +21,7 @@ _CSS = """
         body { font-family: Arial, sans-serif; padding: 18px; font-size: 13px; line-height: 1.5; }
         h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; margin-top: 30px; }
         h3 { color: #34495e; margin-top: 14px; }
+        a { color: #2980b9; text-decoration: underline; }
         code { background-color: #ecf0f1; padding: 2px 6px; border-radius: 3px; font-size: 12px; font-family: monospace; }
         .tip     { background-color: #e8f8f5; padding: 10px 14px; border-left: 4px solid #00b894; margin: 10px 0; border-radius: 0 4px 4px 0; }
         .warning { background-color: #fff3cd; padding: 10px 14px; border-left: 4px solid #ffc107; margin: 10px 0; border-radius: 0 4px 4px 0; }
@@ -437,10 +438,29 @@ _HTML_DE = """
         <a name="portfolio_übersicht"><h2>&#128188; Portfolio Übersicht</h2></a>
         <p>Alle Positionen mit Echtzeit-Kursen auf einen Blick:</p>
         <ul>
-            <li>Spalten: Symbol &bull; Anzahl &bull; Kaufkurs &Oslash; &bull; Kaufwert &bull; Akt. Kurs &bull; Akt. Wert &bull; G&amp;V &bull; G&amp;V% &bull; Anteil% &bull; Perf-Beitrag% &bull; Sektor-Beitrag% &bull; Sektor &bull; Sub-Industry</li>
+            <li>Spalten: Symbol &bull; Anzahl &bull; Kaufkurs &Oslash; &bull; Kaufwert &bull; Akt. Kurs &bull; Akt. Wert &bull; G&amp;V &bull; <b>G&amp;V%</b> &bull; Anteil% &bull; Perf-Beitrag% &bull; Sektor-Beitrag% &bull; Sektor &bull; Sub-Industry</li>
             <li>Darstellungswährung wählbar: <b>USD &bull; CHF &bull; EUR &bull; GBP</b></li>
             <li>Klick auf Symbol &rarr; Chart in neuem Fenster</li>
+            <li><b>G&amp;V%-Spalte:</b> Hover-Tooltip zeigt den <b>RI-Faktor</b> (Return/Investment-Anteil) &rarr; <a href="#ri-faktor">RI-Faktor</a></li>
         </ul>
+
+        <a name="ri-faktor"><h2>&#128200; RI-Faktor (Return / Investment-Anteil)</h2></a>
+        <p>Der <b>RI-Faktor</b> zeigt, ob eine Position im Verhältnis zu ihrem Kapitalanteil am Portfolio über- oder unterdurchschnittlich rentiert.</p>
+        <p><b>Formel:</b></p>
+        <table>
+            <tr><td style="font-size:14px; padding:6px 12px;"><b>RI-Faktor &nbsp;=&nbsp; Performance% &nbsp;÷&nbsp; Kapitalanteil%</b></td></tr>
+        </table>
+        <p><b>Beispiel:</b> Kapitalanteil 8,46&nbsp;% &bull; Performance +101,58&nbsp;% &rarr; RI-Faktor&nbsp;=&nbsp;101,58 ÷ 8,46 &asymp; <b>12,00</b></p>
+        <p>Das bedeutet: Diese Position erwirtschaftet 12&times; so viel Rendite, wie ihr Kapitalanteil erwarten liesse.</p>
+        <table>
+            <tr><th>Wert</th><th>Symbol</th><th>Bedeutung</th></tr>
+            <tr><td><b>&gt; 1</b></td><td>&#9989;</td><td>Überdurchschnittlich – Position rentiert besser als ihr Gewicht im Portfolio</td></tr>
+            <tr><td><b>= 1</b></td><td>–</td><td>Durchschnittlich – Rendite entspricht exakt dem Kapitalanteil</td></tr>
+            <tr><td><b>&lt; 1</b></td><td>&#9888;&#65039;</td><td>Unterdurchschnittlich – Position rentiert schlechter als ihr Gewicht</td></tr>
+            <tr><td><b>&lt; 0</b></td><td>&#9888;&#65039;</td><td>Verlustposition</td></tr>
+        </table>
+        <div class="tip"><b>Tipp:</b> Ein hoher RI-Faktor bedeutet nicht automatisch, dass man mehr Kapital investieren sollte – er ist ein Rückblick auf die bisherige Performance, keine Prognose. Nutze ihn zusammen mit dem <a href="#korrelationsmatrix">Korrelations-Dialog</a> für eine umfassendere Risikoeinschätzung.</div>
+        <div class="warning">&#9888; Der RI-Faktor basiert auf dem aktuellen Kaufkurs und Kurswert und ändert sich täglich. Er ist <b>keine Anlageberatung</b>.</div>
 
         <a name="portfolio_notizen"><h2>&#128221; Portfolio-Notizen</h2></a>
         <div class="new">&#127381; Feature: Journal für Entscheidungen und Beobachtungen</div>
@@ -455,6 +475,26 @@ _HTML_DE = """
             <li>Notizen werden <b>verschlüsselt</b> in der <code>.smpf</code>-Datei gespeichert</li>
         </ul>
         <div class="tip"><b>Tipp:</b> Nutze das Notizbuch z.&nbsp;B. um Kauf-/Verkaufsentscheidungen festzuhalten, Kursziele zu notieren oder aktuelle Markteinschätzungen zu dokumentieren.</div>
+
+        <a name="korrelationsmatrix"><h2>&#128279; Korrelationsmatrix</h2></a>
+        <div class="new">&#127381; Feature: Diversifikation auf einen Blick</div>
+        <p>Die Korrelationsmatrix zeigt, wie stark die täglichen Kursrenditen aller Portfolio-Positionen miteinander zusammenhängen – ein wichtiges Werkzeug zur Einschätzung der Diversifikation.</p>
+        <ul>
+            <li><b>Button:</b> 🔗 Korrelation in der Portfolio-Übersicht</li>
+            <li><b>Zeitraum:</b> 1M / 3M / 6M / YTD / 1J / 2J / 5J frei wählbar; Berechnung startet sofort beim Öffnen (1 Jahr)</li>
+            <li><b>Berechnung:</b> Pearson-Korrelation der täglichen Renditen (logarithmisch, <code>pct_change()</code>)</li>
+            <li><b>Farbcodierung:</b>
+                <ul>
+                    <li><span style="color:#27ae60">&#9632; Grün</span> &rarr; +1: stark positive Korrelation (bewegen sich gleichartig)</li>
+                    <li><span style="color:#888">&#9632; Weiß/Grau</span> ≈ 0: keine Korrelation (unabhängig)</li>
+                    <li><span style="color:#e74c3c">&#9632; Rot</span> &rarr; −1: stark negative Korrelation (bewegen sich gegenläufig)</li>
+                </ul>
+            </li>
+            <li><b>Diagonale</b> (–): immer grau, da jede Aktie 100% mit sich selbst korreliert</li>
+            <li><b>Export:</b> PDF, XLSX und ODS über den Export-Button im Dialog</li>
+        </ul>
+        <div class="tip"><b>Tipp zur Diversifikation:</b> Positionen mit niedriger oder negativer Korrelation reduzieren das Gesamtrisiko des Portfolios. Wenn alle Positionen stark positiv korreliert sind (grün), sinkt und steigt alles gleichzeitig – das Risiko ist entsprechend höher.</div>
+        <div class="warning">&#9888; Die Korrelation basiert auf historischen Kursdaten (Yahoo Finance) und kann sich jederzeit ändern. Sie ist <b>keine Anlageberatung</b>.</div>
 
         <a name="rohstoffe"><h2>&#127775; Rohstoffe</h2></a>
         <p>Stock Monitor unterstützt <b>5 Rohstoffe</b> als eigene Anlageklasse neben Aktien und Krypto.</p>
@@ -1265,10 +1305,29 @@ _HTML_EN = """
         <a name="portfolio_übersicht"><h2>&#128188; Portfolio Overview</h2></a>
         <p>All positions with real-time prices at a glance:</p>
         <ul>
-            <li>Columns: Symbol &bull; Qty &bull; Avg. Buy Price &bull; Cost &bull; Current Price &bull; Current Value &bull; P&amp;L &bull; P&amp;L% &bull; Weight% &bull; Perf. Contribution% &bull; Sector Contribution% &bull; Sector &bull; Sub-Industry</li>
+            <li>Columns: Symbol &bull; Qty &bull; Avg. Buy Price &bull; Cost &bull; Current Price &bull; Current Value &bull; P&amp;L &bull; <b>P&amp;L%</b> &bull; Weight% &bull; Perf. Contribution% &bull; Sector Contribution% &bull; Sector &bull; Sub-Industry</li>
             <li>Display currency: <b>USD &bull; CHF &bull; EUR &bull; GBP</b></li>
             <li>Click symbol &rarr; opens chart in new window</li>
+            <li><b>P&amp;L% column:</b> Hover tooltip shows the <b>RI Factor</b> (Return/Investment Share) &rarr; <a href="#ri-faktor">RI Factor</a></li>
         </ul>
+
+        <a name="ri-faktor"><h2>&#128200; RI Factor (Return / Investment Share)</h2></a>
+        <p>The <b>RI Factor</b> shows whether a position is performing above or below average relative to its share of the portfolio capital.</p>
+        <p><b>Formula:</b></p>
+        <table>
+            <tr><td style="font-size:14px; padding:6px 12px;"><b>RI Factor &nbsp;=&nbsp; Performance% &nbsp;÷&nbsp; Capital Share%</b></td></tr>
+        </table>
+        <p><b>Example:</b> Capital share 8.46&nbsp;% &bull; Performance +101.58&nbsp;% &rarr; RI Factor&nbsp;=&nbsp;101.58 ÷ 8.46 &asymp; <b>12.00</b></p>
+        <p>This means: the position generates 12&times; as much return as its capital share would suggest.</p>
+        <table>
+            <tr><th>Value</th><th>Symbol</th><th>Meaning</th></tr>
+            <tr><td><b>&gt; 1</b></td><td>&#9989;</td><td>Above average – position returns more than its portfolio weight implies</td></tr>
+            <tr><td><b>= 1</b></td><td>–</td><td>Average – return exactly matches the capital share</td></tr>
+            <tr><td><b>&lt; 1</b></td><td>&#9888;&#65039;</td><td>Below average – position returns less than its portfolio weight implies</td></tr>
+            <tr><td><b>&lt; 0</b></td><td>&#9888;&#65039;</td><td>Loss position</td></tr>
+        </table>
+        <div class="tip"><b>Tip:</b> A high RI Factor does not automatically mean you should invest more capital – it is a backward-looking measure of past performance, not a forecast. Combine it with the <a href="#korrelationsmatrix">Correlation Matrix</a> for a more complete risk picture.</div>
+        <div class="warning">&#9888; The RI Factor is based on current purchase price and market value and changes daily. It is <b>not investment advice</b>.</div>
 
         <a name="portfolio_notizen"><h2>&#128221; Portfolio Notes</h2></a>
         <div class="new">&#127381; Feature: Journal for decisions and observations</div>
@@ -1283,6 +1342,26 @@ _HTML_EN = """
             <li>Notes are stored <b>encrypted</b> inside the <code>.smpf</code> file</li>
         </ul>
         <div class="tip"><b>Tip:</b> Use the notebook to record buy/sell decisions, jot down price targets, or document your current market observations.</div>
+
+        <a name="korrelationsmatrix"><h2>&#128279; Correlation Matrix</h2></a>
+        <div class="new">&#127381; Feature: Diversification at a glance</div>
+        <p>The Correlation Matrix shows how strongly the daily price returns of all portfolio positions move together – an essential tool for assessing diversification.</p>
+        <ul>
+            <li><b>Button:</b> 🔗 Correlation in the Portfolio Overview</li>
+            <li><b>Time period:</b> 1M / 3M / 6M / YTD / 1Y / 2Y / 5Y; calculation starts immediately on open (default: 1 Year)</li>
+            <li><b>Calculation:</b> Pearson correlation of daily returns (<code>pct_change()</code>)</li>
+            <li><b>Colour coding:</b>
+                <ul>
+                    <li><span style="color:#27ae60">&#9632; Green</span> &rarr; +1: strong positive correlation (move together)</li>
+                    <li><span style="color:#888">&#9632; White/Grey</span> ≈ 0: no correlation (independent)</li>
+                    <li><span style="color:#e74c3c">&#9632; Red</span> &rarr; −1: strong negative correlation (move in opposite directions)</li>
+                </ul>
+            </li>
+            <li><b>Diagonal</b> (–): always grey – every asset is 100% correlated with itself</li>
+            <li><b>Export:</b> PDF, XLSX and ODS via the export button in the dialog</li>
+        </ul>
+        <div class="tip"><b>Diversification tip:</b> Positions with low or negative correlation reduce the overall portfolio risk. If all positions are strongly positively correlated (green), everything rises and falls together – risk is correspondingly higher.</div>
+        <div class="warning">&#9888; Correlation is based on historical price data (Yahoo Finance) and can change at any time. It is <b>not investment advice</b>.</div>
 
         <a name="rohstoffe"><h2>&#127775; Commodities</h2></a>
         <p>Stock Monitor supports <b>5 commodities</b> as a separate asset class alongside stocks and crypto.</p>
@@ -1838,7 +1917,9 @@ _TOC_DE = [
     "GICS – Vertiefung",
     "── 💼 PORTFOLIO ──",
     "Portfolio Übersicht",
+    "RI-Faktor",
     "Portfolio-Notizen",
+    "Korrelationsmatrix",
     "Portfolio Diagramme",
     "Performance-Vergleich",
     "Portfolio Performance",
@@ -1916,7 +1997,9 @@ _TOC_EN = [
     "ECY – Deep Dive",
     "── 💼 PORTFOLIO ──",
     "Portfolio Overview",
+    "RI Factor",
     "Portfolio Notes",
+    "Correlation Matrix",
     "Portfolio Charts",
     "Performance Comparison",
     "Portfolio Performance",
@@ -1997,7 +2080,9 @@ _ANCHOR_DE = {
     "gics – vertiefung":          "gics-vertiefung",
     # Portfolio
     "portfolio übersicht":        "portfolio_übersicht",
+    "ri-faktor":                  "ri-faktor",
     "portfolio-notizen":          "portfolio_notizen",
+    "korrelationsmatrix":         "korrelationsmatrix",
     "portfolio diagramme":        "portfolio_diagramme",
     "performance-vergleich":      "performance_vergleich",
     "portfolio performance":      "portfolio_performance",
@@ -2082,7 +2167,9 @@ _ANCHOR_EN = {
     "gics – deep dive":           "gics-vertiefung",
     # Portfolio
     "portfolio overview":         "portfolio_übersicht",
+    "ri factor":                  "ri-faktor",
     "portfolio notes":            "portfolio_notizen",
+    "correlation matrix":         "korrelationsmatrix",
     "portfolio charts":           "portfolio_diagramme",
     "performance comparison":     "performance_vergleich",
     "portfolio performance":      "portfolio_performance",

@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.3.3"                            # beim Release anpassen
+APP_VERSION  = "5.4.0"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -6206,11 +6206,11 @@ class StockChartWidget(QFrame):
             if self.beta_checkbox.isChecked():
                 if beta_value is not None:
                     if beta_value < 0.8:
-                        beta_color, beta_interpretation = "blue", "niedrig volatil"
+                        beta_color, beta_interpretation = "blue", TR("beta_defensive")
                     elif beta_value < 1.2:
                         beta_color, beta_interpretation = "gray", TR("beta_neutral")
                     else:
-                        beta_color, beta_interpretation = "orange", "hoch volatil"
+                        beta_color, beta_interpretation = "orange", TR("beta_volatile")
                     beta_text = f" | <span style='color:{beta_color}'><b>β {_fmt(beta_value, 2)}</b> ({beta_interpretation})</span>"
                 # kein N/A – einfach leer lassen wenn nicht verfügbar
 
@@ -6220,9 +6220,9 @@ class StockChartWidget(QFrame):
                 alpha_value = self.calculate_alpha(self.data)
                 if alpha_value is not None:
                     if alpha_value > 0.01:
-                        alpha_color, alpha_interpretation = "green", "Outperformance"
+                        alpha_color, alpha_interpretation = "green", TR("alpha_chart_outperform")
                     elif alpha_value < -0.01:
-                        alpha_color, alpha_interpretation = "red", "Underperformance"
+                        alpha_color, alpha_interpretation = "red", TR("alpha_underperform")
                     else:
                         alpha_color, alpha_interpretation = "gray", TR("beta_neutral")
                     sign_a = "+" if alpha_value >= 0 else ""
@@ -6235,13 +6235,13 @@ class StockChartWidget(QFrame):
                 sharpe_value = self.calculate_sharpe(self.data)
                 if sharpe_value is not None:
                     if sharpe_value >= 1.0:
-                        sharpe_color, sharpe_interpretation = "green", "gut"
+                        sharpe_color, sharpe_interpretation = "green", TR("sharpe_good")
                     elif sharpe_value >= 0.5:
-                        sharpe_color, sharpe_interpretation = "orange", "akzeptabel"
+                        sharpe_color, sharpe_interpretation = "orange", TR("sharpe_acceptable")
                     elif sharpe_value >= 0:
-                        sharpe_color, sharpe_interpretation = "gray", "schwach"
+                        sharpe_color, sharpe_interpretation = "gray", TR("sharpe_weak")
                     else:
-                        sharpe_color, sharpe_interpretation = "red", "negativ"
+                        sharpe_color, sharpe_interpretation = "red", TR("sharpe_negative")
                     sharpe_text = f" | <span style='color:{sharpe_color}'><b>S {sharpe_value:.2f}</b> ({sharpe_interpretation})</span>"
                 # kein N/A – einfach leer lassen wenn nicht verfügbar
 
@@ -10529,6 +10529,8 @@ class PortfolioDialog(QMainWindow):
             progress_label.setText("")
             self.save_portfolio()
             self._invalidate_cache()
+            if getattr(self, '_embed_callback', None):
+                self._open_overview_on_load = True
             self._master_load()
             preview_dialog.accept()
 
@@ -11588,6 +11590,8 @@ class PortfolioDialog(QMainWindow):
             prog2_lbl.setText("")
             self.save_portfolio()
             self._invalidate_cache()
+            if getattr(self, '_embed_callback', None):
+                self._open_overview_on_load = True
             self._master_load()
             prev_dlg.accept()
 
@@ -11943,6 +11947,13 @@ class PortfolioDialog(QMainWindow):
         ki_btn.clicked.connect(self.show_ki_analysis)
         _add_btn(ki_btn, 2)
 
+        korr_btn = _make_ov_btn(
+            TR("btn_ov_correlation"),
+            TR("tip_ov_correlation"), 120)
+        korr_btn.clicked.connect(self.show_correlation_matrix)
+        if _ov_is_fullhd:
+            _add_btn(korr_btn, 1)   # Full HD: Row 1, links neben Export
+
         notes_ov_btn = _make_ov_btn(
             TR("btn_ov_notes"),
             TR("tip_ov_notes"), 110)
@@ -12294,6 +12305,7 @@ class PortfolioDialog(QMainWindow):
             _tax_row_4k.setSpacing(6)
             _tax_row_4k.setContentsMargins(0, 0, 0, 0)
             _tax_row_4k.addStretch()
+            _tax_row_4k.addWidget(korr_btn)
             _tax_row_4k.addWidget(notes_ov_btn)
             _tax_row_4k.addWidget(pf_bewertung_btn)
             _tax_row_4k.addWidget(indices_btn)
@@ -12785,11 +12797,20 @@ class PortfolioDialog(QMainWindow):
                 rl.addWidget(_price_lbl)
                 rl.addWidget(mk(f"{_fmt(val_usd*s)}",     120,  right=True))
                 rl.addWidget(mk(f"{sign}{_fmt(abs(pnl_usd*s))}", 115, c_pnl, True, True))
-                _pnl_pct_lbl = mk(f"{sign}{pnl_pct:.1f}%", 80, c_pnl, True, True)
                 _ri = (pnl_pct / share_pct) if share_pct > 0 else 0
                 _ri_icon = "✅" if _ri >= 1 else "⚠️"
+                _pnl_pct_lbl = mk(f"{sign}{pnl_pct:.1f}% {_ri_icon}", 95, c_pnl, True, True)
+                _pnl_pct_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
                 _pnl_pct_lbl.setToolTip(TR("tip_ri_factor",
                     share=share_pct, pnl_pct=pnl_pct, ri=_ri, icon=_ri_icon))
+                def _ri_click(ev, _self=self):
+                    from PyQt6.QtCore import Qt as _Qt
+                    if ev.button() == _Qt.MouseButton.LeftButton:
+                        _app = _self.parent()
+                        while _app and not hasattr(_app, 'show_help'):
+                            _app = _app.parent() if hasattr(_app, 'parent') else None
+                        if _app: _app.show_help(anchor="ri-faktor")
+                _pnl_pct_lbl.mousePressEvent = _ri_click
                 rl.addWidget(_pnl_pct_lbl)
                 rl.addWidget(mk(f"{share_pct:.1f}%",      75,  right=True))
                 # Performance-Beitrag Spalte
@@ -13290,6 +13311,25 @@ class PortfolioDialog(QMainWindow):
                                         'cost_usd': 0, 'value_usd': 0,
                                         'cost_chf': 0, 'value_chf': 0}
                 self.data_ready.emit(results)
+
+        # Alter Worker sicher beenden bevor neuer gestartet wird (verhindert GC-ABRT)
+        if hasattr(self, '_overview_worker') and self._overview_worker is not None:
+            _old_ow = self._overview_worker
+            self._overview_worker = None
+            if not hasattr(self, '_dead_workers'):
+                self._dead_workers = []
+            self._dead_workers.append(_old_ow)
+            def _cleanup_old_ow(w=_old_ow):
+                def _rm_ow(o=None, _w=w):
+                    try: self._dead_workers.remove(_w)
+                    except (ValueError, RuntimeError): pass
+                try:
+                    w.destroyed.connect(_rm_ow)
+                    w.deleteLater()
+                except RuntimeError:
+                    pass
+            _old_ow.finished.connect(_cleanup_old_ow)
+            _old_ow.quit()
 
         worker = OverviewWorker(self.portfolio_data, parent=self)
         self._overview_worker = worker
@@ -16786,6 +16826,17 @@ class PortfolioDialog(QMainWindow):
                         c_status.setText(f"💵 {TR("status_loading_line2")} {msg}")
                     except RuntimeError: pass
 
+                class _SortItem(QTableWidgetItem):
+                    """QTableWidgetItem mit numerischem Sort-Key für korrekte Datums-/Zahlen-Sortierung."""
+                    def __init__(self, text, sort_key):
+                        super().__init__(text)
+                        self._sk = sort_key
+                    def __lt__(self, other):
+                        try:
+                            return self._sk < other._sk
+                        except TypeError:
+                            return super().__lt__(other)
+
                 def on_cal_done(rows):
                     try: _ov.hide(); _ov.deleteLater()
                     except: pass
@@ -16796,21 +16847,24 @@ class PortfolioDialog(QMainWindow):
                         return
                     try:
                         table.setRowCount(len(rows))
+                        _TS_MAX = pd.Timestamp.max.timestamp()
                         for r, row in enumerate(rows):
                             cur_s = {'USD':'$','EUR':'€','CHF':'CHF ','GBP':'£',
                                      'JPY':'¥','CAD':'C$','AUD':'A$'}.get(row['cur'], row['cur']+' ')
-                            vals = [
-                                row['sym'],
-                                row['name'],
-                                fmt_date(row['ex_d']),
-                                fmt_date(row['pay_d']),
-                                f"{cur_s}{row['div_amt']:.4f}",
-                                row['cur'],
-                                str(int(row['qty'])),
-                                f"{cur_s}{row['expected']:.2f}",
+                            ex_ts  = row['ex_d'].timestamp()  if row['ex_d']  else _TS_MAX
+                            pay_ts = row['pay_d'].timestamp() if row['pay_d'] else _TS_MAX
+                            cell_data = [
+                                (row['sym'],                           row['sym']),
+                                (row['name'],                          row['name']),
+                                (fmt_date(row['ex_d']),                ex_ts),
+                                (fmt_date(row['pay_d']),               pay_ts),
+                                (f"{cur_s}{row['div_amt']:.4f}",      row['div_amt']),
+                                (row['cur'],                           row['cur']),
+                                (str(int(row['qty'])),                 row['qty']),
+                                (f"{cur_s}{row['expected']:.2f}",     row['expected']),
                             ]
-                            for c, v in enumerate(vals):
-                                item = QTableWidgetItem(v)
+                            for c, (v, sk) in enumerate(cell_data):
+                                item = _SortItem(v, sk)
                                 item.setTextAlignment(Qt.AlignmentFlag.AlignVCenter |
                                     (Qt.AlignmentFlag.AlignRight if c in (4,6,7) else Qt.AlignmentFlag.AlignLeft))
                                 table.setItem(r, c, item)
@@ -20723,6 +20777,291 @@ class PortfolioDialog(QMainWindow):
         QTimer.singleShot(100, do_calculate)
         if _sys_idx.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
+        dialog.exec()
+
+    # ── Portfolio-Korrelationsmatrix ───────────────────────────────────────────
+    def show_correlation_matrix(self):
+        """Korrelationsmatrix aller Portfolio-Wertpapiere."""
+        from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QScrollArea
+        from PyQt6.QtGui import QColor, QFont as _QFont, QPalette
+        from PyQt6.QtCore import QObject
+
+        syms_vals = self._get_symbols_values_for_risk()
+        if len(syms_vals) < 2:
+            QMessageBox.information(self, TR("title_correlation"),
+                                    TR("lbl_correlation_min_stocks"))
+            return
+
+        symbols = [s for s, _ in syms_vals]
+
+        # ── Dialog ────────────────────────────────────────────────────────────
+        dialog = QDialog(self)
+        dialog.setWindowTitle(TR("title_correlation"))
+        dialog.setWindowFlag(Qt.WindowType.Window, True)
+        screen = QApplication.primaryScreen().availableGeometry()
+        dlg_w  = min(int(screen.width() * 0.72), 1200)
+        dlg_h  = min(int(screen.height() * 0.80), 900)
+        dialog.resize(dlg_w, dlg_h)
+        dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
+                    screen.y() + (screen.height() - dlg_h) // 2)
+
+        outer = QVBoxLayout(dialog)
+        outer.setSpacing(6)
+        outer.setContentsMargins(14, 10, 14, 10)
+
+        _dm = QApplication.palette().color(QPalette.ColorRole.Window).lightness() < 128
+        _muted = "#ccc" if _dm else "#666"
+
+        # ── Steuerleiste ──────────────────────────────────────────────────────
+        ctrl = QHBoxLayout(); ctrl.setSpacing(8)
+
+        periods = [
+            (TR("period_1mo"), "1mo"), (TR("period_3mo"), "3mo"),
+            (TR("period_6mo"), "6mo"), ("YTD", "ytd"),
+            (TR("period_1y"),  "1y"),  (TR("period_2y"),  "2y"),
+            (TR("period_5y"),  "5y"),
+        ]
+        period_combo = QComboBox()
+        for label, _ in periods:
+            period_combo.addItem(label)
+        period_combo.setCurrentText(TR("period_1y"))
+        period_combo.setMinimumWidth(140)
+        ctrl.addWidget(QLabel(TR("lbl_period")))
+        ctrl.addWidget(period_combo)
+
+        calc_btn = QPushButton(TR("btn_calculate"))
+        calc_btn.setMinimumHeight(30)
+        calc_btn.setStyleSheet("font-weight:bold; padding:2px 16px;")
+        ctrl.addWidget(calc_btn)
+        ctrl.addStretch()
+
+        export_data = [{}]
+        exp_btn = self._make_export_btn(lambda: export_data[0], TR("title_correlation"))
+        exp_btn.setMinimumHeight(30)
+        ctrl.addWidget(exp_btn)
+
+        close_btn = QPushButton(TR("btn_close"))
+        close_btn.setMinimumHeight(30)
+        close_btn.setStyleSheet("padding:2px 12px;")
+        close_btn.clicked.connect(dialog.close)
+        ctrl.addWidget(close_btn)
+        outer.addLayout(ctrl)
+
+        # Info-Zeile
+        info_lbl = QLabel(TR("lbl_correlation_info"))
+        info_lbl.setStyleSheet(f"color:{_muted}; font-size:10px; padding:2px 0;")
+        outer.addWidget(info_lbl)
+
+        # ── Tabelle (in ScrollArea) ───────────────────────────────────────────
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        outer.addWidget(scroll, stretch=1)
+
+        table_holder = QWidget()
+        table_lay = QVBoxLayout(table_holder)
+        table_lay.setContentsMargins(0, 0, 0, 0)
+        scroll.setWidget(table_holder)
+
+        # Status
+        status_lbl = QLabel("")
+        status_lbl.setStyleSheet(f"color:{_muted}; font-size:11px; padding:2px 0;")
+        status_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(status_lbl)
+
+        # Disclaimer
+        disc = QLabel(TR("lbl_disclaimer_general"))
+        disc.setWordWrap(True)
+        disc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        _border_col = "#555" if _dm else "#ddd"
+        disc.setStyleSheet(
+            f"color:{_muted}; font-size:10px; font-style:italic;"
+            f"padding:4px 12px; border-top:1px solid {_border_col};")
+        outer.addWidget(disc)
+
+        # ── Lade-Overlay ──────────────────────────────────────────────────────
+        _ov = [None]
+        def _show_overlay(period_label):
+            _hide_overlay()
+            ov = QFrame(dialog)
+            ov.setStyleSheet(
+                "QFrame{background:rgba(240,248,255,230);"
+                "border:2px solid #3498db;border-radius:12px;}")
+            ol = QVBoxLayout(ov)
+            ol.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            ico = QLabel("🔗")
+            ico.setFont(QFont("Segoe UI Emoji", 36))
+            ico.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            ico.setStyleSheet("border:none; background:transparent;")
+            ol.addWidget(ico)
+            lbl = QLabel(f"<b>{TR('title_correlation')}</b>  —  {period_label}")
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl.setStyleSheet("font-size:12px; font-weight:bold; border:none; background:transparent;")
+            ol.addWidget(lbl)
+            sub = QLabel(TR("lbl_correlation_loading"))
+            sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            sub.setStyleSheet("font-size:10px; color:#666; border:none; background:transparent;")
+            ol.addWidget(sub)
+            ow, oh = 380, 180
+            ov.setGeometry((dlg_w - ow) // 2, (dlg_h - oh) // 2, ow, oh)
+            ov.show(); ov.raise_()
+            _ov[0] = ov
+            QApplication.processEvents()
+
+        def _hide_overlay():
+            if _ov[0]:
+                try: _ov[0].hide(); _ov[0].deleteLater()
+                except RuntimeError: pass
+                _ov[0] = None
+
+        # ── Lokaler Signal-Bridge (thread-safe Callbacks auf Main-Thread) ────────
+        class _Bridge(QObject):
+            call = pyqtSignal(object)
+        _bridge = _Bridge()
+        _bridge.call.connect(lambda fn: fn())
+
+        # ── Worker-Thread ─────────────────────────────────────────────────────
+        _worker = [None]
+
+        def _cell_color(val):
+            """Zellenfarbe nach Korrelationsstärke (Palette: rot–weiß–grün)."""
+            if val is None: return None
+            v = max(-1.0, min(1.0, float(val)))
+            if v >= 0:
+                # 0 → weiß, 1 → grün
+                g = int(180 + 75 * v)
+                r = int(255 - 80 * v)
+                b = int(255 - 80 * v)
+            else:
+                # 0 → weiß, -1 → rot
+                r = int(255)
+                g = int(200 + 55 * v)
+                b = int(200 + 55 * v)
+            return QColor(r, g, b)
+
+        def _build_table(corr_df):
+            # Alte Tabelle entfernen
+            while table_lay.count():
+                item = table_lay.takeAt(0)
+                if item.widget(): item.widget().deleteLater()
+
+            syms = list(corr_df.columns)
+            n = len(syms)
+
+            tbl = QTableWidget(n, n)
+            tbl.setHorizontalHeaderLabels(syms)
+            tbl.setVerticalHeaderLabels(syms)
+            tbl.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+            tbl.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+            tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+            tbl.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+            tbl.setStyleSheet(
+                "QTableWidget { font-size:11px; }"
+                "QHeaderView::section { background:#f0f4f8; color:#000000; font-weight:bold; padding:4px; }"
+            )
+            bold = _QFont(); bold.setBold(True)
+
+            export_rows = []
+            for i, s_row in enumerate(syms):
+                exp_row = [s_row]
+                for j, s_col in enumerate(syms):
+                    val = corr_df.loc[s_row, s_col]
+                    if i == j:
+                        text = "–"
+                        item = QTableWidgetItem(text)
+                        item.setBackground(QColor(230, 230, 230))
+                        item.setFont(bold)
+                    else:
+                        text = f"{val:+.3f}"
+                        item = QTableWidgetItem(text)
+                        bg = _cell_color(val)
+                        if bg: item.setBackground(bg)
+                    item.setForeground(QColor(0, 0, 0))
+                    item.setTextAlignment(
+                        Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+                    tbl.setItem(i, j, item)
+                    exp_row.append(text)
+                export_rows.append(tuple(exp_row))
+
+            table_lay.addWidget(tbl)
+
+            # Export-Daten aktualisieren
+            export_data[0] = {
+                'title':   TR("title_correlation"),
+                'headers': [""] + syms,
+                'rows':    export_rows,
+            }
+
+        def _run_calc():
+            idx = period_combo.currentIndex()
+            if idx < 0: return
+            period_label, period_code = periods[idx]
+
+            _show_overlay(period_label)
+            calc_btn.setEnabled(False)
+
+            _worker[0] = True  # laufende Berechnung markieren
+
+            def _on_done(corr_df):
+                _worker[0] = None
+                _hide_overlay()
+                calc_btn.setEnabled(True)
+                if corr_df is None or (hasattr(corr_df, 'empty') and corr_df.empty):
+                    status_lbl.setText(TR("lbl_correlation_no_data"))
+                    return
+                _build_table(corr_df)
+                n_sym = corr_df.shape[1]
+                status_lbl.setText(
+                    f"{TR('title_correlation')}  —  {period_label}"
+                    f"  |  {n_sym} {TR('col_symbol').lower()}s")
+
+            def _on_progress(msg):
+                try:
+                    if _ov[0]:
+                        for child in _ov[0].children():
+                            if isinstance(child, QLabel) and "🔗" not in child.text():
+                                child.setText(msg)
+                                break
+                except RuntimeError:
+                    pass
+
+            def _do():
+                import yfinance as yf
+                import pandas as pd
+                try:
+                    _bridge.call.emit(lambda m=f"({len(symbols)} {TR('col_symbol').lower()}s)": _on_progress(m))
+                    raw = yf.download(
+                        symbols, period=period_code,
+                        auto_adjust=True, progress=False,
+                        group_by='column'
+                    )
+                    if raw is None or raw.empty:
+                        _bridge.call.emit(lambda: _on_done(None)); return
+
+                    if len(symbols) == 1:
+                        close = raw[['Close']] if 'Close' in raw.columns else raw
+                        close.columns = symbols
+                    else:
+                        close = raw['Close'] if 'Close' in raw.columns else raw
+                        if hasattr(close, 'columns'):
+                            close = close[[s for s in symbols if s in close.columns]]
+
+                    returns = close.dropna(how='all').pct_change().dropna(how='all')
+                    if returns.empty or returns.shape[1] < 2:
+                        _bridge.call.emit(lambda: _on_done(None)); return
+
+                    corr = returns.corr()
+                    _bridge.call.emit(lambda c=corr: _on_done(c))
+                except Exception:
+                    _bridge.call.emit(lambda: _on_done(None))
+
+            import threading as _threading
+            _threading.Thread(target=_do, daemon=True).start()
+
+        calc_btn.clicked.connect(_run_calc)
+        # Sofort beim Öffnen berechnen
+        QTimer.singleShot(100, _run_calc)
+
         dialog.exec()
 
     # ── Portfolio-Notizen ──────────────────────────────────────────────────────
@@ -26463,6 +26802,18 @@ class StockMonitorApp(QMainWindow):
                     self._batch_workers.remove(bw)
                 except ValueError:
                     pass
+                # Referenz in dead-pool halten bis Qt das Objekt sicher gelöscht hat
+                if not hasattr(self, '_dead_workers'):
+                    self._dead_workers = []
+                self._dead_workers.append(bw)
+                def _rm_bw(o=None, _w=bw):
+                    try: self._dead_workers.remove(_w)
+                    except (ValueError, RuntimeError): pass
+                try:
+                    bw.destroyed.connect(_rm_bw)
+                    bw.deleteLater()
+                except RuntimeError:
+                    pass
 
             bw.chart_data_ready.connect(_on_ready)
             bw.all_done.connect(_on_done)
@@ -28609,53 +28960,73 @@ class StockMonitorApp(QMainWindow):
                 "QPushButton:hover{background:#1557b0;}"
             )
             def _run_pip(checked=False, _v=latest):
-                import subprocess, threading, sys as _sys
-                user_lib = os.path.join(
-                    os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")),
-                    "stock-monitor", "lib"
-                )
-                os.makedirs(user_lib, exist_ok=True)
+                import subprocess, threading, sys as _sys, platform as _plat
                 pip_btn.setEnabled(False)
-                pip_btn.setText("⏳ Installiere...")
+                pip_btn.setText("⏳ " + TR("lbl_update_connecting"))
                 toast.close()
                 def _do():
                     try:
+                        # Pip-Version prüfen: --break-system-packages erst ab 22.3
+                        _pip_ver = subprocess.run(
+                            [_sys.executable, "-m", "pip", "--version"],
+                            capture_output=True, text=True
+                        ).stdout
+                        try:
+                            _pv = tuple(int(x) for x in _pip_ver.split()[1].split(".")[:2])
+                        except Exception:
+                            _pv = (0, 0)
+                        _bsp = ["--break-system-packages"] if _pv >= (22, 3) else []
+                        # Mit --user installieren: geht nach ~/.local/lib/pythonX.Y/site-packages
+                        # → immer in sys.path, unabhängig von PYTHONPATH
                         r = subprocess.run(
                             [_sys.executable, "-m", "pip", "install",
-                             "--target", user_lib, "--upgrade",
-                             "--break-system-packages",
-                             f"yfinance=={_v}"],
+                             "--upgrade", "--user"] + _bsp + [f"yfinance=={_v}"],
                             capture_output=True, text=True
                         )
                         if r.returncode == 0:
                             def _show_ok():
                                 mb = QMessageBox(self)
                                 mb.setWindowTitle("yfinance Update")
-                                mb.setText(f"yfinance {_v} wurde installiert.")
-                                mb.setInformativeText("Jetzt neu starten?")
+                                mb.setText(TR("msg_yf_installed", version=_v))
+                                mb.setInformativeText(TR("msg_restart_now_question"))
                                 mb.setIcon(QMessageBox.Icon.Information)
-                                _rb = mb.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
-                                mb.addButton("Später neu starten", QMessageBox.ButtonRole.RejectRole)
+                                _rb = mb.addButton(TR("btn_restart_now"), QMessageBox.ButtonRole.AcceptRole)
+                                mb.addButton(TR("btn_restart_later"), QMessageBox.ButtonRole.RejectRole)
                                 mb.exec()
                                 if mb.clickedButton() is _rb:
-                                    _launcher = "/usr/bin/stock-monitor"
-                                    if os.path.exists(_launcher):
+                                    try:
                                         import subprocess as _sp
-                                        _sp.Popen([_launcher])
-                                    else:
-                                        import subprocess as _sp
-                                        _sp.Popen([sys.executable, os.path.abspath(__file__)])
-                                    QTimer.singleShot(300, QApplication.instance().quit)
+                                        if _plat.system() == "Windows":
+                                            _sp.Popen(
+                                                [sys.executable] + sys.argv,
+                                                creationflags=_sp.DETACHED_PROCESS | _sp.CREATE_NO_WINDOW,
+                                                close_fds=True,
+                                            )
+                                        else:
+                                            _launcher = "/usr/bin/stock-monitor"
+                                            if os.path.exists(_launcher):
+                                                _sp.Popen([_launcher], start_new_session=True)
+                                            else:
+                                                _sp.Popen(
+                                                    [sys.executable] + sys.argv,
+                                                    start_new_session=True,
+                                                    close_fds=True,
+                                                )
+                                        QTimer.singleShot(300, QApplication.instance().quit)
+                                    except Exception:
+                                        _log.exception("Restart fehlgeschlagen")
+                                        QApplication.instance().quit()
                             self._thread_call.emit(_show_ok)
                         else:
                             _err = r.stderr[-800:] or r.stdout[-800:]
                             self._thread_call.emit(lambda: QMessageBox.warning(
-                                self, "yfinance – Fehler",
-                                f"Installation fehlgeschlagen:\n\n{_err}"
+                                self, TR("lbl_update_error_title"),
+                                f"{TR('lbl_update_install_failed')}:\n\n{_err}"
                             ))
                     except Exception as e:
                         _msg = str(e)
-                        self._thread_call.emit(lambda: QMessageBox.warning(self, "yfinance – Fehler", _msg))
+                        self._thread_call.emit(lambda: QMessageBox.warning(
+                            self, TR("lbl_update_error_title"), _msg))
                 threading.Thread(target=_do, daemon=True).start()
             pip_btn.clicked.connect(_run_pip)
             btn_row.addWidget(pip_btn)
@@ -29294,19 +29665,30 @@ class StockMonitorApp(QMainWindow):
             elif status == "ready":
                 msg = QMessageBox(self)
                 msg.setWindowTitle("yfinance Update")
-                msg.setText(f"yfinance {version} wurde installiert.")
-                msg.setInformativeText("Jetzt neu starten?")
-                btn_now   = msg.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
-                msg.addButton("Später neu starten",            QMessageBox.ButtonRole.RejectRole)
+                msg.setText(TR("msg_yf_installed", version=version))
+                msg.setInformativeText(TR("msg_restart_now_question"))
+                btn_now   = msg.addButton(TR("btn_restart_now"),   QMessageBox.ButtonRole.AcceptRole)
+                msg.addButton(TR("btn_restart_later"),             QMessageBox.ButtonRole.RejectRole)
                 msg.exec()
                 if msg.clickedButton() == btn_now:
-                    import subprocess
-                    subprocess.Popen(
-                        [sys.executable],
-                        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
-                        close_fds=True,
-                    )
-                    QTimer.singleShot(300, QApplication.instance().quit)
+                    import subprocess, platform as _plat
+                    try:
+                        if _plat.system() == "Windows":
+                            subprocess.Popen(
+                                [sys.executable] + sys.argv,
+                                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+                                close_fds=True,
+                            )
+                        else:
+                            subprocess.Popen(
+                                [sys.executable] + sys.argv,
+                                start_new_session=True,
+                                close_fds=True,
+                            )
+                        QTimer.singleShot(300, QApplication.instance().quit)
+                    except Exception:
+                        _log.exception("Restart fehlgeschlagen")
+                        QApplication.instance().quit()
 
         sigs.finished.connect(_on_done, Qt.ConnectionType.QueuedConnection)
 

@@ -7,7 +7,7 @@
 <!-- PRIMARY META -->
 <title>Stock Monitor – Portfolio Tracker &amp; Finance App for Private Investors</title>
 <meta content="Stock Monitor – free portfolio app for private investors. Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, ECY, dividend calendar, tax assistant (CH/DE/AT/UK/US), CSV import, cryptocurrencies, precious metals. For Windows &amp; Linux (Fedora, openSUSE, Nobara). Open Source." name="description"/>
-<meta content="Portfolio Tracker, Finanz App, Aktien Portfolio, Portfolio Verwaltung, Portfolio Manager, Portfolio Analyse, Anlage Tool, Depot, Depot Verwaltung, Depotanalyse, Wertschriftendepot, Wertschriften, Aktien verwalten, Aktien App, Dividenden Tracker, Dividenden Kalender, Steuer Assistent Aktien, Charts Aktien, mehrere Charts gleichzeitig, Portfolio Software, Kryptowährungen Portfolio, Cryptos Portfolio, Edelmetalle Portfolio, Währungsrechner, Monte Carlo Simulation Portfolio, ECY Earnings Current Yield, Alpha Beta Sharpe Ratio, Bollinger Bands RSI, TWR MWR IRR, KI Analyse Portfolio, AI Portfolio Analysis, GICS Sektoren, CSV Import, CSV Import Aktien, CSV Import Bank, Swissquote CSV, DeGiro CSV, Flatex CSV, Portfolio Weltkarte, Weltkarte Aktien, Stock Portfolio, Investment Tracker, Portfolio Analysis, Stock Monitor, Open Source Portfolio, Free Portfolio Manager, Investment Portfolio App, Stock Portfolio Tracker, Cryptocurrency Portfolio, Precious Metals Portfolio, Tax Assistant Stocks, Dividend History, Monte Carlo Simulation Stocks, Portfolio Rebalancing, CSV import stocks, world map portfolio, ETF, ETFs, SMI, DAX, S&amp;P 500, Candlestick, Benchmark Indizes, Benchmark Indices, Linux Portfolio App, Linux Aktien App, rpm Download, Flatpak Portfolio, Fedora Portfolio App, openSUSE Portfolio App, Nobara Portfolio App, portfolio app linux, stock tracker linux, finanz app linux" name="keywords"/>
+<meta content="Portfolio Tracker, Finanz App, Aktien Portfolio, Portfolio Verwaltung, Portfolio Manager, Portfolio Analyse, Anlage Tool, Depot, Depot Verwaltung, Depotanalyse, Wertschriftendepot, Wertschriften, Aktien verwalten, Aktien App, Dividenden Tracker, Dividenden Kalender, Steuer Assistent Aktien, Charts Aktien, mehrere Charts gleichzeitig, Portfolio Software, Kryptowährungen Portfolio, Cryptos Portfolio, Edelmetalle Portfolio, Währungsrechner, Monte Carlo Simulation Portfolio, ECY Earnings Current Yield, Alpha Beta Sharpe Ratio, Correlation Matrix Portfolio, Korrelationsmatrix Portfolio, Bollinger Bands RSI, TWR MWR IRR, KI Analyse Portfolio, AI Portfolio Analysis, GICS Sektoren, CSV Import, CSV Import Aktien, CSV Import Bank, Swissquote CSV, DeGiro CSV, Flatex CSV, Portfolio Weltkarte, Weltkarte Aktien, Stock Portfolio, Investment Tracker, Portfolio Analysis, Stock Monitor, Open Source Portfolio, Free Portfolio Manager, Investment Portfolio App, Stock Portfolio Tracker, Cryptocurrency Portfolio, Precious Metals Portfolio, Tax Assistant Stocks, Dividend History, Monte Carlo Simulation Stocks, Portfolio Rebalancing, CSV import stocks, world map portfolio, ETF, ETFs, SMI, DAX, S&amp;P 500, Candlestick, Benchmark Indizes, Benchmark Indices, Linux Portfolio App, Linux Aktien App, rpm Download, Flatpak Portfolio, Fedora Portfolio App, openSUSE Portfolio App, Nobara Portfolio App, portfolio app linux, stock tracker linux, finanz app linux" name="keywords"/>
 <meta content="Timm" name="author"/>
 <meta content="index, follow" name="robots"/>
 <link href="https://www.stock-monitor.ch/en/" rel="canonical"/><link href="https://www.stock-monitor.ch/" hreflang="de" rel="alternate"/><link href="https://www.stock-monitor.ch/en/" hreflang="en" rel="alternate"/><link href="https://www.stock-monitor.ch/" hreflang="x-default" rel="alternate"/>
@@ -45,7 +45,7 @@
   },
   "url": "https://www.stock-monitor.ch/",
   "downloadUrl": "https://github.com/StockMonitorCH/stock-monitor/releases",
-  "softwareVersion": "5.3.2",
+  "softwareVersion": "5.4.0",
   "screenshot": "https://www.stock-monitor.ch/screenshots/dashboard_DE.png"
 }
 </script>
@@ -800,12 +800,23 @@ footer a:hover { color: var(--green); }
   .trust-banner-inner { grid-template-columns: 1fr; }
 }
 
+@media (max-width: 480px) {
+  .lang-bar { padding: 10px 16px; }
+  .lang-btn { padding: 7px 12px; font-size: 0; gap: 0; }
+  .lang-btn .flag { font-size: initial; }
+  .lang-bar .logo-small { font-size: 1.15rem; }
+  .lang-bar .logo-small img { height: 26px; }
+}
+
 </style>
 </head>
 <body>
 <!-- LANG BAR -->
 <div class="lang-bar">
-<div class="logo-small">Stock<span>Monitor</span></div>
+<div class="logo-small" style="display:flex; align-items:center; gap:10px;">
+    <img src="screenshots/logo.png" alt="Stock Monitor Logo" style="height:34px; width:auto; display:block;">
+    Stock<span>Monitor</span>
+  </div>
 <button class="lang-btn active" id="btn-de" onclick="setLang('de')">
 <span class="flag"><svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15"><rect width="20" height="5" fill="#000"/><rect width="20" height="5" y="5" fill="#D00"/><rect width="20" height="5" y="10" fill="#FFCE00"/></svg></span> DE
   </button>
@@ -825,13 +836,13 @@ footer a:hover { color: var(--green); }
 <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
 <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
 
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.2/stock_monitor.zip"><span style="font-size:1.4em; line-height:1;">🪟</span> Download for Windows</a>
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.0/stock_monitor.zip"><span style="font-size:1.4em; line-height:1;">🪟</span> Download for Windows</a>
 
 <div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">Extract ZIP → run .exe · No setup<br/>First launch ~20 sec.</div>
 </div>
 <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
 
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.2/stock-monitor-5.3.2.x86_64.rpm"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.0/stock-monitor-5.4.0.x86_64.rpm"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
 
 <div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.rpm available (Fedora, openSUSE, Nobara)</div>
 </div>
@@ -865,7 +876,7 @@ footer a:hover { color: var(--green); }
 <span class="stat-label">Monte Carlo Paths</span>
 </div>
 <div class="stat-item">
-<span class="stat-num">AES-256</span>
+<span class="stat-num">AES-256-GCM</span>
 
 <span class="stat-label">Bank-grade Encryption</span>
 </div>
@@ -912,6 +923,11 @@ footer a:hover { color: var(--green); }
 <div class="trust-item-title">Portfolio Assessment</div>
 <div class="trust-item-desc">Rule-based assessment: diversification, concentration risks, GICS sectors, strengths and weaknesses — without AI, without cloud.</div>
 </div>
+<div class="trust-item">
+<span class="ti">🔗</span>
+<div class="trust-item-title">Correlation Matrix <span style="font-size:0.72rem; font-weight:700; color:var(--green); background:var(--green-dim); border:1px solid rgba(34,197,94,0.3); border-radius:4px; padding:1px 6px; letter-spacing:0.05em; text-transform:uppercase; vertical-align:middle;">New</span></div>
+<div class="trust-item-desc">Pearson correlation of all positions — instantly see where real diversification lies and where concentration risks lurk.</div>
+</div>
 </div>
 </div>
 <!-- MAIN SCREENSHOT -->
@@ -927,7 +943,7 @@ footer a:hover { color: var(--green); }
 <div class="placeholder" style="display:none; height:320px; align-items:center; justify-content:center; color:var(--text3); font-family:'DM Mono',monospace; font-size:0.85rem;">[ screenshot: 16-chart dashboard ]</div>
 </div>
 
-<div class="screenshot-caption-below">Stock Monitor v5.3.2 ·16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
+<div class="screenshot-caption-below">Stock Monitor v5.4.0 · 16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Correlation Matrix · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
 </section>
 <!-- FEATURES ALS HIGHLIGHT-SECTIONS -->
 <div id="features" style="padding-top:1px; margin-top:-1px;"></div>
@@ -1129,6 +1145,25 @@ footer a:hover { color: var(--green); }
 </div>
 </div>
 </section>
+<!-- HIGHLIGHT: Correlation Matrix -->
+<section class="highlight fade-in">
+<div class="highlight-inner reverse">
+<div class="highlight-img-wrap">
+<img alt="Correlation Matrix" class="clickable-img" data-src-de="screenshots/correlation_DE.png" data-src-en="screenshots/correlation_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/correlation_EN.png"/>
+</div>
+<div class="highlight-text">
+<span class="tag tag-green">New in v5.4.0</span>
+<h3>🔗 Correlation Matrix</h3>
+<p>See at a glance how strongly your positions are correlated with each other — and where real diversification lies. The correlation matrix calculates the Pearson correlation of daily returns of all portfolio positions. Freely selectable time period.</p>
+<ul class="feature-list">
+<li>🟢 Green → +1: move together · ⬜ Grey ≈ 0: independent · 🔴 Red → −1: move opposite</li>
+<li>Period: 1M / 3M / 6M / YTD / 1Y / 2Y / 5Y freely selectable</li>
+<li>Export as PDF, XLSX and ODS</li>
+<li>No API key, no additional internet connection required for calculation</li>
+</ul>
+</div>
+</div>
+</section>
 <!-- HIGHLIGHT: Vergleichs-Charts -->
 <section class="highlight fade-in">
 <div class="highlight-inner reverse">
@@ -1291,12 +1326,12 @@ footer a:hover { color: var(--green); }
 <div class="coming-soon-card">
 <span class="cs-icon">⬇️</span>
 
-<h2>Download — v5.3.2</h2>
+<h2>Download — v5.4.0</h2>
 
 <p>Free, open source, no installation required.</p>
 <!-- WINDOWS -->
 <div style="width:100%; margin-bottom:28px;">
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.2/stock_monitor.zip" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.0/stock_monitor.zip" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
 <span style="font-size:1.5em; line-height:1;">🪟</span> <span>Download for Windows</span> <span style="font-size:1em; opacity:0.7;">→</span>
 </a>
 
@@ -1309,7 +1344,7 @@ footer a:hover { color: var(--green); }
 
 <div style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:left; margin-bottom:10px; padding:0 4px;">🐧 Linux</div>
 <!-- RPM -->
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.3.2/stock-monitor-5.3.2.x86_64.rpm" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:16px; display:flex; gap:10px;">
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.0/stock-monitor-5.4.0.x86_64.rpm" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:16px; display:flex; gap:10px;">
 <span style="font-size:1.3em; line-height:1;">🐧</span>
 <span>Download .rpm (Fedora, openSUSE, Nobara &amp; more)</span>
 <span style="font-size:1em; opacity:0.7;">→</span>
@@ -1346,18 +1381,18 @@ footer a:hover { color: var(--green); }
 
 <div style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:center; margin-bottom:10px;">📄 Documentation</div>
 <div id="doc-grid-de" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-<a class="btn-secondary" href="docs/StockMonitor_Features_v5.3.2_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Features_v5.4.0_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📋 Feature-Übersicht
           </a>
-<a class="btn-secondary" href="docs/StockMonitor_Anleitung_v5.3.2_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Anleitung_v5.4.0_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📖 Benutzeranleitung
           </a>
 </div>
 <div id="doc-grid-en" style="display:none; grid-template-columns:1fr 1fr; gap:8px;">
-<a class="btn-secondary" href="docs/StockMonitor_Features_v5.3.2_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Features_v5.4.0_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📋 Feature List
           </a>
-<a class="btn-secondary" href="docs/StockMonitor_Manual_v5.3.2_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Manual_v5.4.0_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📖 User Manual
           </a>
 </div>
@@ -1427,7 +1462,7 @@ footer a:hover { color: var(--green); }
 <div id="privacy-content-de" style="font-family:inherit;">
 <h3 style="font-family:'DM Serif Display',serif; font-size:1.6rem; color:var(--text); margin-bottom:16px;">Datenschutz</h3>
 <div style="font-size:1rem; color:var(--text2); line-height:1.75; display:flex; flex-direction:column; gap:12px;">
-<p>Stock Monitor speichert dein Portfolio ausschliesslich lokal auf deinem Gerät — verschlüsselt mit AES-256. Es werden keinerlei Portfoliodaten, persönliche Daten oder Nutzungsstatistiken an Server übertragen.</p>
+<p>Stock Monitor speichert dein Portfolio ausschliesslich lokal auf deinem Gerät — verschlüsselt mit AES-256-GCM. Es werden keinerlei Portfoliodaten, persönliche Daten oder Nutzungsstatistiken an Server übertragen.</p>
 <p>Deine E-Mail-Adresse wird ausschliesslich für Update-Benachrichtigungen zu neuen Versionen verwendet. Sie wird nicht an Dritte weitergegeben, nicht verkauft und nicht für Werbung genutzt.</p>
 <p>Diese Website verwendet Cloudflare Web Analytics — ohne Cookies, ohne personenbezogene Daten.</p>
 </div>
@@ -1435,7 +1470,7 @@ footer a:hover { color: var(--green); }
 <div id="privacy-content-en" style="display:none; font-family:inherit;">
 <h3 style="font-family:'DM Serif Display',serif; font-size:1.6rem; color:var(--text); margin-bottom:16px;">Privacy</h3>
 <div style="font-size:1rem; color:var(--text2); line-height:1.75; display:flex; flex-direction:column; gap:12px;">
-<p>Stock Monitor stores your portfolio exclusively on your local device — encrypted with AES-256. No portfolio data, personal data or usage statistics are transmitted to any server.</p>
+<p>Stock Monitor stores your portfolio exclusively on your local device — encrypted with AES-256-GCM. No portfolio data, personal data or usage statistics are transmitted to any server.</p>
 <p>Your email address is used solely for update notifications about new versions. It is never shared with third parties, never sold, and never used for advertising.</p>
 <p>This website uses Cloudflare Web Analytics — no cookies, no personal data.</p>
 </div>

@@ -716,6 +716,13 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "btn_ov_close":                 "✖ Schliessen",
         "btn_ov_notes":                 "📝 Notizen",
         "tip_ov_notes":                 "Portfolio-Notizbuch: Gedanken und Entscheidungen festhalten (wird verschlüsselt mit dem Portfolio gespeichert)",
+        "btn_ov_correlation":           "🔗 Korrelation",
+        "tip_ov_correlation":           "Korrelationsmatrix: Zeigt wie stark die Kursbewegungen der Aktien miteinander zusammenhängen",
+        "title_correlation":            "Portfolio-Korrelationsmatrix",
+        "lbl_correlation_info":         "Werte nahe +1: gleichgerichtete Bewegung  |  Werte nahe –1: gegenläufige Bewegung  |  Werte nahe 0: kein Zusammenhang",
+        "lbl_correlation_loading":      "Kursdaten werden geladen…",
+        "lbl_correlation_no_data":      "Für diesen Zeitraum konnten keine Kursdaten geladen werden.",
+        "lbl_correlation_min_stocks":   "Für eine Korrelationsmatrix werden mindestens 2 Wertpapiere benötigt.",
         "title_notes":                  "📝 Portfolio-Notizen",
         "lbl_note_placeholder":         "Neue Notiz eingeben…",
         "btn_add_note":                 "Hinzufügen",
@@ -1205,7 +1212,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_total_portfolio":                     "Gesamtportfolio",
         # Perf contrib tooltip
         "tip_perf_contrib_label":                  "Beitrag zur Gesamt-Performance",
-        "tip_ri_factor":                           "RI-Faktor (Return / Investment-Anteil)\nKapitalanteil: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI-Faktor: {ri:.2f} {icon}\n(>1 = überdurchschnittlich, <1 = unterdurchschnittlich)",
+        "tip_ri_factor":                           "RI-Faktor (Return / Investment-Anteil)\nKapitalanteil: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI-Faktor: {ri:.2f} {icon}\n(>1 = überdurchschnittlich, <1 = unterdurchschnittlich)\n❓ Rechtsklick → Hilfe",
         # N/A label
         "lbl_na_negative_earnings":                "<span style='color:gray'><i>N/A (neg. Gewinn oder keine Daten)</i></span>",
         # Currency converter
@@ -1269,6 +1276,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_above":                               "über",
         "lbl_below":                               "unter",
         "alpha_outperform":                        "Überrendite erzielt",
+        "alpha_chart_outperform":                  "Überrendite",
         "alpha_slight_out":                        "Leichte Überrendite",
         "alpha_slight_under":                      "Leichte Minderrendite",
         "alpha_underperform":                      "Minderrendite",
@@ -1675,6 +1683,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_update_connecting":      "Verbinde…",
         "lbl_update_warn_backup":     "ℹ Die App startet nach dem Update automatisch neu.\nDeine Portfolios werden nicht verändert. Eine Datensicherung wird trotzdem empfohlen.",
         "lbl_update_error_title":     "Update-Fehler",
+        "lbl_update_install_failed":  "Installation fehlgeschlagen",
         "msg_update_ready":           "Stock Monitor v{version} wurde heruntergeladen und ist bereit zur Installation.\n\nMöchtest du die App jetzt neu starten?\nDas Update wird beim Schliessen der App automatisch ausgeführt.",
         "btn_update_now":             "Jetzt neu starten",
         "btn_update_later":           "Später",
@@ -1683,6 +1692,10 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_yf_toast_msg_exe":       "Version {latest} ist verfügbar (installiert: {installed}).\nDie App wird aktualisiert und automatisch neu gestartet.",
         "lbl_yf_toast_msg_flatpak":   "Version {latest} ist verfügbar (installiert: {installed}).\nDas Update kommt automatisch mit dem nächsten Flatpak-Release.",
         "lbl_yf_update_done":         "✅ yfinance {version} installiert! App wird neu gestartet…",
+        "msg_yf_installed":           "yfinance {version} wurde installiert.",
+        "msg_restart_now_question":   "Jetzt neu starten?",
+        "btn_restart_now":            "Jetzt neu starten",
+        "btn_restart_later":          "Später neu starten",
         "lbl_yf_flatpak_managed":     "✅ yfinance wird über den Flatpak Store aktualisiert.",
 
         # ── Flatpak App-Update ────────────────────────────────────────────────
@@ -2385,6 +2398,13 @@ more than enough for personal use.</p>
         "btn_ov_close":                 "✖ Close",
         "btn_ov_notes":                 "📝 Notes",
         "tip_ov_notes":                 "Portfolio notebook: Record thoughts and decisions (saved encrypted with the portfolio)",
+        "btn_ov_correlation":           "🔗 Correlation",
+        "tip_ov_correlation":           "Correlation matrix: Shows how closely the price movements of the stocks move together",
+        "title_correlation":            "Portfolio Correlation Matrix",
+        "lbl_correlation_info":         "Values near +1: move together  |  Values near –1: move opposite  |  Values near 0: no relationship",
+        "lbl_correlation_loading":      "Loading price data…",
+        "lbl_correlation_no_data":      "No price data could be loaded for this period.",
+        "lbl_correlation_min_stocks":   "At least 2 securities are required for a correlation matrix.",
         "title_notes":                  "📝 Portfolio Notes",
         "lbl_note_placeholder":         "Enter new note…",
         "btn_add_note":                 "Add",
@@ -2873,7 +2893,7 @@ more than enough for personal use.</p>
         "lbl_total_portfolio":                     "Total Portfolio",
         # Perf contrib tooltip
         "tip_perf_contrib_label":                  "Contribution to total performance",
-        "tip_ri_factor":                           "RI Factor (Return / Investment Share)\nCapital share: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI factor: {ri:.2f} {icon}\n(>1 = above average, <1 = below average)",
+        "tip_ri_factor":                           "RI Factor (Return / Investment Share)\nCapital share: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI factor: {ri:.2f} {icon}\n(>1 = above average, <1 = below average)\n❓ Right-click → Help",
         # N/A label
         "lbl_na_negative_earnings":                "<span style='color:gray'><i>N/A (neg. earnings or no data)</i></span>",
         # Currency converter
@@ -2937,6 +2957,7 @@ more than enough for personal use.</p>
         "lbl_above":                               "above",
         "lbl_below":                               "below",
         "alpha_outperform":                        "Outperformance achieved",
+        "alpha_chart_outperform":                  "Outperformance",
         "alpha_slight_out":                        "Slight outperformance",
         "alpha_slight_under":                      "Slight underperformance",
         "alpha_underperform":                      "Underperformance",
@@ -3329,6 +3350,7 @@ more than enough for personal use.</p>
         "lbl_update_connecting":      "Connecting…",
         "lbl_update_warn_backup":     "ℹ The app will restart automatically after the update.\nYour portfolios will not be changed. A backup is still recommended.",
         "lbl_update_error_title":     "Update Error",
+        "lbl_update_install_failed":  "Installation failed",
         "msg_update_ready":           "Stock Monitor v{version} has been downloaded and is ready to install.\n\nWould you like to restart the app now?\nThe update will run automatically when the app is closed.",
         "btn_update_now":             "Restart Now",
         "btn_update_later":           "Later",
@@ -3337,6 +3359,10 @@ more than enough for personal use.</p>
         "lbl_yf_toast_msg_exe":       "Version {latest} is available (installed: {installed}).\nThe app will update and restart automatically.",
         "lbl_yf_toast_msg_flatpak":   "Version {latest} is available (installed: {installed}).\nThe update will arrive automatically with the next Flatpak release.",
         "lbl_yf_update_done":         "✅ yfinance {version} installed! App will restart…",
+        "msg_yf_installed":           "yfinance {version} has been installed.",
+        "msg_restart_now_question":   "Restart now?",
+        "btn_restart_now":            "Restart now",
+        "btn_restart_later":          "Restart later",
         "lbl_yf_flatpak_managed":     "✅ yfinance is updated via the Flatpak Store.",
 
         # ── Flatpak App-Update ────────────────────────────────────────────────
