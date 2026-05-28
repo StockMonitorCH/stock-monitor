@@ -16,6 +16,7 @@ py_sources = [
   'portfolio_analysis.py',
   'portfolio_analysis_extended.py',
   'portfolio_analysis_texts.py',
+  'etf_holdings.py',
 ]
 
 install_data(py_sources,
