@@ -60,6 +60,60 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.4.0" date="2026-05-25">
+      <description>
+        <p>Dark mode corrections, CSV import fix, RI factor left-click action.</p>
+        <p xml:lang="de">Dark-Mode-Korrekturen, CSV-Import-Fix, RI-Faktor Linksklick-Aktion.</p>
+      </description>
+    </release>
+    <release version="5.3.3" date="2026-05-18">
+      <description>
+        <p>Bugfixes: sector normalisation, ComboBox contrast, comparison dialog.</p>
+        <p xml:lang="de">Bugfixes: Sektor-Normalisierung, ComboBox-Kontrast, Vergleichs-Dialog.</p>
+      </description>
+    </release>
+    <release version="5.3.2" date="2026-05-12">
+      <description>
+        <p>Fix QThread crash (Signal 6/ABRT) on parallel downloads.</p>
+        <p xml:lang="de">Fix QThread-Crash (Signal 6/ABRT) bei parallelen Downloads.</p>
+      </description>
+    </release>
+    <release version="5.3.1" date="2026-05-09">
+      <description>
+        <p>Sector column and company name tooltip fixes.</p>
+        <p xml:lang="de">Sektor-Spalte und Firmenname-Tooltip Fixes.</p>
+      </description>
+    </release>
+    <release version="5.3.0" date="2026-05-08">
+      <description>
+        <p>ETF/fund composition view, fix demo portfolio window.</p>
+        <p xml:lang="de">ETF/Fonds-Zusammensetzung und Fix Demo-Portfolio-Fenster.</p>
+      </description>
+    </release>
+    <release version="5.2.3" date="2026-05-06">
+      <description>
+        <p>Dark mode fixes for beta dialog and Monte Carlo table.</p>
+        <p xml:lang="de">Dark-Mode-Fixes für Beta-Dialog und Monte-Carlo-Tabelle.</p>
+      </description>
+    </release>
+    <release version="5.2.2" date="2026-05-05">
+      <description>
+        <p>Complete GICS sector assignment with 4 levels.</p>
+        <p xml:lang="de">Vollständige GICS-Zuordnung mit 4 Ebenen.</p>
+      </description>
+    </release>
+    <release version="5.2.0" date="2026-05-01">
+      <description>
+        <p>Dark mode fixes and further improvements.</p>
+        <p xml:lang="de">Dark-Mode-Fixes und weitere Verbesserungen.</p>
+      </description>
+    </release>
+    <release version="5.1.2" date="2026-04-27">
+      <description>
+        <p>Dark mode fixes for Windows.</p>
+        <p xml:lang="de">Dark-Mode-Fixes für Windows.</p>
+      </description>
+    </release>
     <release version="5.0.7" date="2026-04-25">
       <description>
         <p>Demo portfolio with legal disclaimer, live data, watermark. Flatpak fixes: persistent settings, world map, tax module stability, Finment opens in system browser.</p>
