@@ -13,6 +13,9 @@ py_sources = [
   'config.py',
   'market_data.py',
   'portfolio_db.py',
+  'portfolio_analysis.py',
+  'portfolio_analysis_extended.py',
+  'portfolio_analysis_texts.py',
 ]
 
 install_data(py_sources,
