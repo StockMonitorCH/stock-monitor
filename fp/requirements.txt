@@ -20,7 +20,7 @@ six==1.17.0
 charset-normalizer==3.4.7
 et-xmlfile==2.0.0
 pycparser==3.0
-yfinance==1.2.2
+yfinance==1.4.0
 curl-cffi==0.15.0
 rich==15.0.0
 markdown-it-py==4.0.0
