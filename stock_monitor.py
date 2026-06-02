@@ -28914,7 +28914,22 @@ class StockMonitorApp(QMainWindow):
                                 mb_d = downloaded / 1_048_576
                                 sigs.progress_update.emit(30, f"Download: {mb_d:.1f} MB…")
 
-                sigs.progress_update.emit(96, "Wird installiert…")
+                sigs.progress_update.emit(96, "Wird installiert… (kann einige Minuten dauern)")
+
+                _anim = {'pct': 96}
+
+                def _start_install_anim():
+                    t = QTimer(prog_dlg)
+                    def _tick():
+                        if _anim['pct'] < 98:
+                            _anim['pct'] += 1
+                            prog.setValue(_anim['pct'])
+                        else:
+                            t.stop()
+                    t.timeout.connect(_tick)
+                    t.start(2000)
+
+                QTimer.singleShot(0, _start_install_anim)
 
                 # dnf bevorzugen (Fedora), Fallback auf rpm
                 if subprocess.run(["which", "dnf"], capture_output=True).returncode == 0:
@@ -28922,11 +28937,22 @@ class StockMonitorApp(QMainWindow):
                 else:
                     cmd = ["pkexec", "rpm", "-Uvh", "--force", fpath]
 
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-                if result.returncode == 0:
-                    sigs.finished.emit("ok", "")
-                else:
-                    sigs.finished.emit("error", (result.stderr or result.stdout or "").strip())
+                # Popen statt subprocess.run: verhindert Pipe-Deadlock wenn dnf als
+                # Root-Prozess nach pkexec-Kill weiterläuft und Pipes offen hält
+                proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                try:
+                    _, stderr = proc.communicate(timeout=600)
+                    if proc.returncode == 0:
+                        sigs.finished.emit("ok", "")
+                    else:
+                        sigs.finished.emit("error", stderr.strip())
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    try:
+                        proc.communicate(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        pass
+                    sigs.finished.emit("error", "Timeout: Installation hat zu lange gedauert.")
             except Exception as e:
                 sigs.finished.emit("error", str(e))
 
