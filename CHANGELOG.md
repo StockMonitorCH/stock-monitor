@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [5.4.1] – 2026-06-02
+
+### Fixed
+- Critical crash (SIGABRT / Signal 6) when opening the portfolio or closing the app while portfolio data was loading. Caused by unsafe thread termination (`pthread_cancel` on Python threads) and a race condition in the update worker. Workers now use cooperative cancellation (`requestInterruption`) and `finished.connect(deleteLater)` for safe shutdown.
+- Sorting by the G/V column in the portfolio overview now correctly uses CHF-based gain/loss values. Previously, positions losing in CHF (due to USD/CHF currency effects) could appear among the winners.
+- Sorting by the Performance Contribution column now correctly uses CHF-based values when CHF is selected. Same USD-vs-CHF root cause as the G/V sort fix.
+- Linux (RPM): Library installation (yfinance etc.) no longer requires root privileges. The launcher now installs packages directly into `~/.local/share/stock-monitor/lib`, making installation via Discover and other graphical package managers fully reliable.
+
+---
+
+## [5.4.0] – 2026-05-25
+
+### Added
+- Portfolio correlation matrix: shows how strongly securities move in relation to each other. Time period selectable (1 month to 5 years). Accessible from the portfolio overview.
+
+### Fixed
+- Dark mode: various UI corrections
+- CSV import: fix for edge cases
+- RI-Factor help now opens with a left-click on the ✅/⚠️ symbol (no right-click required)
+
+### Changed
+- Chart labels (Beta, Alpha, Sharpe Ratio) and update dialog now use the translation system (available in English)
+
+---
+
 ## [5.0.3] – 2026-04-23
 
 ### Fixed
