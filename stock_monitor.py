@@ -28595,54 +28595,66 @@ class StockMonitorApp(QMainWindow):
         QApplication.setActiveWindow(dlg)
 
     def _do_flatpak_install(self, version, flatpak_url):
-        """Lädt die .flatpak-Datei nach ~/Downloads und installiert sie direkt."""
-        import subprocess, threading
+        """Lädt die .flatpak-Datei herunter (0-85 % real) und installiert sie (85-100 % animiert)."""
+        import subprocess, threading, urllib.request, ssl
+        from PyQt6.QtCore import pyqtSignal, QObject
+
+        class _Sigs(QObject):
+            progress = pyqtSignal(int, str)   # Prozent, Statustext
+
+        sigs = _Sigs(self)
 
         prog_dlg = QDialog(self)
         prog_dlg.setWindowTitle(TR("title_flatpak_install"))
-        prog_dlg.setFixedWidth(420)
+        prog_dlg.setFixedWidth(440)
         prog_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
         lay = QVBoxLayout(prog_dlg)
         lay.setContentsMargins(20, 16, 20, 14)
-        lay.setSpacing(10)
-        msg_lbl = QLabel(TR("lbl_flatpak_downloading", version=version))
-        msg_lbl.setWordWrap(True)
-        lay.addWidget(msg_lbl)
-        from PyQt6.QtWidgets import QProgressBar
+        lay.setSpacing(8)
+
+        title_lbl = QLabel(TR("lbl_flatpak_downloading", version=version))
+        title_lbl.setWordWrap(True)
+        lay.addWidget(title_lbl)
+
         prog = QProgressBar()
-        prog.setRange(0, 0)
+        prog.setRange(0, 100)
+        prog.setValue(0)
         lay.addWidget(prog)
+
+        status_lbl = QLabel("")
+        status_lbl.setStyleSheet("color:#888; font-size:11px;")
+        lay.addWidget(status_lbl)
+
         prog_dlg.show()
 
-        def _run():
-            try:
-                tmpdir = os.path.join(os.path.expanduser("~"), ".cache", "stockmonitor-update")
-                os.makedirs(tmpdir, exist_ok=True)
-                fname = f"StockMonitor-{version}.flatpak"
-                fpath = os.path.join(tmpdir, fname)
-                # Download via host curl (umgeht Sandbox-SSL-Probleme)
-                dl = subprocess.run(
-                    ['flatpak-spawn', '--host', 'curl', '-L', '--fail',
-                     '-o', fpath, flatpak_url],
-                    capture_output=True, text=True, timeout=600
-                )
-                if dl.returncode != 0:
-                    QTimer.singleShot(0, lambda e=(dl.stderr or dl.stdout or "curl error").strip(): _on_error(e))
+        _state = {'timer': None, 'done': False}
+
+        sigs.progress.connect(
+            lambda v, t: (prog.setValue(v), status_lbl.setText(t)),
+            Qt.ConnectionType.QueuedConnection
+        )
+
+        def _start_install_animation():
+            if _state['done']:
+                return
+            title_lbl.setText(TR("lbl_flatpak_installing"))
+            _val = [85]
+            def _tick():
+                if _state['done'] or _val[0] >= 98:
                     return
-                result = subprocess.run(
-                    ['flatpak-spawn', '--host', 'flatpak', 'install',
-                     '--user', '--bundle', '--assumeyes', '--noninteractive', fpath],
-                    capture_output=True, text=True, timeout=300
-                )
-                if result.returncode == 0:
-                    QTimer.singleShot(0, lambda: _on_success())
-                else:
-                    QTimer.singleShot(0, lambda: _on_error(
-                        (result.stderr or result.stdout or "").strip()))
-            except Exception as e:
-                QTimer.singleShot(0, lambda e=str(e): _on_error(e))
+                _val[0] += 1
+                sigs.progress.emit(_val[0], "")
+            timer = QTimer(prog_dlg)
+            timer.setInterval(800)
+            timer.timeout.connect(_tick)
+            timer.start()
+            _state['timer'] = timer
 
         def _on_success():
+            _state['done'] = True
+            if _state['timer']:
+                _state['timer'].stop()
+            prog.setValue(100)
             prog_dlg.close()
             from PyQt6.QtWidgets import QMessageBox
             mb = QMessageBox(self)
@@ -28652,6 +28664,9 @@ class StockMonitorApp(QMainWindow):
             mb.exec()
 
         def _on_error(err):
+            _state['done'] = True
+            if _state['timer']:
+                _state['timer'].stop()
             prog_dlg.close()
             from PyQt6.QtWidgets import QMessageBox
             mb = QMessageBox(self)
@@ -28659,6 +28674,73 @@ class StockMonitorApp(QMainWindow):
             mb.setText(TR("lbl_flatpak_install_error") + f"\n\n{err}")
             mb.setIcon(QMessageBox.Icon.Warning)
             mb.exec()
+
+        def _run():
+            try:
+                tmpdir = os.path.join(os.path.expanduser("~"), ".cache", "stockmonitor-update")
+                os.makedirs(tmpdir, exist_ok=True)
+                fpath = os.path.join(tmpdir, f"StockMonitor-{version}.flatpak")
+
+                # ── Phase 1: Download (0–85 %) ────────────────────────────
+                downloaded = False
+                try:
+                    try:
+                        import certifi
+                        ctx = ssl.create_default_context(cafile=certifi.where())
+                    except Exception:
+                        ctx = ssl.create_default_context()
+                    req = urllib.request.Request(
+                        flatpak_url, headers={"User-Agent": "StockMonitor"})
+                    with urllib.request.urlopen(req, timeout=600, context=ctx) as resp:
+                        total = int(resp.headers.get("Content-Length", 0))
+                        done  = 0
+                        with open(fpath, "wb") as f:
+                            while True:
+                                buf = resp.read(65536)
+                                if not buf:
+                                    break
+                                f.write(buf)
+                                done += len(buf)
+                                if total > 0:
+                                    pct = int(done / total * 85)
+                                    sigs.progress.emit(
+                                        pct,
+                                        f"{done/1_048_576:.0f} / {total/1_048_576:.0f} MB"
+                                    )
+                    downloaded = True
+                except Exception:
+                    pass   # Fallback: curl via Host
+
+                if not downloaded:
+                    # SSL-Fallback innerhalb Flatpak-Sandbox: curl auf dem Host
+                    sigs.progress.emit(0, "")
+                    dl = subprocess.run(
+                        ['flatpak-spawn', '--host', 'curl', '-L', '--fail',
+                         '-o', fpath, flatpak_url],
+                        capture_output=True, text=True, timeout=600
+                    )
+                    if dl.returncode != 0:
+                        err = (dl.stderr or dl.stdout or "curl error").strip()
+                        QTimer.singleShot(0, lambda e=err: _on_error(e))
+                        return
+                    sigs.progress.emit(85, "")
+
+                # ── Phase 2: Install (85–100 %, animiert) ─────────────────
+                sigs.progress.emit(85, "")
+                QTimer.singleShot(0, _start_install_animation)
+
+                result = subprocess.run(
+                    ['flatpak-spawn', '--host', 'flatpak', 'install',
+                     '--user', '--bundle', '--assumeyes', '--noninteractive', fpath],
+                    capture_output=True, text=True, timeout=300
+                )
+                if result.returncode == 0:
+                    QTimer.singleShot(0, _on_success)
+                else:
+                    err = (result.stderr or result.stdout or "").strip()
+                    QTimer.singleShot(0, lambda e=err: _on_error(e))
+            except Exception as e:
+                QTimer.singleShot(0, lambda e=str(e): _on_error(e))
 
         threading.Thread(target=_run, daemon=True).start()
 

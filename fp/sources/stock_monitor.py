@@ -15,12 +15,34 @@ Features:
 import sys
 import os
 import traceback
+
+# Wenn das Script via exec(open(...).read()) gestartet wird (z.B. Flatpak-Wrapper),
+# ist __file__ nicht automatisch gesetzt – hier als Fallback definieren.
+try:
+    __file__
+except NameError:
+    _fallback_paths = [
+        "/app/lib/stock-monitor/stock_monitor.py",   # Flatpak
+        "/opt/stock-monitor/app/stock_monitor.py",   # RPM / deb
+    ]
+    __file__ = next(
+        (_p for _p in _fallback_paths if os.path.exists(_p)),
+        sys.argv[0] if sys.argv else ""
+    )
+
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
 
+# ── Demo-Portfolio Einfrierung ────────────────────────────────────────────────
+_DEMO_CUTOFF: str | None = None  # wird auf "2026-03-31" gesetzt wenn Demo-Portfolio aktiv
+
+def _set_demo_cutoff(active: bool) -> None:
+    global _DEMO_CUTOFF
+    _DEMO_CUTOFF = "2026-03-31" if active else None
+
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.0.1"                            # beim Release anpassen
+APP_VERSION  = "5.4.1"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -42,8 +64,10 @@ def _get_app_dir() -> str:
     return os.path.expanduser("~")
 
 _APP_DIR        = _get_app_dir()
-_DATA_HOME      = os.path.join(_APP_DIR, "_internal") if sys.platform == "win32" else os.path.expanduser("~")
-_PORTFOLIO_HOME = os.path.join(_APP_DIR, "Portfolios") if sys.platform == "win32" else os.path.expanduser("~")
+_in_flatpak     = os.path.exists('/.flatpak-info')
+_xdg_data       = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~")) if _in_flatpak else os.path.expanduser("~")
+_DATA_HOME      = os.path.join(_APP_DIR, "_internal") if sys.platform == "win32" else _xdg_data
+_PORTFOLIO_HOME = os.path.join(_APP_DIR, "Portfolios") if sys.platform == "win32" else _xdg_data
 
 if sys.platform == "win32":
     os.makedirs(_DATA_HOME, exist_ok=True)
@@ -88,12 +112,20 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QLineEdit, QFrame, QCheckBox, QDialog, QDialogButtonBox, 
                              QMessageBox, QListWidget, QDateEdit, QScrollArea, QTabWidget, QProgressBar,
                              QStackedWidget)
-from PyQt6.QtCore import QTimer, Qt, pyqtSignal, QThread, QUrl, QDate
+from PyQt6.QtCore import QTimer, Qt, pyqtSignal, QThread, QUrl, QDate, QEvent
 from PyQt6.QtGui import QFont, QIcon
 try:
     from PyQt6.QtWebEngineWidgets import QWebEngineView
     from PyQt6.QtWebEngineCore import QWebEnginePage
-    _WEBENGINE_AVAILABLE = True
+    import os as _os_we
+    # Im Flatpak crasht Chromium (SIGABRT) wegen verschachtelter Sandbox.
+    # Fallback-Modus: Seiten im System-Browser öffnen.
+    if _os_we.path.exists('/.flatpak-info'):
+        _WEBENGINE_AVAILABLE = False
+        QWebEngineView = None
+        QWebEnginePage = None
+    else:
+        _WEBENGINE_AVAILABLE = True
 except ImportError:
     _WEBENGINE_AVAILABLE = False
     QWebEngineView = None
@@ -297,195 +329,329 @@ except ImportError:
 # Struktur: industry (Yahoo) → (sector, industry_group, sub_industry)
 # Yahoo liefert 'sector' und 'industry' – Industry Group + Sub-Industry via Mapping
 _GICS_HIERARCHY = {
+    # Schlüssel = Yahoo-Industry-String → (GICS-Sektor, Industry Group, Industry, Sub-Industry)
     # ── Energy ──────────────────────────────────────────────────────────────
-    'Oil & Gas Drilling':                          ('Energy',               'Energy',                         'Oil & Gas Drilling'),
-    'Oil & Gas Equipment & Services':              ('Energy',               'Energy',                         'Oil & Gas Equipment & Services'),
-    'Integrated Oil & Gas':                        ('Energy',               'Energy',                         'Integrated Oil & Gas'),
-    'Oil & Gas Exploration & Production':          ('Energy',               'Energy',                         'Oil & Gas Exploration & Production'),
-    'Oil & Gas Refining & Marketing':              ('Energy',               'Energy',                         'Oil & Gas Refining & Marketing'),
-    'Oil & Gas Storage & Transportation':          ('Energy',               'Energy',                         'Oil & Gas Storage & Transportation'),
-    'Coal & Consumable Fuels':                     ('Energy',               'Energy',                         'Coal & Consumable Fuels'),
+    'Oil & Gas Drilling':                          ('Energy',                 'Energy',                                    'Energy Equipment & Services',                          'Oil & Gas Drilling'),
+    'Oil & Gas Equipment & Services':              ('Energy',                 'Energy',                                    'Energy Equipment & Services',                          'Oil & Gas Equipment & Services'),
+    'Integrated Oil & Gas':                        ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Integrated Oil & Gas'),
+    'Oil & Gas Exploration & Production':          ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Exploration & Production'),
+    'Oil & Gas Refining & Marketing':              ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Refining & Marketing'),
+    'Oil & Gas Storage & Transportation':          ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Storage & Transportation'),
+    'Coal & Consumable Fuels':                     ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Coal & Consumable Fuels'),
     # ── Materials ───────────────────────────────────────────────────────────
-    'Commodity Chemicals':                         ('Materials',            'Materials',                      'Commodity Chemicals'),
-    'Diversified Chemicals':                       ('Materials',            'Materials',                      'Diversified Chemicals'),
-    'Fertilizers & Agricultural Chemicals':        ('Materials',            'Materials',                      'Fertilizers & Agricultural Chemicals'),
-    'Industrial Gases':                            ('Materials',            'Materials',                      'Industrial Gases'),
-    'Specialty Chemicals':                         ('Materials',            'Materials',                      'Specialty Chemicals'),
-    'Construction Materials':                      ('Materials',            'Materials',                      'Construction Materials'),
-    'Metal & Glass Containers':                    ('Materials',            'Materials',                      'Metal & Glass Containers'),
-    'Paper Packaging':                             ('Materials',            'Materials',                      'Paper Packaging'),
-    'Aluminum':                                    ('Materials',            'Materials',                      'Aluminum'),
-    'Diversified Metals & Mining':                 ('Materials',            'Materials',                      'Diversified Metals & Mining'),
-    'Copper':                                      ('Materials',            'Materials',                      'Copper'),
-    'Gold':                                        ('Materials',            'Materials',                      'Gold'),
-    'Precious Metals & Minerals':                  ('Materials',            'Materials',                      'Precious Metals & Minerals'),
-    'Silver':                                      ('Materials',            'Materials',                      'Silver'),
-    'Steel':                                       ('Materials',            'Materials',                      'Steel'),
-    'Forest Products':                             ('Materials',            'Materials',                      'Forest Products'),
-    'Paper Products':                              ('Materials',            'Materials',                      'Paper Products'),
+    'Commodity Chemicals':                         ('Materials',              'Materials',                                 'Chemicals',                                            'Commodity Chemicals'),
+    'Diversified Chemicals':                       ('Materials',              'Materials',                                 'Chemicals',                                            'Diversified Chemicals'),
+    'Fertilizers & Agricultural Chemicals':        ('Materials',              'Materials',                                 'Chemicals',                                            'Fertilizers & Agricultural Chemicals'),
+    'Industrial Gases':                            ('Materials',              'Materials',                                 'Chemicals',                                            'Industrial Gases'),
+    'Specialty Chemicals':                         ('Materials',              'Materials',                                 'Chemicals',                                            'Specialty Chemicals'),
+    'Construction Materials':                      ('Materials',              'Materials',                                 'Construction Materials',                               'Construction Materials'),
+    'Metal & Glass Containers':                    ('Materials',              'Materials',                                 'Containers & Packaging',                               'Metal & Glass Containers'),
+    'Paper Packaging':                             ('Materials',              'Materials',                                 'Containers & Packaging',                               'Paper & Plastic Packaging Products & Materials'),
+    'Aluminum':                                    ('Materials',              'Materials',                                 'Metals & Mining',                                      'Aluminum'),
+    'Diversified Metals & Mining':                 ('Materials',              'Materials',                                 'Metals & Mining',                                      'Diversified Metals & Mining'),
+    'Copper':                                      ('Materials',              'Materials',                                 'Metals & Mining',                                      'Copper'),
+    'Gold':                                        ('Materials',              'Materials',                                 'Metals & Mining',                                      'Gold'),
+    'Precious Metals & Minerals':                  ('Materials',              'Materials',                                 'Metals & Mining',                                      'Precious Metals & Minerals'),
+    'Silver':                                      ('Materials',              'Materials',                                 'Metals & Mining',                                      'Silver'),
+    'Steel':                                       ('Materials',              'Materials',                                 'Metals & Mining',                                      'Steel'),
+    'Forest Products':                             ('Materials',              'Materials',                                 'Paper & Forest Products',                              'Forest Products & Timber'),
+    'Paper Products':                              ('Materials',              'Materials',                                 'Paper & Forest Products',                              'Paper Products'),
     # ── Industrials ─────────────────────────────────────────────────────────
-    'Aerospace & Defense':                         ('Industrials',          'Capital Goods',                  'Aerospace & Defense'),
-    'Building Products':                           ('Industrials',          'Capital Goods',                  'Building Products'),
-    'Construction & Engineering':                  ('Industrials',          'Capital Goods',                  'Construction & Engineering'),
-    'Electrical Components & Equipment':           ('Industrials',          'Capital Goods',                  'Electrical Components & Equipment'),
-    'Heavy Electrical Equipment':                  ('Industrials',          'Capital Goods',                  'Heavy Electrical Equipment'),
-    'Industrial Conglomerates':                    ('Industrials',          'Capital Goods',                  'Industrial Conglomerates'),
-    'Construction Machinery & Heavy Trucks':       ('Industrials',          'Capital Goods',                  'Construction Machinery & Heavy Trucks'),
-    'Agricultural & Farm Machinery':               ('Industrials',          'Capital Goods',                  'Agricultural & Farm Machinery'),
-    'Industrial Machinery & Supplies':             ('Industrials',          'Capital Goods',                  'Industrial Machinery & Supplies'),
-    'Trading Companies & Distributors':            ('Industrials',          'Capital Goods',                  'Trading Companies & Distributors'),
-    'Commercial Printing':                         ('Industrials',          'Commercial & Professional Services', 'Commercial Printing'),
-    'Environmental & Facilities Services':         ('Industrials',          'Commercial & Professional Services', 'Environmental & Facilities Services'),
-    'Office Services & Supplies':                  ('Industrials',          'Commercial & Professional Services', 'Office Services & Supplies'),
-    'Diversified Support Services':                ('Industrials',          'Commercial & Professional Services', 'Diversified Support Services'),
-    'Security & Alarm Services':                   ('Industrials',          'Commercial & Professional Services', 'Security & Alarm Services'),
-    'Human Resource & Employment Services':        ('Industrials',          'Commercial & Professional Services', 'Human Resource & Employment Services'),
-    'Research & Consulting Services':              ('Industrials',          'Commercial & Professional Services', 'Research & Consulting Services'),
-    'Airlines':                                    ('Industrials',          'Transportation',                 'Airlines'),
-    'Marine Transportation':                       ('Industrials',          'Transportation',                 'Marine Transportation'),
-    'Rail Transportation':                         ('Industrials',          'Transportation',                 'Rail Transportation'),
-    'Cargo Ground Transportation':                 ('Industrials',          'Transportation',                 'Cargo Ground Transportation'),
-    'Passenger Ground Transportation':             ('Industrials',          'Transportation',                 'Passenger Ground Transportation'),
-    'Airport Services':                            ('Industrials',          'Transportation',                 'Airport Services'),
-    'Highways & Railtracks':                       ('Industrials',          'Transportation',                 'Highways & Railtracks'),
-    'Marine Ports & Services':                     ('Industrials',          'Transportation',                 'Marine Ports & Services'),
-    'Air Freight & Logistics':                     ('Industrials',          'Transportation',                 'Air Freight & Logistics'),
+    'Aerospace & Defense':                         ('Industrials',            'Capital Goods',                             'Aerospace & Defense',                                  'Aerospace & Defense'),
+    'Building Products':                           ('Industrials',            'Capital Goods',                             'Building Products',                                    'Building Products'),
+    'Construction & Engineering':                  ('Industrials',            'Capital Goods',                             'Construction & Engineering',                           'Construction & Engineering'),
+    'Electrical Components & Equipment':           ('Industrials',            'Capital Goods',                             'Electrical Equipment',                                 'Electrical Components & Equipment'),
+    'Heavy Electrical Equipment':                  ('Industrials',            'Capital Goods',                             'Electrical Equipment',                                 'Heavy Electrical Equipment'),
+    'Industrial Conglomerates':                    ('Industrials',            'Capital Goods',                             'Industrial Conglomerates',                             'Industrial Conglomerates'),
+    'Construction Machinery & Heavy Trucks':       ('Industrials',            'Capital Goods',                             'Machinery',                                            'Construction Machinery & Heavy Trucks'),
+    'Agricultural & Farm Machinery':               ('Industrials',            'Capital Goods',                             'Machinery',                                            'Agricultural & Farm Machinery'),
+    'Industrial Machinery & Supplies':             ('Industrials',            'Capital Goods',                             'Machinery',                                            'Industrial Machinery & Supplies & Components'),
+    'Trading Companies & Distributors':            ('Industrials',            'Capital Goods',                             'Trading Companies & Distributors',                     'Trading Companies & Distributors'),
+    'Commercial Printing':                         ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Commercial Printing'),
+    'Environmental & Facilities Services':         ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Environmental & Facilities Services'),
+    'Office Services & Supplies':                  ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Office Services & Supplies'),
+    'Diversified Support Services':                ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Diversified Support Services'),
+    'Security & Alarm Services':                   ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Security & Alarm Services'),
+    'Human Resource & Employment Services':        ('Industrials',            'Commercial & Professional Services',        'Professional Services',                                'Human Resource & Employment Services'),
+    'Research & Consulting Services':              ('Industrials',            'Commercial & Professional Services',        'Professional Services',                                'Research & Consulting Services'),
+    'Airlines':                                    ('Industrials',            'Transportation',                            'Passenger Airlines',                                   'Passenger Airlines'),
+    'Marine Transportation':                       ('Industrials',            'Transportation',                            'Marine Transportation',                                'Marine Transportation'),
+    'Rail Transportation':                         ('Industrials',            'Transportation',                            'Ground Transportation',                                'Rail Transportation'),
+    'Cargo Ground Transportation':                 ('Industrials',            'Transportation',                            'Ground Transportation',                                'Cargo Ground Transportation'),
+    'Passenger Ground Transportation':             ('Industrials',            'Transportation',                            'Ground Transportation',                                'Passenger Ground Transportation'),
+    'Airport Services':                            ('Industrials',            'Transportation',                            'Transportation Infrastructure',                        'Airport Services'),
+    'Highways & Railtracks':                       ('Industrials',            'Transportation',                            'Transportation Infrastructure',                        'Highways & Railtracks'),
+    'Marine Ports & Services':                     ('Industrials',            'Transportation',                            'Transportation Infrastructure',                        'Marine Ports & Services'),
+    'Air Freight & Logistics':                     ('Industrials',            'Transportation',                            'Air Freight & Logistics',                              'Air Freight & Logistics'),
     # ── Consumer Discretionary ──────────────────────────────────────────────
-    'Automobile Manufacturers':                    ('Consumer Cyclical',    'Automobiles & Components',       'Automobile Manufacturers'),
-    'Motorcycle Manufacturers':                    ('Consumer Cyclical',    'Automobiles & Components',       'Motorcycle Manufacturers'),
-    'Auto Parts & Equipment':                      ('Consumer Cyclical',    'Automobiles & Components',       'Auto Parts & Equipment'),
-    'Tires & Rubber':                              ('Consumer Cyclical',    'Automobiles & Components',       'Tires & Rubber'),
-    'Consumer Electronics':                        ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Consumer Electronics'),
-    'Home Furnishings':                            ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Home Furnishings'),
-    'Homebuilding':                                ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Homebuilding'),
-    'Household Appliances':                        ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Household Appliances'),
-    'Housewares & Specialties':                    ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Housewares & Specialties'),
-    'Leisure Products':                            ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Leisure Products'),
-    'Apparel, Accessories & Luxury Goods':         ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Apparel, Accessories & Luxury Goods'),
-    'Footwear':                                    ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Footwear'),
-    'Textiles':                                    ('Consumer Cyclical',    'Consumer Durables & Apparel',    'Textiles'),
-    'Casinos & Gaming':                            ('Consumer Cyclical',    'Consumer Services',              'Casinos & Gaming'),
-    'Hotels, Resorts & Cruise Lines':              ('Consumer Cyclical',    'Consumer Services',              'Hotels, Resorts & Cruise Lines'),
-    'Leisure Facilities':                          ('Consumer Cyclical',    'Consumer Services',              'Leisure Facilities'),
-    'Restaurants':                                 ('Consumer Cyclical',    'Consumer Services',              'Restaurants'),
-    'Education Services':                          ('Consumer Cyclical',    'Consumer Services',              'Education Services'),
-    'Specialized Consumer Services':               ('Consumer Cyclical',    'Consumer Services',              'Specialized Consumer Services'),
-    'Distributors':                                ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Distributors'),
-    'Internet & Direct Marketing Retail':          ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Broadline Retail'),
-    'Broadline Retail':                            ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Broadline Retail'),
-    'Apparel Retail':                              ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
-    'Computer & Electronics Retail':               ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
-    'Home Improvement Retail':                     ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
-    'Other Specialty Retail':                      ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
-    'Specialty Retail':                            ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
-    'Automotive Retail':                           ('Consumer Cyclical',    'Consumer Discretionary Distribution & Retail', 'Specialty Retail'),
+    'Automobile Manufacturers':                    ('Consumer Discretionary', 'Automobiles & Components',                  'Automobiles',                                          'Automobile Manufacturers'),
+    'Motorcycle Manufacturers':                    ('Consumer Discretionary', 'Automobiles & Components',                  'Automobiles',                                          'Motorcycle Manufacturers'),
+    'Auto Parts & Equipment':                      ('Consumer Discretionary', 'Automobiles & Components',                  'Automobile Components',                                'Auto Parts & Equipment'),
+    'Tires & Rubber':                              ('Consumer Discretionary', 'Automobiles & Components',                  'Automobile Components',                                'Tires & Rubber'),
+    'Consumer Electronics':                        ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Consumer Electronics'),
+    'Home Furnishings':                            ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Home Furnishings'),
+    'Homebuilding':                                ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Homebuilding'),
+    'Household Appliances':                        ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Household Appliances'),
+    'Housewares & Specialties':                    ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Housewares & Specialties'),
+    'Leisure Products':                            ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Leisure Products',                                     'Leisure Products'),
+    'Apparel, Accessories & Luxury Goods':         ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Apparel, Accessories & Luxury Goods'),
+    'Footwear':                                    ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Footwear'),
+    'Textiles':                                    ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Textiles'),
+    'Casinos & Gaming':                            ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Casinos & Gaming'),
+    'Hotels, Resorts & Cruise Lines':              ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Hotels, Resorts & Cruise Lines'),
+    'Leisure Facilities':                          ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Leisure Facilities'),
+    'Restaurants':                                 ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Restaurants'),
+    'Education Services':                          ('Consumer Discretionary', 'Consumer Services',                         'Diversified Consumer Services',                        'Education Services'),
+    'Specialized Consumer Services':               ('Consumer Discretionary', 'Consumer Services',                         'Diversified Consumer Services',                        'Specialized Consumer Services'),
+    'Distributors':                                ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Distributors',                                     'Distributors'),
+    'Internet & Direct Marketing Retail':          ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Broadline Retail',                                 'Broadline Retail'),
+    'Broadline Retail':                            ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Broadline Retail',                                 'Broadline Retail'),
+    'Apparel Retail':                              ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Apparel Retail'),
+    'Computer & Electronics Retail':               ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Computer & Electronics Retail'),
+    'Home Improvement Retail':                     ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Home Improvement Retail'),
+    'Other Specialty Retail':                      ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Specialty Retail'),
+    'Specialty Retail':                            ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Specialty Retail'),
+    'Automotive Retail':                           ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Automotive Retail'),
     # ── Consumer Staples ────────────────────────────────────────────────────
-    'Drug Retail':                                 ('Consumer Defensive',   'Consumer Staples Distribution & Retail', 'Drug Retail'),
-    'Food Distributors':                           ('Consumer Defensive',   'Consumer Staples Distribution & Retail', 'Food Distributors'),
-    'Food Retail':                                 ('Consumer Defensive',   'Consumer Staples Distribution & Retail', 'Food Retail'),
-    'Consumer Staples Merchandise Retail':         ('Consumer Defensive',   'Consumer Staples Distribution & Retail', 'Consumer Staples Merchandise Retail'),
-    'Brewers':                                     ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Brewers'),
-    'Distillers & Vintners':                       ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Distillers & Vintners'),
-    'Soft Drinks & Non-alcoholic Beverages':       ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Soft Drinks & Non-alcoholic Beverages'),
-    'Agricultural Products & Services':            ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Agricultural Products & Services'),
-    'Meat, Poultry & Fish':                        ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Meat, Poultry & Fish'),
-    'Packaged Foods & Meats':                      ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Packaged Foods & Meats'),
-    'Tobacco':                                     ('Consumer Defensive',   'Food, Beverage & Tobacco',       'Tobacco'),
-    'Household Products':                          ('Consumer Defensive',   'Household & Personal Products',  'Household Products'),
-    'Personal Care Products':                      ('Consumer Defensive',   'Household & Personal Products',  'Personal Care Products'),
+    'Drug Retail':                                 ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Drug Retail'),
+    'Food Distributors':                           ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Food Distributors'),
+    'Food Retail':                                 ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Food Retail'),
+    'Consumer Staples Merchandise Retail':         ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Consumer Staples Merchandise Retail'),
+    'Brewers':                                     ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Brewers'),
+    'Distillers & Vintners':                       ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Distillers & Vintners'),
+    'Soft Drinks & Non-alcoholic Beverages':       ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Soft Drinks & Non-alcoholic Beverages'),
+    'Agricultural Products & Services':            ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Agricultural Products & Services'),
+    'Meat, Poultry & Fish':                        ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Meat, Poultry & Fish'),
+    'Packaged Foods & Meats':                      ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Packaged Foods & Meats'),
+    'Tobacco':                                     ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Tobacco',                                              'Tobacco'),
+    'Household Products':                          ('Consumer Staples',       'Household & Personal Products',             'Household Products',                                   'Household Products'),
+    'Personal Care Products':                      ('Consumer Staples',       'Household & Personal Products',             'Personal Care Products',                               'Personal Care Products'),
     # ── Health Care ─────────────────────────────────────────────────────────
-    'Health Care Equipment':                       ('Healthcare',           'Health Care Equipment & Services', 'Health Care Equipment'),
-    'Health Care Supplies':                        ('Healthcare',           'Health Care Equipment & Services', 'Health Care Supplies'),
-    'Health Care Distributors':                    ('Healthcare',           'Health Care Equipment & Services', 'Health Care Distributors'),
-    'Health Care Services':                        ('Healthcare',           'Health Care Equipment & Services', 'Health Care Services'),
-    'Health Care Facilities':                      ('Healthcare',           'Health Care Equipment & Services', 'Health Care Facilities'),
-    'Managed Health Care':                         ('Healthcare',           'Health Care Equipment & Services', 'Managed Health Care'),
-    'Biotechnology':                               ('Healthcare',           'Pharmaceuticals, Biotechnology & Life Sciences', 'Biotechnology'),
-    'Pharmaceuticals':                             ('Healthcare',           'Pharmaceuticals, Biotechnology & Life Sciences', 'Pharmaceuticals'),
-    'Life Sciences Tools & Services':              ('Healthcare',           'Pharmaceuticals, Biotechnology & Life Sciences', 'Life Sciences Tools & Services'),
+    'Health Care Equipment':                       ('Health Care',            'Health Care Equipment & Services',          'Health Care Equipment & Supplies',                     'Health Care Equipment'),
+    'Health Care Supplies':                        ('Health Care',            'Health Care Equipment & Services',          'Health Care Equipment & Supplies',                     'Health Care Supplies'),
+    'Health Care Distributors':                    ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Distributors'),
+    'Health Care Services':                        ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Services'),
+    'Health Care Facilities':                      ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Facilities'),
+    'Managed Health Care':                         ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Managed Health Care'),
+    'Biotechnology':                               ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Biotechnology',                                 'Biotechnology'),
+    'Pharmaceuticals':                             ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Pharmaceuticals',                               'Pharmaceuticals'),
+    'Life Sciences Tools & Services':              ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Life Sciences Tools & Services',                'Life Sciences Tools & Services'),
     # ── Financials ──────────────────────────────────────────────────────────
-    'Diversified Banks':                           ('Financial Services',   'Banks',                          'Diversified Banks'),
-    'Regional Banks':                              ('Financial Services',   'Banks',                          'Regional Banks'),
-    'Financial Exchanges & Data':                  ('Financial Services',   'Financial Services',             'Financial Exchanges & Data'),
-    'Asset Management & Custody Banks':            ('Financial Services',   'Financial Services',             'Asset Management & Custody Banks'),
-    'Investment Banking & Brokerage':              ('Financial Services',   'Financial Services',             'Investment Banking & Brokerage'),
-    'Diversified Capital Markets':                 ('Financial Services',   'Financial Services',             'Diversified Capital Markets'),
-    'Mortgage REITs':                              ('Financial Services',   'Financial Services',             'Mortgage REITs'),
-    'Consumer Finance':                            ('Financial Services',   'Financial Services',             'Consumer Finance'),
-    'Specialized Finance':                         ('Financial Services',   'Financial Services',             'Specialized Finance'),
-    'Commercial & Residential Mortgage Finance':   ('Financial Services',   'Financial Services',             'Commercial & Residential Mortgage Finance'),
-    'Transaction & Payment Processing Services':   ('Financial Services',   'Financial Services',             'Transaction & Payment Processing Services'),
-    'Insurance Brokers':                           ('Financial Services',   'Insurance',                      'Insurance Brokers'),
-    'Life & Health Insurance':                     ('Financial Services',   'Insurance',                      'Life & Health Insurance'),
-    'Multi-line Insurance':                        ('Financial Services',   'Insurance',                      'Multi-line Insurance'),
-    'Property & Casualty Insurance':               ('Financial Services',   'Insurance',                      'Property & Casualty Insurance'),
-    'Reinsurance':                                 ('Financial Services',   'Insurance',                      'Reinsurance'),
+    'Diversified Banks':                           ('Financials',             'Banks',                                     'Banks',                                                'Diversified Banks'),
+    'Regional Banks':                              ('Financials',             'Banks',                                     'Banks',                                                'Regional Banks'),
+    'Financial Exchanges & Data':                  ('Financials',             'Financial Services',                        'Capital Markets',                                      'Financial Exchanges & Data'),
+    'Asset Management & Custody Banks':            ('Financials',             'Financial Services',                        'Capital Markets',                                      'Asset Management & Custody Banks'),
+    'Investment Banking & Brokerage':              ('Financials',             'Financial Services',                        'Capital Markets',                                      'Investment Banking & Brokerage'),
+    'Diversified Capital Markets':                 ('Financials',             'Financial Services',                        'Capital Markets',                                      'Diversified Capital Markets'),
+    'Mortgage REITs':                              ('Financials',             'Financial Services',                        'Mortgage Real Estate Investment Trusts (REITs)',        'Mortgage REITs'),
+    'Consumer Finance':                            ('Financials',             'Financial Services',                        'Consumer Finance',                                     'Consumer Finance'),
+    'Specialized Finance':                         ('Financials',             'Financial Services',                        'Diversified Financial Services',                       'Specialized Finance'),
+    'Commercial & Residential Mortgage Finance':   ('Financials',             'Financial Services',                        'Diversified Financial Services',                       'Commercial & Residential Mortgage Finance'),
+    'Transaction & Payment Processing Services':   ('Financials',             'Financial Services',                        'Diversified Financial Services',                       'Transaction & Payment Processing Services'),
+    'Insurance Brokers':                           ('Financials',             'Insurance',                                 'Insurance',                                            'Insurance Brokers'),
+    'Life & Health Insurance':                     ('Financials',             'Insurance',                                 'Insurance',                                            'Life & Health Insurance'),
+    'Multi-line Insurance':                        ('Financials',             'Insurance',                                 'Insurance',                                            'Multi-line Insurance'),
+    'Property & Casualty Insurance':               ('Financials',             'Insurance',                                 'Insurance',                                            'Property & Casualty Insurance'),
+    'Reinsurance':                                 ('Financials',             'Insurance',                                 'Insurance',                                            'Reinsurance'),
     # ── Information Technology ──────────────────────────────────────────────
-    'IT Consulting & Other Services':              ('Technology',           'Software & Services',            'IT Consulting & Other Services'),
-    'Data Processing & Outsourced Services':       ('Technology',           'Software & Services',            'Data Processing & Outsourced Services'),
-    'Application Software':                        ('Technology',           'Software & Services',            'Application Software'),
-    'Systems Software':                            ('Technology',           'Software & Services',            'Systems Software'),
-    'Technology Distributors':                     ('Technology',           'Technology Hardware & Equipment', 'Technology Distributors'),
-    'Electronic Equipment & Instruments':          ('Technology',           'Technology Hardware & Equipment', 'Electronic Equipment & Instruments'),
-    'Electronic Components':                       ('Technology',           'Technology Hardware & Equipment', 'Electronic Components'),
-    'Electronic Manufacturing Services':           ('Technology',           'Technology Hardware & Equipment', 'Electronic Manufacturing Services'),
-    'Technology Hardware, Storage & Peripherals':  ('Technology',           'Technology Hardware & Equipment', 'Technology Hardware, Storage & Peripherals'),
-    'Semiconductor Materials & Equipment':         ('Technology',           'Semiconductors & Semiconductor Equipment', 'Semiconductor Materials & Equipment'),
-    'Semiconductors':                              ('Technology',           'Semiconductors & Semiconductor Equipment', 'Semiconductors'),
+    'IT Consulting & Other Services':              ('Information Technology', 'Software & Services',                       'IT Services',                                          'IT Consulting & Other Services'),
+    'Data Processing & Outsourced Services':       ('Information Technology', 'Software & Services',                       'IT Services',                                          'Data Processing & Outsourced Services'),
+    'Application Software':                        ('Information Technology', 'Software & Services',                       'Software',                                             'Application Software'),
+    'Systems Software':                            ('Information Technology', 'Software & Services',                       'Software',                                             'Systems Software'),
+    'Communication Equipment':                     ('Information Technology', 'Technology Hardware & Equipment',           'Communications Equipment',                             'Communications Equipment'),
+    'Technology Distributors':                     ('Information Technology', 'Technology Hardware & Equipment',           'Electronic Equipment, Instruments & Components',       'Technology Distributors'),
+    'Electronic Equipment & Instruments':          ('Information Technology', 'Technology Hardware & Equipment',           'Electronic Equipment, Instruments & Components',       'Electronic Equipment & Instruments'),
+    'Electronic Components':                       ('Information Technology', 'Technology Hardware & Equipment',           'Electronic Equipment, Instruments & Components',       'Electronic Components'),
+    'Electronic Manufacturing Services':           ('Information Technology', 'Technology Hardware & Equipment',           'Electronic Equipment, Instruments & Components',       'Electronic Manufacturing Services'),
+    'Technology Hardware, Storage & Peripherals':  ('Information Technology', 'Technology Hardware & Equipment',           'Technology Hardware, Storage & Peripherals',           'Technology Hardware, Storage & Peripherals'),
+    'Semiconductor Materials & Equipment':         ('Information Technology', 'Semiconductors & Semiconductor Equipment',  'Semiconductors & Semiconductor Equipment',             'Semiconductor Materials & Equipment'),
+    'Semiconductors':                              ('Information Technology', 'Semiconductors & Semiconductor Equipment',  'Semiconductors & Semiconductor Equipment',             'Semiconductors'),
     # ── Communication Services ──────────────────────────────────────────────
-    'Alternative Carriers':                        ('Communication Services','Telecommunication Services',    'Alternative Carriers'),
-    'Integrated Telecommunication Services':       ('Communication Services','Telecommunication Services',    'Integrated Telecommunication Services'),
-    'Wireless Telecommunication Services':         ('Communication Services','Telecommunication Services',    'Wireless Telecommunication Services'),
-    'Advertising':                                 ('Communication Services','Media & Entertainment',         'Advertising'),
-    'Broadcasting':                                ('Communication Services','Media & Entertainment',         'Broadcasting'),
-    'Cable & Satellite':                           ('Communication Services','Media & Entertainment',         'Cable & Satellite'),
-    'Publishing':                                  ('Communication Services','Media & Entertainment',         'Publishing'),
-    'Movies & Entertainment':                      ('Communication Services','Media & Entertainment',         'Movies & Entertainment'),
-    'Interactive Home Entertainment':              ('Communication Services','Media & Entertainment',         'Interactive Home Entertainment'),
-    'Interactive Media & Services':                ('Communication Services','Media & Entertainment',         'Interactive Media & Services'),
+    'Alternative Carriers':                        ('Communication Services', 'Telecommunication Services',                'Diversified Telecommunication Services',                'Alternative Carriers'),
+    'Integrated Telecommunication Services':       ('Communication Services', 'Telecommunication Services',                'Diversified Telecommunication Services',                'Integrated Telecommunication Services'),
+    'Wireless Telecommunication Services':         ('Communication Services', 'Telecommunication Services',                'Wireless Telecommunication Services',                  'Wireless Telecommunication Services'),
+    'Advertising':                                 ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Advertising'),
+    'Broadcasting':                                ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Broadcasting'),
+    'Cable & Satellite':                           ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Cable & Satellite'),
+    'Publishing':                                  ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Publishing'),
+    'Movies & Entertainment':                      ('Communication Services', 'Media & Entertainment',                     'Entertainment',                                        'Movies & Entertainment'),
+    'Interactive Home Entertainment':              ('Communication Services', 'Media & Entertainment',                     'Entertainment',                                        'Interactive Home Entertainment'),
+    'Interactive Media & Services':                ('Communication Services', 'Media & Entertainment',                     'Interactive Media & Services',                         'Interactive Media & Services'),
     # ── Utilities ───────────────────────────────────────────────────────────
-    'Electric Utilities':                          ('Utilities',            'Utilities',                      'Electric Utilities'),
-    'Gas Utilities':                               ('Utilities',            'Utilities',                      'Gas Utilities'),
-    'Multi-Utilities':                             ('Utilities',            'Utilities',                      'Multi-Utilities'),
-    'Water Utilities':                             ('Utilities',            'Utilities',                      'Water Utilities'),
-    'Independent Power Producers & Energy Traders':('Utilities',            'Utilities',                      'Independent Power Producers & Energy Traders'),
-    'Renewable Electricity':                       ('Utilities',            'Utilities',                      'Renewable Electricity'),
+    'Electric Utilities':                          ('Utilities',              'Utilities',                                 'Electric Utilities',                                   'Electric Utilities'),
+    'Gas Utilities':                               ('Utilities',              'Utilities',                                 'Gas Utilities',                                        'Gas Utilities'),
+    'Multi-Utilities':                             ('Utilities',              'Utilities',                                 'Multi-Utilities',                                      'Multi-Utilities'),
+    'Water Utilities':                             ('Utilities',              'Utilities',                                 'Water Utilities',                                      'Water Utilities'),
+    'Independent Power Producers & Energy Traders':('Utilities',              'Utilities',                                 'Independent Power and Renewable Electricity Producers','Independent Power Producers & Energy Traders'),
+    'Renewable Electricity':                       ('Utilities',              'Utilities',                                 'Independent Power and Renewable Electricity Producers','Renewable Electricity'),
     # ── Real Estate ─────────────────────────────────────────────────────────
-    'Diversified REITs':                           ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Diversified REITs'),
-    'Industrial REITs':                            ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Industrial REITs'),
-    'Hotel & Resort REITs':                        ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Hotel & Resort REITs'),
-    'Office REITs':                                ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Office REITs'),
-    'Health Care REITs':                           ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Health Care REITs'),
-    'Residential REITs':                           ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Residential REITs'),
-    'Retail REITs':                                ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Retail REITs'),
-    'Specialized REITs':                           ('Real Estate',          'Equity Real Estate Investment Trusts (REITs)', 'Specialized REITs'),
-    'Real Estate Management & Development':        ('Real Estate',          'Real Estate Management & Development', 'Real Estate Management & Development'),
-    'Diversified Real Estate Activities':          ('Real Estate',          'Real Estate Management & Development', 'Diversified Real Estate Activities'),
-    'Real Estate Operating Companies':             ('Real Estate',          'Real Estate Management & Development', 'Real Estate Operating Companies'),
-    'Real Estate Development':                     ('Real Estate',          'Real Estate Management & Development', 'Real Estate Development'),
+    'Diversified REITs':                           ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Diversified REITs',                                'Diversified REITs'),
+    'Industrial REITs':                            ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Industrial REITs',                                 'Industrial REITs'),
+    'Hotel & Resort REITs':                        ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Hotel & Resort REITs',                             'Hotel & Resort REITs'),
+    'Office REITs':                                ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Office REITs',                                     'Office REITs'),
+    'Health Care REITs':                           ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Health Care REITs',                                'Health Care REITs'),
+    'Residential REITs':                           ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Residential REITs',                                'Residential REITs'),
+    'Retail REITs':                                ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Retail REITs',                                     'Retail REITs'),
+    'Specialized REITs':                           ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Specialized REITs',                                'Specialized REITs'),
+    'Real Estate Management & Development':        ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Real Estate Services'),
+    'Diversified Real Estate Activities':          ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Diversified Real Estate Activities'),
+    'Real Estate Operating Companies':             ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Real Estate Operating Companies'),
+    'Real Estate Development':                     ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Real Estate Development'),
 }
 
-# Schnelle Lookup: sector-string (wie Yahoo ihn liefert) → kanonischer Name
+# ── Zusätzliche Yahoo-Varianten (andere Schreibweisen / Kürzel) ──────────────
+# Schlüssel = exakter Yahoo-industry-String → gleiche 4-Tupel-Struktur wie oben
+_GICS_YAHOO_ALIASES = {
+    # ── Energy ──────────────────────────────────────────────────────────────
+    'Oil & Gas E&P':                               ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Exploration & Production'),
+    'Oil & Gas Integrated':                        ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Integrated Oil & Gas'),
+    'Oil & Gas Midstream':                         ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Storage & Transportation'),
+    'Oil & Gas Refining & Marketing':              ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Oil & Gas Refining & Marketing'),
+    'Coal':                                        ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Coal & Consumable Fuels'),
+    'Uranium':                                     ('Energy',                 'Energy',                                    'Oil, Gas & Consumable Fuels',                          'Coal & Consumable Fuels'),
+    # ── Materials ───────────────────────────────────────────────────────────
+    'Agricultural Inputs':                         ('Materials',              'Materials',                                 'Chemicals',                                            'Fertilizers & Agricultural Chemicals'),
+    'Chemicals':                                   ('Materials',              'Materials',                                 'Chemicals',                                            'Specialty Chemicals'),
+    'Lumber & Wood Production':                    ('Materials',              'Materials',                                 'Paper & Forest Products',                              'Forest Products & Timber'),
+    'Paper & Paper Products':                      ('Materials',              'Materials',                                 'Paper & Forest Products',                              'Paper Products'),
+    'Other Industrial Metals & Mining':            ('Materials',              'Materials',                                 'Metals & Mining',                                      'Diversified Metals & Mining'),
+    'Other Precious Metals & Mining':              ('Materials',              'Materials',                                 'Metals & Mining',                                      'Precious Metals & Minerals'),
+    'Mining':                                      ('Materials',              'Materials',                                 'Metals & Mining',                                      'Diversified Metals & Mining'),
+    # ── Industrials ─────────────────────────────────────────────────────────
+    'Aerospace & Defense':                         ('Industrials',            'Capital Goods',                             'Aerospace & Defense',                                  'Aerospace & Defense'),
+    'Building Products & Equipment':               ('Industrials',            'Capital Goods',                             'Building Products',                                    'Building Products'),
+    'Electrical Equipment & Parts':                ('Industrials',            'Capital Goods',                             'Electrical Equipment',                                 'Electrical Components & Equipment'),
+    'Farm & Heavy Construction Machinery':         ('Industrials',            'Capital Goods',                             'Machinery',                                            'Agricultural & Farm Machinery'),
+    'Industrial Distribution':                     ('Industrials',            'Capital Goods',                             'Trading Companies & Distributors',                     'Trading Companies & Distributors'),
+    'Specialty Industrial Machinery':              ('Industrials',            'Capital Goods',                             'Machinery',                                            'Industrial Machinery & Supplies & Components'),
+    'Conglomerates':                               ('Industrials',            'Capital Goods',                             'Industrial Conglomerates',                             'Industrial Conglomerates'),
+    'Waste Management':                            ('Industrials',            'Commercial & Professional Services',        'Commercial Services & Supplies',                       'Environmental & Facilities Services'),
+    'Staffing & Employment Services':              ('Industrials',            'Commercial & Professional Services',        'Professional Services',                                'Human Resource & Employment Services'),
+    'Consulting Services':                         ('Industrials',            'Commercial & Professional Services',        'Professional Services',                                'Research & Consulting Services'),
+    'Specialty Business Services':                 ('Industrials',            'Commercial & Professional Services',        'Professional Services',                                'Research & Consulting Services'),
+    'Integrated Freight & Logistics':              ('Industrials',            'Transportation',                            'Air Freight & Logistics',                              'Air Freight & Logistics'),
+    'Trucking':                                    ('Industrials',            'Transportation',                            'Ground Transportation',                                'Cargo Ground Transportation'),
+    'Railroads':                                   ('Industrials',            'Transportation',                            'Ground Transportation',                                'Rail Transportation'),
+    'Marine Shipping':                             ('Industrials',            'Transportation',                            'Marine Transportation',                                'Marine Transportation'),
+    'Airports & Air Services':                     ('Industrials',            'Transportation',                            'Transportation Infrastructure',                        'Airport Services'),
+    # ── Consumer Discretionary ──────────────────────────────────────────────
+    'Auto Manufacturers':                          ('Consumer Discretionary', 'Automobiles & Components',                  'Automobiles',                                          'Automobile Manufacturers'),
+    'Auto & Truck Dealerships':                    ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Specialty Retail',                                 'Automotive Retail'),
+    'Auto Parts':                                  ('Consumer Discretionary', 'Automobiles & Components',                  'Automobile Components',                                'Auto Parts & Equipment'),
+    'Residential Construction':                    ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Homebuilding'),
+    'Furnishings, Fixtures & Appliances':          ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Household Durables',                                   'Home Furnishings'),
+    'Luxury Goods':                                ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Apparel, Accessories & Luxury Goods'),
+    'Apparel Manufacturing':                       ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Apparel, Accessories & Luxury Goods'),
+    'Footwear & Accessories':                      ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Footwear'),
+    'Textile Manufacturing':                       ('Consumer Discretionary', 'Consumer Durables & Apparel',               'Textiles, Apparel & Luxury Goods',                     'Textiles'),
+    'Leisure':                                     ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Leisure Facilities'),
+    'Travel Services':                             ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Hotels, Resorts & Cruise Lines'),
+    'Gambling':                                    ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Casinos & Gaming'),
+    'Lodging':                                     ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Hotels, Resorts & Cruise Lines'),
+    'Entertainment':                               ('Consumer Discretionary', 'Consumer Services',                         'Hotels, Restaurants & Leisure',                        'Leisure Facilities'),
+    'Personal Services':                           ('Consumer Discretionary', 'Consumer Services',                         'Diversified Consumer Services',                        'Specialized Consumer Services'),
+    'Internet Retail':                             ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Broadline Retail',                                 'Broadline Retail'),
+    'Department Stores':                           ('Consumer Discretionary', 'Consumer Discretionary Distribution & Retail', 'Broadline Retail',                                 'Broadline Retail'),
+    # ── Consumer Staples ────────────────────────────────────────────────────
+    'Discount Stores':                             ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Consumer Staples Merchandise Retail'),
+    'Grocery Stores':                              ('Consumer Staples',       'Consumer Staples Distribution & Retail',    'Consumer Staples Distribution & Retail',               'Food Retail'),
+    'Packaged Foods':                              ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Packaged Foods & Meats'),
+    'Confectioners':                               ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Packaged Foods & Meats'),
+    'Farm Products':                               ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Agricultural Products & Services'),
+    'Agricultural Products':                       ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Agricultural Products & Services'),
+    'Meat Products':                               ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Food Products',                                        'Meat, Poultry & Fish'),
+    'Beverages - Non-Alcoholic':                   ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Soft Drinks & Non-alcoholic Beverages'),
+    'Beverages - Alcoholic':                       ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Distillers & Vintners'),
+    'Beverages - Brewers':                         ('Consumer Staples',       'Food, Beverage & Tobacco',                  'Beverages',                                            'Brewers'),
+    'Household & Personal Products':               ('Consumer Staples',       'Household & Personal Products',             'Household Products',                                   'Household Products'),
+    # ── Health Care ─────────────────────────────────────────────────────────
+    'Medical Devices':                             ('Health Care',            'Health Care Equipment & Services',          'Health Care Equipment & Supplies',                     'Health Care Equipment'),
+    'Medical Instruments & Supplies':              ('Health Care',            'Health Care Equipment & Services',          'Health Care Equipment & Supplies',                     'Health Care Supplies'),
+    'Medical Care Facilities':                     ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Facilities'),
+    'Health Information Services':                 ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Services'),
+    'Healthcare Plans':                            ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Managed Health Care'),
+    'Medical Distribution':                        ('Health Care',            'Health Care Equipment & Services',          'Health Care Providers & Services',                     'Health Care Distributors'),
+    'Drug Manufacturers - General':                ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Pharmaceuticals',                               'Pharmaceuticals'),
+    'Drug Manufacturers - Specialty & Generic':    ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Pharmaceuticals',                               'Pharmaceuticals'),
+    'Diagnostics & Research':                      ('Health Care',            'Pharmaceuticals, Biotechnology & Life Sciences', 'Life Sciences Tools & Services',                'Life Sciences Tools & Services'),
+    # ── Financials ──────────────────────────────────────────────────────────
+    'Banks - Diversified':                         ('Financials',             'Banks',                                     'Banks',                                                'Diversified Banks'),
+    'Banks - Regional':                            ('Financials',             'Banks',                                     'Banks',                                                'Regional Banks'),
+    'Capital Markets':                             ('Financials',             'Financial Services',                        'Capital Markets',                                      'Diversified Capital Markets'),
+    'Asset Management':                            ('Financials',             'Financial Services',                        'Capital Markets',                                      'Asset Management & Custody Banks'),
+    'Financial Data & Stock Exchanges':            ('Financials',             'Financial Services',                        'Capital Markets',                                      'Financial Exchanges & Data'),
+    'Credit Services':                             ('Financials',             'Financial Services',                        'Consumer Finance',                                     'Consumer Finance'),
+    'Mortgage Finance':                            ('Financials',             'Financial Services',                        'Diversified Financial Services',                       'Commercial & Residential Mortgage Finance'),
+    'Insurance - Life':                            ('Financials',             'Insurance',                                 'Insurance',                                            'Life & Health Insurance'),
+    'Insurance - Property & Casualty':             ('Financials',             'Insurance',                                 'Insurance',                                            'Property & Casualty Insurance'),
+    'Insurance - Diversified':                     ('Financials',             'Insurance',                                 'Insurance',                                            'Multi-line Insurance'),
+    'Insurance - Specialty':                       ('Financials',             'Insurance',                                 'Insurance',                                            'Insurance Brokers'),
+    'Insurance - Reinsurance':                     ('Financials',             'Insurance',                                 'Insurance',                                            'Reinsurance'),
+    # ── Information Technology ──────────────────────────────────────────────
+    'Software - Application':                      ('Information Technology', 'Software & Services',                       'Software',                                             'Application Software'),
+    'Software - Infrastructure':                   ('Information Technology', 'Software & Services',                       'Software',                                             'Systems Software'),
+    'Information Technology Services':             ('Information Technology', 'Software & Services',                       'IT Services',                                          'IT Consulting & Other Services'),
+    'Computer Hardware':                           ('Information Technology', 'Technology Hardware & Equipment',           'Technology Hardware, Storage & Peripherals',           'Technology Hardware, Storage & Peripherals'),
+    'Semiconductor Equipment & Materials':         ('Information Technology', 'Semiconductors & Semiconductor Equipment',  'Semiconductors & Semiconductor Equipment',             'Semiconductor Materials & Equipment'),
+    # ── Communication Services ──────────────────────────────────────────────
+    'Internet Content & Information':              ('Communication Services', 'Media & Entertainment',                     'Interactive Media & Services',                         'Interactive Media & Services'),
+    'Telecom Services':                            ('Communication Services', 'Telecommunication Services',                'Diversified Telecommunication Services',                'Integrated Telecommunication Services'),
+    'Electronic Gaming & Multimedia':              ('Communication Services', 'Media & Entertainment',                     'Entertainment',                                        'Interactive Home Entertainment'),
+    'Advertising Agencies':                        ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Advertising'),
+    'Pay TV':                                      ('Communication Services', 'Media & Entertainment',                     'Media',                                                'Cable & Satellite'),
+    # ── Utilities ───────────────────────────────────────────────────────────
+    'Utilities - Regulated Electric':              ('Utilities',              'Utilities',                                 'Electric Utilities',                                   'Electric Utilities'),
+    'Utilities - Regulated Gas':                   ('Utilities',              'Utilities',                                 'Gas Utilities',                                        'Gas Utilities'),
+    'Utilities - Regulated Water':                 ('Utilities',              'Utilities',                                 'Water Utilities',                                      'Water Utilities'),
+    'Utilities - Independent Power Producers':     ('Utilities',              'Utilities',                                 'Independent Power and Renewable Electricity Producers','Independent Power Producers & Energy Traders'),
+    'Utilities - Renewable':                       ('Utilities',              'Utilities',                                 'Independent Power and Renewable Electricity Producers','Renewable Electricity'),
+    'Utilities - Diversified':                     ('Utilities',              'Utilities',                                 'Multi-Utilities',                                      'Multi-Utilities'),
+    # ── Real Estate ─────────────────────────────────────────────────────────
+    'REIT - Industrial':                           ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Industrial REITs',                                 'Industrial REITs'),
+    'REIT - Retail':                               ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Retail REITs',                                     'Retail REITs'),
+    'REIT - Office':                               ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Office REITs',                                     'Office REITs'),
+    'REIT - Healthcare Facilities':                ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Health Care REITs',                                'Health Care REITs'),
+    'REIT - Residential':                          ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Residential REITs',                                'Residential REITs'),
+    'REIT - Specialty':                            ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Specialized REITs',                                'Specialized REITs'),
+    'REIT - Hotel & Motel':                        ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Hotel & Resort REITs',                             'Hotel & Resort REITs'),
+    'REIT - Diversified':                          ('Real Estate',            'Equity Real Estate Investment Trusts (REITs)', 'Diversified REITs',                                'Diversified REITs'),
+    'REIT - Mortgage':                             ('Financials',             'Financial Services',                        'Mortgage Real Estate Investment Trusts (REITs)',        'Mortgage REITs'),
+    'Real Estate Services':                        ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Real Estate Services'),
+    'Real Estate - Development':                   ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Real Estate Development'),
+    'Real Estate - Diversified':                   ('Real Estate',            'Real Estate Management & Development',      'Real Estate Management & Development',                 'Diversified Real Estate Activities'),
+}
+# Beide Dicts zusammenführen (Aliase ergänzen, nicht überschreiben)
+_GICS_HIERARCHY = {**_GICS_YAHOO_ALIASES, **_GICS_HIERARCHY}
+
+# Schnelle Lookup: sector-string (Yahoo oder intern) → offizieller GICS-Sektorname
 _SECTOR_ALIASES = {
-    'Energy': 'Energy',
-    'Materials': 'Materials', 'Basic Materials': 'Materials',
-    'Industrials': 'Industrials',
-    'Consumer Discretionary': 'Consumer Cyclical', 'Consumer Cyclical': 'Consumer Cyclical',
-    'Consumer Staples': 'Consumer Defensive', 'Consumer Defensive': 'Consumer Defensive',
-    'Health Care': 'Healthcare', 'Healthcare': 'Healthcare',
-    'Financials': 'Financial Services', 'Financial Services': 'Financial Services',
-    'Information Technology': 'Technology', 'Technology': 'Technology',
-    'Communication Services': 'Communication Services',
-    'Utilities': 'Utilities',
-    'Real Estate': 'Real Estate',
+    # Offizielle GICS-Namen (11 Sektoren)
+    'Energy':                  'Energy',
+    'Materials':               'Materials',
+    'Industrials':             'Industrials',
+    'Consumer Discretionary':  'Consumer Discretionary',
+    'Consumer Staples':        'Consumer Staples',
+    'Health Care':             'Health Care',
+    'Financials':              'Financials',
+    'Information Technology':  'Information Technology',
+    'Communication Services':  'Communication Services',
+    'Utilities':               'Utilities',
+    'Real Estate':             'Real Estate',
+    # Yahoo-Varianten → GICS-Mapping
+    'Basic Materials':         'Materials',
+    'Consumer Cyclical':       'Consumer Discretionary',
+    'Consumer Defensive':      'Consumer Staples',
+    'Healthcare':              'Health Care',
+    'Financial Services':      'Financials',
+    'Technology':              'Information Technology',
 }
 
 def _gics_lookup(sector: str, industry: str) -> tuple:
-    """Gibt (sector, industry_group, sub_industry) zurück – alle englisch, offizielle GICS-Namen."""
+    """Gibt (sector, industry_group, gics_industry, sub_industry) zurück – offizielle GICS-Namen."""
     canonical_sector = _SECTOR_ALIASES.get(sector, sector) if sector else ''
     if industry and industry in _GICS_HIERARCHY:
-        s, ig, si = _GICS_HIERARCHY[industry]
-        return (canonical_sector or s, ig, industry, si)
+        s, ig, gi, si = _GICS_HIERARCHY[industry]
+        return (canonical_sector or s, ig, gi, si)
     # Fallback: nur Sektor bekannt
     return (canonical_sector, '', industry, '')
 
@@ -719,6 +885,8 @@ class PortfolioWorker(QThread):
         # ── Währung pro Symbol (fast_info, nur wenn Batch fehlschlug) ─
         cur_cache = {}
         for sym in real_syms:
+            if self.isInterruptionRequested():
+                return
             try:
                 fi = yf.Ticker(sym).fast_info
                 cur_cache[sym] = getattr(fi, 'currency', 'USD') or 'USD'
@@ -1098,17 +1266,17 @@ class AnalystInfoDialog(QDialog):
             if idx == active_light:
                 light_label.setStyleSheet(f"font-size: 42px; color: {color};")
             else:
-                light_label.setStyleSheet("font-size: 42px; color: #333333;")
+                light_label.setStyleSheet("font-size: 42px; color: #606060;")
             light_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             light_layout.addWidget(light_label)
-            
+
             # Text
             text_label = QLabel(text)
             text_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
             if idx == active_light:
                 text_label.setStyleSheet(f"color: {color};")
             else:
-                text_label.setStyleSheet("color: #888888;")
+                text_label.setStyleSheet("color: #909090;")
             text_label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
             light_layout.addWidget(text_label)
             
@@ -1132,7 +1300,7 @@ class AnalystInfoDialog(QDialog):
         # Fundamentaldaten-Box
         fundamentals_box = QFrame()
         fundamentals_box.setFrameStyle(QFrame.Shape.Box)
-        fundamentals_box.setStyleSheet("background-color: #e8f4f8; border: 1px solid #3498db;")  # KEIN padding hier!
+        fundamentals_box.setStyleSheet("border: 2px solid #3498db; border-radius: 4px;")  # kein Hintergrund → Dark-Mode-sicher
         fund_layout = QVBoxLayout()
         fund_layout.setSpacing(5)
         fund_layout.setContentsMargins(15, 15, 15, 15)  # Padding im Layout statt Stylesheet
@@ -1372,6 +1540,9 @@ class AnalystInfoDialog(QDialog):
         h_dlg.move(screen.x() + (screen.width()  - hw) // 2,
                    screen.y() + (screen.height() - hh) // 2)
 
+        from PyQt6.QtGui import QPalette as _QPalette_dh
+        _dm_dh = QApplication.palette().color(_QPalette_dh.ColorRole.Window).lightness() < 128
+
         h_outer = QVBoxLayout(h_dlg)
         h_outer.setContentsMargins(14, 10, 14, 10)
         h_outer.setSpacing(8)
@@ -1557,7 +1728,8 @@ class AnalystInfoDialog(QDialog):
 
         h_info = QLabel(TR("status_loading_div_data"))
         h_info.setWordWrap(True)
-        h_info.setStyleSheet("background:#EBF5FB; border-radius:8px; padding:10px 14px; font-size:11px;")
+        _dh_info_bg = "#0d2a3d" if _dm_dh else "#EBF5FB"
+        h_info.setStyleSheet(f"background:{_dh_info_bg}; border-radius:8px; padding:10px 14px; font-size:11px;")
         h_outer.addWidget(h_info)
 
         h_fig   = Figure(figsize=(max(7, hw/96), max(5, (hh-180)/96)))
@@ -3195,7 +3367,7 @@ class CompareDialog(QDialog):
         layout = QVBoxLayout()
 
         from PyQt6.QtWidgets import QApplication as _QA
-        _is_fhd = _QA.primaryScreen().size().width() <= 1920
+        _is_fhd = _QA.primaryScreen().geometry().width() <= 1920
 
         from PyQt6.QtGui import QFontDatabase as _QFDB_cd
         _ef_cd = None
@@ -4629,11 +4801,62 @@ class FavoritesDialog(QDialog):
         return self.favorites
 
 
+_DEMO_BANNER_STYLE_TOP    = (
+    "color: #1a0a00; font-style: italic; font-size: 13px; font-weight: bold;"
+    "padding: 4px 8px; background-color: #e65100; border-bottom: 2px solid #bf360c;")
+_DEMO_BANNER_STYLE_BOTTOM = (
+    "color: #1a0a00; font-style: italic; font-size: 13px; font-weight: bold;"
+    "padding: 4px 8px; background-color: #e65100; border-top: 2px solid #bf360c;")
+
+def _make_demo_banner(top: bool) -> 'QLabel':
+    lbl = QLabel(TR("lbl_demo_watermark"))
+    lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    lbl.setStyleSheet(_DEMO_BANNER_STYLE_TOP if top else _DEMO_BANNER_STYLE_BOTTOM)
+    return lbl
+
+
+class _DemoWatermark(QWidget):
+    """Halbtransparenter Wasserzeichen-Overlay für Demo-Portfolio."""
+    def __init__(self, parent: QWidget):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self.raise_()
+        parent.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if obj is self.parent() and event.type() == QEvent.Type.Resize:
+            self.setGeometry(self.parent().rect())
+            self.raise_()
+        return False
+
+    def showEvent(self, event):
+        self.setGeometry(self.parent().rect())
+        self.raise_()
+
+    def paintEvent(self, event):
+        from PyQt6.QtGui import QPainter, QFont, QColor
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        text = TR("lbl_demo_watermark")
+        font = QFont("Arial", 13, QFont.Weight.Bold)
+        painter.setFont(font)
+        painter.setPen(QColor(120, 120, 120, 55))
+        rect = self.rect()
+        painter.drawText(rect.adjusted(0, 0, 0, -8),
+                         Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
+                         text)
+        painter.end()
+
+
 class StockChartWidget(QFrame):
     """Widget für einen einzelnen Aktien-Chart"""
-    
+
     maximize_requested = pyqtSignal(object)  # Signal für Vollbild
     limits_changed     = pyqtSignal(str, object, object)  # symbol, stop, target
+
+    _news_cache    = {}     # {symbol: (fetch_time, articles)}
+    _NEWS_CACHE_TTL = 1800  # 30 Minuten
     
     TIMEFRAMES = {
         TR('period_1d'): ('1d', '5m'),
@@ -4649,8 +4872,9 @@ class StockChartWidget(QFrame):
         TR('lbl_custom_period_entry'): ('custom', '1d')  # Custom Date Range
     }
     
-    def __init__(self, default_symbol='AAPL', compact_mode=False, zoom_mode=False, avg_buy_price=None):
+    def __init__(self, default_symbol='AAPL', compact_mode=False, zoom_mode=False, avg_buy_price=None, demo_watermark=False):
         super().__init__()
+        self._demo_watermark = demo_watermark
         self.symbol = default_symbol
         self.company_name = ""
         self.data = None
@@ -4689,7 +4913,10 @@ class StockChartWidget(QFrame):
         self.setMinimumSize(300, 250)  # Minimum damit Chart lesbar bleibt
         
         layout = QVBoxLayout()
-        
+
+        if getattr(self, '_demo_watermark', False):
+            layout.addWidget(_make_demo_banner(top=True))
+
         # Kopfzeile mit Symbol-Eingabe und Zeitrahmen
         header = QHBoxLayout()
         
@@ -4710,9 +4937,10 @@ class StockChartWidget(QFrame):
         self.timeframe_combo.setCurrentText(TR('period_1mo'))
 
         def _on_timeframe_user_changed(text):
-            # Bei manueller Auswahl von "Eigener Zeitraum" → Datum zurücksetzen
-            # damit der Dialog erscheint (außer wenn _ready=False = State-Restore)
-            if text == TR('lbl_custom_period_entry') and getattr(self, '_ready', False):
+            # Bei jedem manuellen Zeitrahmenwechsel Datum zurücksetzen:
+            # - custom → Dialog erscheint neu
+            # - andere → verhindert dass alter custom-Range weiterverwendet wird
+            if getattr(self, '_ready', False):
                 self.custom_start = None
                 self.custom_end   = None
             self.update_chart()
@@ -4775,7 +5003,20 @@ class StockChartWidget(QFrame):
             header.addWidget(self.update_btn)
             header.addWidget(self.maximize_btn)
             header.addWidget(self.print_btn)
-        
+
+        # Nachrichten-Button: 4K → obere Zeile nach Export; Full HD → untere Zeile nach Info
+        self.news_btn = QPushButton(TR("btn_news"))
+        self.news_btn.setMaximumWidth(135)
+        self.news_btn.setFont(QFont("Segoe UI Emoji", 9))
+        self.news_btn.setToolTip(TR("tip_news"))
+        self.news_btn.setStyleSheet(
+            "QPushButton { background-color:#5d6d7e; color:white; border-radius:3px; font-weight:bold; }"
+            "QPushButton:hover { background-color:#717d8a; }"
+        )
+        self.news_btn.clicked.connect(self.show_news)
+        if not self.compact_mode:
+            header.addWidget(self.news_btn)
+
         header.addStretch()
         
         # Zweite Zeile: MA und Analyse-Buttons
@@ -4992,11 +5233,27 @@ class StockChartWidget(QFrame):
         # Info Button mit Ampel
         self.info_btn = QPushButton(TR("btn_info"))
         self.info_btn.setMaximumWidth(80)
-        self.info_btn.setFont(QFont("Segoe UI Emoji", 9))
         self.info_btn.setToolTip(TR("tip_analyst_ai"))
+        from PyQt6.QtGui import QFontDatabase as _QFDB_info
+        _ef_info = next((QFont(f, 9) for f in ['Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji']
+                         if f in _QFDB_info.families()), None)
+        if _ef_info:
+            self.info_btn.setFont(_ef_info)
         self.info_btn.clicked.connect(self.show_analyst_info)
         controls_row.addWidget(self.info_btn)
-        
+
+        # Holdings-Button (nur für ETFs/Fonds sichtbar – wird in update_chart gesetzt)
+        self.holdings_btn = QPushButton(TR("btn_etf_holdings"))
+        self.holdings_btn.setMaximumWidth(80)
+        self.holdings_btn.setToolTip(TR("tip_etf_holdings"))
+        self.holdings_btn.setVisible(False)
+        self.holdings_btn.clicked.connect(self._show_etf_holdings)
+        controls_row.addWidget(self.holdings_btn)
+
+        # Full HD: Nachrichten-Button in unterer Zeile rechts neben Info
+        if self.compact_mode:
+            controls_row.addWidget(self.news_btn)
+
         controls_row.addStretch()
 
         # Branchen-Label: im Zoom-Modus und Portfolio-Modus sichtbar
@@ -5051,9 +5308,12 @@ class StockChartWidget(QFrame):
         layout.addWidget(self.plot_widget)
         layout.addWidget(self.rsi_plot_widget)
         layout.addWidget(self.dd_plot_widget)
-        
+
+        if getattr(self, '_demo_watermark', False):
+            layout.addWidget(_make_demo_banner(top=False))
+
         self.setLayout(layout)
-        
+
         # Initial laden
         self.update_chart()
         if self.zoom_mode or getattr(self, 'portfolio_mode', False):
@@ -5091,7 +5351,7 @@ class StockChartWidget(QFrame):
                         lines.append(f"<b>{company}</b>")
                     lines.append(f"Sector:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {sector_canon}")
                     if ind_group:
-                        lines.append(f"Industry Group:  {ind_group}")
+                        lines.append(f"Industry&nbsp;Group:&nbsp; {ind_group}")
                     if industry_disp:
                         lines.append(f"Industry:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {industry_disp}")
                     if sub_industry and sub_industry != industry_disp:
@@ -5115,9 +5375,56 @@ class StockChartWidget(QFrame):
             self._sector_workers = []
         self._sector_workers.append(w)
         w.done.connect(_apply)
-        w.done.connect(lambda _: self._sector_workers.remove(w)
-                       if w in self._sector_workers else None)
+        w.finished.connect(w.deleteLater)
+        w.finished.connect(lambda: self._sector_workers.remove(w)
+                           if w in self._sector_workers else None)
         w.start()
+
+    def _update_holdings_visibility(self):
+        """Prüft im Hintergrund ob das Symbol ein ETF/Fonds ist und zeigt/versteckt den Holdings-Button."""
+        if not hasattr(self, 'holdings_btn') or not self.symbol:
+            return
+        sym = self.symbol
+        btn_ref = self.holdings_btn
+
+        class _TypeWorker(QThread):
+            done = pyqtSignal(bool)
+            def __init__(self, s):
+                super().__init__()
+                self._sym = s
+            def run(self):
+                try:
+                    info  = yf.Ticker(self._sym).info
+                    qtype = (info.get("quoteType") or "").upper()
+                    self.done.emit(qtype in ("ETF", "MUTUALFUND"))
+                except Exception:
+                    self.done.emit(False)
+
+        def _apply(is_fund):
+            try:
+                btn_ref.setVisible(is_fund)
+            except RuntimeError:
+                pass
+
+        w = _TypeWorker(sym)
+        if not hasattr(self, '_type_workers'):
+            self._type_workers = []
+        self._type_workers.append(w)
+        w.done.connect(_apply)
+        w.finished.connect(w.deleteLater)
+        w.finished.connect(lambda: self._type_workers.remove(w)
+                           if w in self._type_workers else None)
+        w.start()
+
+    def _show_etf_holdings(self):
+        """Öffnet den ETF/Fonds-Holdings-Dialog."""
+        try:
+            from etf_holdings import show_etf_holdings_dialog
+        except ImportError:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Fehler", "etf_holdings.py nicht gefunden.")
+            return
+        show_etf_holdings_dialog(self.symbol, parent=self)
 
     def open_name_search(self):
         """Namenssuche-Dialog öffnen"""
@@ -5284,6 +5591,14 @@ class StockChartWidget(QFrame):
         """Symbol aktualisieren"""
         self.symbol = self.symbol_input.text().strip().upper()
         self.company_name = ""  # Name wird beim Chart-Update geholt
+        # News-Button bei Symbolwechsel zurücksetzen
+        if hasattr(self, 'news_btn'):
+            self.news_btn.setStyleSheet(
+                "QPushButton { background-color:#5d6d7e; color:white; border-radius:3px; font-weight:bold; }"
+                "QPushButton:hover { background-color:#717d8a; }"
+            )
+            self.news_btn.setEnabled(True)
+            self.news_btn.setText(TR("btn_news"))
         self.update_chart()
         if self.zoom_mode:
             if self.sector_label:
@@ -5671,7 +5986,7 @@ class StockChartWidget(QFrame):
         # Neuen Worker erstellen und in Registry aufnehmen
         worker = DataFetchWorker(
             self.symbol, period, interval,
-            self.custom_start, self.custom_end
+            self.custom_start, self.custom_end,
         )
         self._fetch_worker = worker
         StockChartWidget._worker_registry.append(worker)
@@ -5735,6 +6050,11 @@ class StockChartWidget(QFrame):
             # Firmenname übernehmen falls noch unbekannt
             if not self.company_name and company_name:
                 self.company_name = company_name
+
+            # Holdings-Button: zunächst verstecken, dann ETF-Check im Hintergrund
+            if hasattr(self, 'holdings_btn'):
+                self.holdings_btn.setVisible(False)
+                QTimer.singleShot(700, self._update_holdings_visibility)
             
             if self.data.empty:
                 # Rohstoffe (XAU/XAG) brauchen keine Suffix-Erkennung
@@ -5812,14 +6132,18 @@ class StockChartWidget(QFrame):
                         self._fx_workers = []
                     self._fx_workers.append(_fw)
                     _fw.done.connect(lambda usd: setattr(_self_ref, '_last_price_usd', usd))
-                    _fw.done.connect(lambda _: self._fx_workers.remove(_fw)
-                                     if _fw in self._fx_workers else None)
+                    _fw.finished.connect(_fw.deleteLater)
+                    _fw.finished.connect(lambda: self._fx_workers.remove(_fw)
+                                         if _fw in self._fx_workers else None)
                     _fw.start()
                     self._last_price_usd = _close_val  # vorläufig ohne FX
             
             # Zeichnen
             self._redraw_chart()
-            
+
+            # News-Button Farbe im Hintergrund prüfen (nur wenn Cache kalt)
+            QTimer.singleShot(200, self._auto_check_news)
+
         except Exception as e:
             self.info_label.setText(TR("lbl_error_generic", e=e))
             self.plot_widget.clear()
@@ -5884,11 +6208,11 @@ class StockChartWidget(QFrame):
             if self.beta_checkbox.isChecked():
                 if beta_value is not None:
                     if beta_value < 0.8:
-                        beta_color, beta_interpretation = "blue", "niedrig volatil"
+                        beta_color, beta_interpretation = "blue", TR("beta_defensive")
                     elif beta_value < 1.2:
                         beta_color, beta_interpretation = "gray", TR("beta_neutral")
                     else:
-                        beta_color, beta_interpretation = "orange", "hoch volatil"
+                        beta_color, beta_interpretation = "orange", TR("beta_volatile")
                     beta_text = f" | <span style='color:{beta_color}'><b>β {_fmt(beta_value, 2)}</b> ({beta_interpretation})</span>"
                 # kein N/A – einfach leer lassen wenn nicht verfügbar
 
@@ -5898,9 +6222,9 @@ class StockChartWidget(QFrame):
                 alpha_value = self.calculate_alpha(self.data)
                 if alpha_value is not None:
                     if alpha_value > 0.01:
-                        alpha_color, alpha_interpretation = "green", "Outperformance"
+                        alpha_color, alpha_interpretation = "green", TR("alpha_chart_outperform")
                     elif alpha_value < -0.01:
-                        alpha_color, alpha_interpretation = "red", "Underperformance"
+                        alpha_color, alpha_interpretation = "red", TR("alpha_underperform")
                     else:
                         alpha_color, alpha_interpretation = "gray", TR("beta_neutral")
                     sign_a = "+" if alpha_value >= 0 else ""
@@ -5913,13 +6237,13 @@ class StockChartWidget(QFrame):
                 sharpe_value = self.calculate_sharpe(self.data)
                 if sharpe_value is not None:
                     if sharpe_value >= 1.0:
-                        sharpe_color, sharpe_interpretation = "green", "gut"
+                        sharpe_color, sharpe_interpretation = "green", TR("sharpe_good")
                     elif sharpe_value >= 0.5:
-                        sharpe_color, sharpe_interpretation = "orange", "akzeptabel"
+                        sharpe_color, sharpe_interpretation = "orange", TR("sharpe_acceptable")
                     elif sharpe_value >= 0:
-                        sharpe_color, sharpe_interpretation = "gray", "schwach"
+                        sharpe_color, sharpe_interpretation = "gray", TR("sharpe_weak")
                     else:
-                        sharpe_color, sharpe_interpretation = "red", "negativ"
+                        sharpe_color, sharpe_interpretation = "red", TR("sharpe_negative")
                     sharpe_text = f" | <span style='color:{sharpe_color}'><b>S {sharpe_value:.2f}</b> ({sharpe_interpretation})</span>"
                 # kein N/A – einfach leer lassen wenn nicht verfügbar
 
@@ -5991,27 +6315,34 @@ class StockChartWidget(QFrame):
                 else:
                     candle_w = 3600.0
 
-                for i in range(len(times_clean)):
-                    t = times_clean[i]
-                    o, h, l, c = opens[i], highs[i], lows[i], closes[i]
-                    if any(np.isnan([o, h, l, c])):
-                        continue
-                    is_up = c >= o
-                    body_color = (0, 180, 0) if is_up else (200, 0, 0)
-                    # Docht (High-Low)
-                    self.plot_widget.plot(
-                        [t, t], [l, h],
-                        pen=pg.mkPen(color=body_color, width=1)
-                    )
-                    # Körper (Open-Close)
-                    body_lo = min(o, c); body_hi = max(o, c)
-                    body_item = pg.BarGraphItem(
-                        x=[t], height=[body_hi - body_lo],
-                        width=candle_w, y0=body_lo,
-                        brush=pg.mkBrush(body_color),
-                        pen=pg.mkPen(color=body_color, width=1)
-                    )
-                    self.plot_widget.addItem(body_item)
+                valid = ~np.isnan(opens) & ~np.isnan(highs) & ~np.isnan(lows) & ~np.isnan(closes)
+                t_v = times_clean[valid]; o_v = opens[valid]; h_v = highs[valid]
+                l_v = lows[valid]; c_v = closes[valid]
+
+                # Alle Dochte in einem einzigen Plot (NaN als Trenner)
+                wick_x = np.empty(len(t_v) * 3); wick_x[2::3] = np.nan
+                wick_y = np.empty(len(t_v) * 3); wick_y[2::3] = np.nan
+                wick_x[0::3] = t_v; wick_x[1::3] = t_v
+                wick_y[0::3] = l_v; wick_y[1::3] = h_v
+                self.plot_widget.plot(wick_x, wick_y, pen=pg.mkPen(color=(150, 150, 150), width=1), connect='finite')
+
+                # Körper: grüne und rote Kerzen je als ein BarGraphItem
+                up   = c_v >= o_v
+                down = ~up
+                body_lo = np.minimum(o_v, c_v)
+                body_hi = np.maximum(o_v, c_v)
+                heights = np.where(body_hi - body_lo < 1e-10, candle_w * 0.05, body_hi - body_lo)
+
+                if up.any():
+                    self.plot_widget.addItem(pg.BarGraphItem(
+                        x=t_v[up], height=heights[up], width=candle_w,
+                        y0=body_lo[up], brush=pg.mkBrush(0, 180, 0),
+                        pen=pg.mkPen(color=(0, 150, 0), width=1)))
+                if down.any():
+                    self.plot_widget.addItem(pg.BarGraphItem(
+                        x=t_v[down], height=heights[down], width=candle_w,
+                        y0=body_lo[down], brush=pg.mkBrush(200, 0, 0),
+                        pen=pg.mkPen(color=(160, 0, 0), width=1)))
             else:
                 self.plot_widget.plot(times_clean, prices_clean, pen=pg.mkPen(color=pen_color, width=2), name=self.symbol)
 
@@ -6896,7 +7227,7 @@ class StockChartWidget(QFrame):
         # Zeiten-Grid
         def _row(label, value):
             hl = QHBoxLayout()
-            lbl = QLabel(label); lbl.setStyleSheet("color:#666; font-size:11px;")
+            lbl = QLabel(label); lbl.setStyleSheet("color:#999; font-size:11px;")
             val = QLabel(f"<b>{value}</b>"); val.setStyleSheet("font-size:11px;")
             hl.addWidget(lbl); hl.addStretch(); hl.addWidget(val)
             lay.addLayout(hl)
@@ -6931,13 +7262,17 @@ class StockChartWidget(QFrame):
             if len(remaining) > 8:
                 hol_text += f"\n…"
             hol_lbl = QLabel(hol_text)
-            hol_lbl.setStyleSheet("font-size:11px; color:#444; padding-left:8px;")
+            hol_lbl.setStyleSheet("font-size:11px; color:#999; padding-left:8px;")
             lay.addWidget(hol_lbl)
         else:
             lay.addWidget(QLabel(TR("lbl_market_no_holidays")))
 
         # Schliessen-Button
         close_btn = QPushButton(TR("btn_close"))
+        close_btn.setStyleSheet(
+            "QPushButton { background-color:#5d6d7e; color:white; border:1px solid #4a5a6a; border-radius:3px; font-weight:bold; }"
+            "QPushButton:hover { background-color:#717d8a; border:1px solid #5d6d7e; }"
+        )
         close_btn.clicked.connect(dlg.accept)
         lay.addWidget(close_btn)
 
@@ -7105,7 +7440,255 @@ class StockChartWidget(QFrame):
 
         except Exception as e:
             QMessageBox.warning(self, TR("msg_title_error"), f"Konnte Analystendaten nicht laden:\n{str(e)}")
-    
+
+    def _auto_check_news(self):
+        """Hintergrund-Check: News-Button grün färben falls heute Nachrichten vorhanden."""
+        import time as _time
+        symbol = self.symbol
+        now    = _time.time()
+        cutoff = now - 2 * 24 * 3600
+
+        # Bereits im Cache → Button-Farbe sofort setzen
+        cached = StockChartWidget._news_cache.get(symbol)
+        if cached and (now - cached[0]) < StockChartWidget._NEWS_CACHE_TTL:
+            try:
+                self._restore_news_btn(symbol, cached[1])
+            except RuntimeError:
+                pass
+            return
+
+        # Kein Cache → stiller Hintergrund-Fetch, nur für Farb-Update
+        class _ColorWorker(QThread):
+            done = pyqtSignal(list)
+            def __init__(self, sym, cutoff):
+                super().__init__()
+                self._sym    = sym
+                self._cutoff = cutoff
+            def run(self):
+                try:
+                    from datetime import datetime as _ddt, timezone as _tz
+                    raw = yf.Ticker(self._sym).news or []
+                    result = []
+                    for item in raw:
+                        c = item.get('content', item)
+                        title = c.get('title', '')
+                        if not title:
+                            continue
+                        link = (c.get('clickThroughUrl') or {}).get('url', '') \
+                            or (c.get('canonicalUrl') or {}).get('url', '') \
+                            or c.get('link', '')
+                        publisher = (c.get('provider') or {}).get('displayName', '') \
+                            or c.get('publisher', '')
+                        ts = 0
+                        pub = c.get('pubDate') or c.get('displayTime', '')
+                        if pub:
+                            try:
+                                dt = _ddt.strptime(pub, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=_tz.utc)
+                                ts = dt.timestamp()
+                            except Exception:
+                                pass
+                        if not ts:
+                            ts = c.get('providerPublishTime', 0) or 0
+                        if ts >= self._cutoff:
+                            result.append({'title': title, 'link': link,
+                                           'publisher': publisher, 'ts': ts})
+                    self.done.emit(result)
+                except Exception:
+                    self.done.emit([])
+
+        worker = _ColorWorker(symbol, cutoff)
+        self._color_worker = worker
+
+        def _on_color_done(articles):
+            import time as _t
+            StockChartWidget._news_cache[symbol] = (_t.time(), articles)
+            try:
+                self._restore_news_btn(symbol, articles)
+            except RuntimeError:
+                pass
+
+        worker.done.connect(_on_color_done, Qt.ConnectionType.QueuedConnection)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def show_news(self):
+        """Aktuelle Nachrichten der letzten 2 Tage für das Symbol abrufen und anzeigen."""
+        import time as _time
+        symbol = self.symbol
+        now    = _time.time()
+        cutoff = now - 2 * 24 * 3600
+
+        cached = StockChartWidget._news_cache.get(symbol)
+        if cached and (now - cached[0]) < StockChartWidget._NEWS_CACHE_TTL:
+            self._show_news_dialog(symbol, cached[1])
+            return
+
+        self.news_btn.setEnabled(False)
+        self.news_btn.setText("⏳")
+
+        class _NewsWorker(QThread):
+            done  = pyqtSignal(list)
+            error = pyqtSignal(str)
+            def __init__(self, sym, cutoff):
+                super().__init__()
+                self._sym    = sym
+                self._cutoff = cutoff
+            def run(self):
+                try:
+                    from datetime import datetime as _ddt, timezone as _tz
+                    raw = yf.Ticker(self._sym).news or []
+                    result = []
+                    for item in raw:
+                        # yfinance ≥ 0.2.50: verschachtelte Struktur {id, content:{...}}
+                        c = item.get('content', item)
+                        title = c.get('title', '')
+                        if not title:
+                            continue
+                        # Link
+                        link = (c.get('clickThroughUrl') or {}).get('url', '') \
+                            or (c.get('canonicalUrl') or {}).get('url', '') \
+                            or c.get('link', '')
+                        # Publisher
+                        publisher = (c.get('provider') or {}).get('displayName', '') \
+                            or c.get('publisher', '')
+                        # Zeitstempel: ISO-String oder Unix-Int
+                        ts = 0
+                        pub = c.get('pubDate') or c.get('displayTime', '')
+                        if pub:
+                            try:
+                                dt = _ddt.strptime(pub, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=_tz.utc)
+                                ts = dt.timestamp()
+                            except Exception:
+                                pass
+                        if not ts:
+                            ts = c.get('providerPublishTime', 0) or 0
+                        if ts >= self._cutoff:
+                            result.append({'title': title, 'link': link,
+                                           'publisher': publisher, 'ts': ts})
+                    self.done.emit(result)
+                except Exception as ex:
+                    self.error.emit(str(ex))
+
+        worker = _NewsWorker(symbol, cutoff)
+        self._news_worker = worker
+
+        def _on_done(articles):
+            import time as _t
+            StockChartWidget._news_cache[symbol] = (_t.time(), articles)
+            try:
+                self._restore_news_btn(symbol, articles)
+                self._show_news_dialog(symbol, articles)
+            except RuntimeError:
+                pass
+
+        def _on_error(msg):
+            try:
+                self._restore_news_btn(symbol, [])
+                QMessageBox.warning(self, TR("msg_title_error"),
+                                    f"{TR('title_news')}: {msg}")
+            except RuntimeError:
+                pass
+
+        worker.done.connect(_on_done,  Qt.ConnectionType.QueuedConnection)
+        worker.error.connect(_on_error, Qt.ConnectionType.QueuedConnection)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def _restore_news_btn(self, symbol, articles):
+        """News-Button Text und Farbe nach Abruf wiederherstellen."""
+        from datetime import date as _date, datetime as _datetime
+        self.news_btn.setText(TR("btn_news"))
+        self.news_btn.setEnabled(True)
+        today = _date.today()
+        has_today = any(
+            _datetime.fromtimestamp(a.get('ts', 0)).date() == today
+            for a in articles
+        )
+        if has_today:
+            self.news_btn.setStyleSheet(
+                "QPushButton { background-color:#27ae60; color:white; border:1px solid #1e8449; border-radius:3px; font-weight:bold; }"
+                "QPushButton:hover { background-color:#2ecc71; border:1px solid #27ae60; }"
+            )
+        else:
+            self.news_btn.setStyleSheet(
+                "QPushButton { background-color:#5d6d7e; color:white; border-radius:3px; font-weight:bold; }"
+                "QPushButton:hover { background-color:#717d8a; }"
+            )
+
+    def _show_news_dialog(self, symbol, articles):
+        """News-Fenster anzeigen."""
+        from datetime import datetime as _dt
+        from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QLabel,
+                                     QScrollArea, QWidget, QHBoxLayout)
+        from PyQt6.QtCore import Qt as _Qt
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"📰 {TR('title_news')} – {symbol}")
+        dlg.setMinimumSize(540, 400)
+        lay = QVBoxLayout(dlg)
+        lay.setSpacing(8)
+
+        if not articles:
+            lbl = QLabel(TR("msg_no_news"))
+            lbl.setAlignment(_Qt.AlignmentFlag.AlignCenter)
+            lbl.setStyleSheet("color:#666; font-size:13px; padding:30px;")
+            lay.addWidget(lbl)
+        else:
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            container = QWidget()
+            vlay = QVBoxLayout(container)
+            vlay.setSpacing(6)
+            vlay.setContentsMargins(4, 4, 4, 4)
+
+            for art in articles:
+                title     = art.get('title', '?')
+                link      = art.get('link', '')
+                publisher = art.get('publisher', '')
+                ts        = art.get('ts', 0)
+                dt_str    = _dt.fromtimestamp(ts).strftime('%d.%m.%Y %H:%M') if ts else ''
+
+                card = QWidget()
+                card.setStyleSheet(
+                    "QWidget { background:#f8f9fa; border-radius:5px;"
+                    " border:1px solid #dee2e6; }"
+                )
+                card_lay = QVBoxLayout(card)
+                card_lay.setContentsMargins(10, 7, 10, 7)
+                card_lay.setSpacing(3)
+
+                title_lbl = QLabel(
+                    f'<a href="{link}" style="color:#1a73e8; font-weight:bold;'
+                    f' text-decoration:none;">{title}</a>'
+                )
+                title_lbl.setOpenExternalLinks(True)
+                title_lbl.setWordWrap(True)
+                title_lbl.setFont(QFont("Arial", 10))
+                card_lay.addWidget(title_lbl)
+
+                meta_lbl = QLabel(
+                    f'<span style="color:#888; font-size:10px;">'
+                    f'{publisher}&nbsp;&nbsp;·&nbsp;&nbsp;{dt_str}</span>'
+                )
+                meta_lbl.setTextFormat(_Qt.TextFormat.RichText)
+                card_lay.addWidget(meta_lbl)
+
+                vlay.addWidget(card)
+
+            vlay.addStretch()
+            scroll.setWidget(container)
+            lay.addWidget(scroll)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        close_btn = QPushButton(TR("btn_close"))
+        close_btn.setMinimumWidth(90)
+        close_btn.clicked.connect(dlg.accept)
+        btn_row.addWidget(close_btn)
+        lay.addLayout(btn_row)
+
+        dlg.exec()
+
     def generate_time_ticks(self, times, max_ticks=10):
         """Zeit-Ticks für X-Achse – intelligente kalendarische Intervalle."""
         if len(times) == 0:
@@ -7577,6 +8160,7 @@ class PortfolioDialog(QMainWindow):
         super().__init__(parent)
         self.setWindowModality(Qt.WindowModality.NonModal)
         self.charts = charts
+        self._portfolio_notes = []   # Journal-Einträge, portf.-spezifisch
         self.portfolio_data = self.load_portfolio()
         self._limits = self._load_limits()
         PortfolioDialog.load_api_keys()   # API-Keys beim Start laden
@@ -7628,7 +8212,7 @@ class PortfolioDialog(QMainWindow):
                     _purge_caches()
                     self._sector_cache = {}
                 else:
-                    self._sector_cache = _loaded
+                    self._sector_cache = {k: _SECTOR_ALIASES.get(v, v) for k, v in _loaded.items()}
             else:
                 self._sector_cache = {}
         except Exception:
@@ -7659,6 +8243,9 @@ class PortfolioDialog(QMainWindow):
         # Demo-Portfolio beim ersten Start laden (kein Portfolio vorhanden)
         if not self.portfolio_data and not self._get_active_portfolio_name():
             self._auto_load_demo_portfolio()
+        elif self._get_active_portfolio_name() == "Demo":
+            _set_demo_cutoff(True)
+            QTimer.singleShot(1000, self._show_demo_disclaimer)
         # AIBalance-Filter pro Portfolio: {portfolio_name: {'currencies': [...], 'sectors': [...]}}
         self._aib_filters = {}
         self._aib_filters_file = os.path.join(_DATA_HOME, ".stock_monitor_aib_filters.json")
@@ -7702,19 +8289,28 @@ class PortfolioDialog(QMainWindow):
                 self._open_overview_on_load = False
                 QTimer.singleShot(100, self.show_overview)
             return
+        # Kein Doppelstart wenn bereits läuft
+        try:
+            if getattr(self, '_master_worker', None) and self._master_worker.isRunning():
+                return
+        except RuntimeError:
+            self._master_worker = None
 
         # Debug: Zeige ersten Sektor-Cache Eintrag
         if self._sector_cache:
             first_k, first_v = next(iter(self._sector_cache.items()))
             print(f"[DEBUG sector_cache] {len(self._sector_cache)} Einträge, Beispiel: {first_k!r} → {first_v!r}", flush=True)
             # Sicherheitscheck: wenn Werte nicht in bekannten englischen GICS-Sektoren, Cache leeren
-            _VALID_EN = {'Energy','Materials','Industrials','Consumer Cyclical',
-                         'Consumer Defensive','Healthcare','Financial Services',
-                         'Technology','Communication Services','Utilities',
-                         'Real Estate','Unknown',
-                         # Yahoo-Varianten
-                         'Consumer Discretionary','Consumer Staples','Health Care',
-                         'Financials','Information Technology','Basic Materials'}
+            _VALID_EN = {
+                         # Offizielle GICS-Sektornamen
+                         'Energy','Materials','Industrials',
+                         'Consumer Discretionary','Consumer Staples',
+                         'Health Care','Financials','Information Technology',
+                         'Communication Services','Utilities','Real Estate',
+                         'Unknown',
+                         # Yahoo-Varianten (rückwärtskompatibel für alten Cache)
+                         'Consumer Cyclical','Consumer Defensive','Healthcare',
+                         'Financial Services','Technology','Basic Materials'}
             _bad = [v for v in list(self._sector_cache.values())[:5]
                     if v and v not in _VALID_EN]
             if _bad:
@@ -7744,10 +8340,11 @@ class PortfolioDialog(QMainWindow):
                 'SEK':('SEKUSD=X',False),'SGD':('SGDUSD=X',False),'TWD':('TWD=X',True),
             }
 
-            def __init__(self, portfolio_data, sector_cache, parent=None):
+            def __init__(self, portfolio_data, sector_cache, industry_cache=None, parent=None):
                 super().__init__(parent)
                 self._pdata  = portfolio_data
-                self._scache = dict(sector_cache)  # Kopie
+                self._scache = dict(sector_cache)   # Kopie
+                self._icache = dict(industry_cache or {})
 
             def _get_fx(self, cur, cache_usd, cache_chf):
                 """Gibt (fx_to_usd, fx_to_chf) zurück – gecacht."""
@@ -7904,6 +8501,8 @@ class PortfolioDialog(QMainWindow):
                                     w52_low_map[sym] = w52l
                                 completed += 1
                                 self.progress.emit(completed, total, sym)
+                                if self.isInterruptionRequested():
+                                    return
                     except _cf.TimeoutError:
                         # Gesamt-Timeout überschritten – verbleibende Symbole überspringen
                         print("[Kurs Gesamt-Timeout] Nicht alle Symbole geladen – App läuft weiter", flush=True)
@@ -7912,12 +8511,16 @@ class PortfolioDialog(QMainWindow):
                                 print(f"[Kurs Timeout] {s} übersprungen", flush=True)
                                 _failed_syms.append(s)
                 self._last_failed_syms = _failed_syms   # für Status-Label nach dem Laden
+                if self.isInterruptionRequested():
+                    return
 
                 if 'USD_CHF' not in fx_chf:
                     fx_chf['USD_CHF'] = 0.9
 
                 # ── SCHRITT 2: Branchen (nur fehlende, parallel mit hartem Timeout) ──
-                missing_sectors = [s for s in real_syms if s not in self._scache and not _is_commodity(s)]
+                missing_sectors = [s for s in real_syms
+                                   if (s not in self._scache or s not in self._icache)
+                                   and not _is_commodity(s)]
                 new_sectors    = {}
                 new_industries = {}
                 _company_names = {}
@@ -7986,11 +8589,15 @@ class PortfolioDialog(QMainWindow):
                                 done_sectors += 1
                                 self.progress.emit(done_sectors, len(missing_sectors),
                                     f"{TR('status_sector_progress', done=done_sectors, total=len(missing_sectors), sym=sym)}")
+                                if self.isInterruptionRequested():
+                                    return
                     except Exception:
                         # Timeout oder anderer Fehler – restliche Symbole als Unknown markieren
                         for s in missing_sectors:
                             if s not in new_sectors:
                                 new_sectors[s] = 'Unknown'
+                    if self.isInterruptionRequested():
+                        return
                 else:
                     self.progress.emit(1, 1, TR("status_sectors_cached"))
 
@@ -8063,8 +8670,14 @@ class PortfolioDialog(QMainWindow):
                 self._company_names = _company_names
                 self.done.emit(price_result, overview_result, sector_result, industry_result)
 
-        worker = MasterWorker(self.portfolio_data, self._sector_cache, parent=self)
+        worker = MasterWorker(self.portfolio_data, self._sector_cache,
+                              self._industry_cache, parent=self)
         self._master_worker = worker
+        worker.finished.connect(
+            lambda mw=worker: setattr(self, '_master_worker', None)
+            if self._master_worker is mw else None
+        )
+        worker.finished.connect(worker.deleteLater)
 
         def on_master_done(price_result, overview_result, sector_result, industry_result):
             now = self._time.time()
@@ -8076,7 +8689,7 @@ class PortfolioDialog(QMainWindow):
             # Branchen-Cache: nur erfolgreiche Einträge speichern (nicht 'Unknown')
             for sym, raw_sector in sector_result.items():
                 if raw_sector and raw_sector != 'Unknown':
-                    self._sector_cache[sym] = raw_sector
+                    self._sector_cache[sym] = _SECTOR_ALIASES.get(raw_sector, raw_sector)
             successful_sectors = {k: v for k, v in self._sector_cache.items() if v != 'Unknown'}
             if successful_sectors:
                 try:
@@ -8180,15 +8793,66 @@ class PortfolioDialog(QMainWindow):
         try:
             if os.path.exists(self.PORTFOLIO_FILE):
                 with open(self.PORTFOLIO_FILE, 'r') as f:
-                    data = json.load(f)
-                migrated = self._migrate_crypto(data)
-                if migrated != data:
+                    raw = json.load(f)
+                # Neues Format: {"positions": {...}, "notes": [...]}
+                if isinstance(raw, dict) and "positions" in raw and isinstance(raw.get("positions"), dict):
+                    positions = raw["positions"]
+                    self._portfolio_notes = raw.get("notes", [])
+                else:
+                    positions = raw   # altes Format: nur Positionen
+                    self._portfolio_notes = []
+                migrated = self._migrate_crypto(positions)
+                if migrated != positions:
                     with open(self.PORTFOLIO_FILE, 'w') as f:
-                        json.dump(migrated, f, indent=2)
+                        json.dump({"positions": migrated, "notes": self._portfolio_notes}, f, indent=2)
                 return migrated
         except Exception:
             pass
         return {}
+
+    def _show_demo_disclaimer(self):
+        """Zeigt Haftungsausschluss-Dialog für das Demo-Portfolio."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle(TR("title_demo_disclaimer"))
+        dlg.setFixedWidth(520)
+        dlg.setWindowFlags(dlg.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        lay = QVBoxLayout(dlg)
+        lay.setSpacing(14)
+        lay.setContentsMargins(24, 20, 24, 20)
+
+        icon_lbl = QLabel("⚠️")
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_lbl.setStyleSheet("font-size: 36px;")
+        lay.addWidget(icon_lbl)
+
+        title_lbl = QLabel(TR("lbl_demo_disclaimer_title"))
+        title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #b71c1c;")
+        title_lbl.setWordWrap(True)
+        lay.addWidget(title_lbl)
+
+        text_lbl = QLabel(TR("lbl_demo_disclaimer_body"))
+        text_lbl.setWordWrap(True)
+        text_lbl.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        text_lbl.setStyleSheet(
+            "font-size: 12px; padding: 10px; background: #fff8e1; color: #1a1a1a; "
+            "border: 1px solid #e65100; border-radius: 4px;")
+        lay.addWidget(text_lbl)
+
+        btn = QPushButton(TR("btn_demo_disclaimer_accept"))
+        btn.setStyleSheet(
+            "background-color: #e65100; color: white; font-weight: bold; "
+            "font-size: 13px; padding: 8px 20px; border-radius: 4px;")
+        btn.clicked.connect(dlg.accept)
+        lay.addWidget(btn, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        dlg.adjustSize()
+        _screen = QApplication.primaryScreen().availableGeometry()
+        dlg.move(
+            _screen.x() + (_screen.width()  - dlg.width())  // 2,
+            _screen.y() + (_screen.height() - dlg.height()) // 2,
+        )
+        dlg.exec()
 
     def _auto_load_demo_portfolio(self):
         """Lädt Demo-Portfolio beim ersten Start automatisch (leeres Passwort)."""
@@ -8197,13 +8861,23 @@ class PortfolioDialog(QMainWindow):
         try:
             demo_path = os.path.join(_pdb.PORTFOLIO_DIR, "Demo.smpf")
             if not os.path.exists(demo_path):
-                return
+                # Im Flatpak: Demo.smpf aus App-Verzeichnis kopieren
+                app_demo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Demo.smpf")
+                if os.path.exists(app_demo):
+                    import shutil
+                    os.makedirs(_pdb.PORTFOLIO_DIR, exist_ok=True)
+                    shutil.copy2(app_demo, demo_path)
+                else:
+                    return
             data = _pdb.load_portfolio("Demo", "")
             self.portfolio_data = self._migrate_crypto(data["positions"])
+            self._portfolio_notes = data.get("notes", [])
             if data.get("sector_cache"):
                 self._sector_cache.update(data["sector_cache"])
             self._set_active_portfolio_name("Demo")
             self.save_portfolio()
+            _set_demo_cutoff(True)
+            QTimer.singleShot(800, self._show_demo_disclaimer)
         except Exception:
             pass  # Demo nicht ladbar (z.B. falsches Passwort) → kein Absturz
 
@@ -8241,7 +8915,7 @@ class PortfolioDialog(QMainWindow):
         Für benannte Portfolios in der DB: portfolio_save_as() verwenden."""
         try:
             with open(self.PORTFOLIO_FILE, 'w') as f:
-                json.dump(self.portfolio_data, f, indent=2)
+                json.dump({"positions": self.portfolio_data, "notes": self._portfolio_notes}, f, indent=2)
         except Exception as e:
             QMessageBox.warning(self, TR("msg_title_error"), TR("msg_save_failed", e=e))
 
@@ -8333,6 +9007,7 @@ class PortfolioDialog(QMainWindow):
                 name, self.portfolio_data, password,
                 price_cache  = self._sector_cache,   # Branchen-Cache mitschreiben
                 sector_cache = self._sector_cache,
+                notes        = self._portfolio_notes,
             )
             self._set_active_portfolio_name(name)
             self.save_portfolio()
@@ -8494,25 +9169,29 @@ class PortfolioDialog(QMainWindow):
             if not e: return
             try:
                 if e["type"] == "smpf":
-                    # Passwort abfragen
-                    for attempt in range(3):
-                        pw_dlg = PortfolioPasswordDialog("load", e["name"], dlg)
-                        if attempt > 0:
-                            pw_dlg._status.setText(
-                                TR("lbl_wrong_pw_attempt", attempt=attempt+1)
-                            )
-                        if pw_dlg.exec() != QDialog.DialogCode.Accepted:
-                            return
-                        password = pw_dlg.get_password()
-                        try:
-                            data = _pdb.load_portfolio(e["name"], password)
-                            break
-                        except WrongPasswordError:
-                            if attempt == 2:
-                                QMessageBox.warning(dlg, TR("msg_title_locked"),
-                                    TR("msg_3_wrong_passwords2"))
+                    if e["name"] == "Demo":
+                        # Demo-Portfolio hat kein Passwort
+                        data = _pdb.load_portfolio("Demo", "")
+                    else:
+                        # Passwort abfragen
+                        for attempt in range(3):
+                            pw_dlg = PortfolioPasswordDialog("load", e["name"], dlg)
+                            if attempt > 0:
+                                pw_dlg._status.setText(
+                                    TR("lbl_wrong_pw_attempt", attempt=attempt+1)
+                                )
+                            if pw_dlg.exec() != QDialog.DialogCode.Accepted:
                                 return
-                            continue
+                            password = pw_dlg.get_password()
+                            try:
+                                data = _pdb.load_portfolio(e["name"], password)
+                                break
+                            except WrongPasswordError:
+                                if attempt == 2:
+                                    QMessageBox.warning(dlg, TR("msg_title_locked"),
+                                        TR("msg_3_wrong_passwords2"))
+                                    return
+                                continue
                 else:
                     # JSON
                     with open(e["path"]) as f:
@@ -8614,17 +9293,21 @@ class PortfolioDialog(QMainWindow):
                 else:
                     # Ersetzen
                     self.portfolio_data = new_positions
+                    self._portfolio_notes = data.get("notes", [])
                     info_txt = TR("lbl_portfolio_loaded_n", name=e['name'], n=len(self.portfolio_data))
 
                 # Branchen-Cache übernehmen
                 if new_sectors:
                     self._sector_cache.update(new_sectors)
                 self._set_active_portfolio_name(e["name"])
+                _set_demo_cutoff(e["name"] == "Demo")
                 self._limits = self._load_limits()  # Limits portfoliospezifisch neu laden
                 self.save_portfolio()
                 self._invalidate_cache()
                 self._update_portfolio_name_label(e["name"])
                 dlg.accept()
+                if e["name"] == "Demo":
+                    QTimer.singleShot(200, self._show_demo_disclaimer)
                 # Dollarnote zeigen während das neue Portfolio geladen wird
                 main_win = self.parent()
                 if main_win and hasattr(main_win, 'show_dollar'):
@@ -8785,17 +9468,23 @@ class PortfolioDialog(QMainWindow):
         if not _DB_IMPORT_OK or not CRYPTO_AVAILABLE:
             layout.addWidget(QLabel(TR("lbl_encrypt_unavailable")))
         else:
+            from PyQt6.QtGui import QPalette as _QPalette_db
+            _dm_db = QApplication.palette().color(_QPalette_db.ColorRole.Window).lightness() < 128
             entries = _pdb.list_portfolios()
+            _sm_clr = "#aaa" if _dm_db else "#666"
+            _ef = "font-family: 'Noto Color Emoji', 'Segoe UI Emoji', 'Apple Color Emoji';"
             stats_txt = (
                 TR("lbl_encrypted_portfolios")
-                + f"📁 Ordner: <code>{PORTFOLIO_DIR}</code><br>"
-                + f"📊 {len(entries)} Portfolio-Datei(en) vorhanden<br><br>"
-                + f"<small style='color:#666'>Jede .smpf-Datei hat ein eigenes Passwort<br>"
+                + f"<span style='{_ef}'>📁</span> Ordner: <code>{PORTFOLIO_DIR}</code><br>"
+                + f"<span style='{_ef}'>📊</span> {len(entries)} Portfolio-Datei(en) vorhanden<br><br>"
+                + f"<small style='color:{_sm_clr}'>Jede .smpf-Datei hat ein eigenes Passwort<br>"
                 + TR("lbl_smpf_portable2") + "</small>"
             )
             lbl = QLabel(stats_txt)
             lbl.setWordWrap(True)
-            lbl.setStyleSheet("background:#eafaf1; padding:10px; border-radius:4px;")
+            lbl.setStyleSheet(
+                "background:#1a2f1a; color:#cdd6f4; padding:10px; border-radius:4px;" if _dm_db
+                else "background:#eafaf1; padding:10px; border-radius:4px;")
             layout.addWidget(lbl)
 
             if entries:
@@ -8937,6 +9626,15 @@ class PortfolioDialog(QMainWindow):
         Das Steuermodul ist in tax_module.py ausgelagert, damit Steuerregeln
         (jährliche Änderungen) unabhängig vom Hauptprogramm aktualisiert werden.
         """
+        # Alle laufenden Chart-Worker stoppen: curl_cffi ist nicht thread-sicher
+        # für gleichzeitige yfinance-Sessions aus verschiedenen Threads.
+        for _w in list(StockChartWidget._worker_registry):
+            try:
+                _w.quit()
+                _w.wait(1500)
+            except Exception:
+                pass
+        StockChartWidget._worker_registry.clear()
         try:
             import tax_module
         except ImportError:
@@ -8986,6 +9684,9 @@ class PortfolioDialog(QMainWindow):
             country_code, pos_data, parent=self,
             number_format=globals().get('_NUMBER_FORMAT', 'CH')
         )
+        import sys as _sys_tax
+        if _sys_tax.platform == "win32":
+            dlg.finished.connect(lambda: (self.raise_(), self.activateWindow()))
         dlg.exec()
 
     @safe_slot
@@ -9091,9 +9792,12 @@ class PortfolioDialog(QMainWindow):
         layout.addSpacing(6)
 
         # Eingabe-Bereich
+        from PyQt6.QtGui import QPalette as _QPalette_adm
+        _dm_adm = QApplication.palette().color(_QPalette_adm.ColorRole.Window).lightness() < 128
         input_frame = QFrame()
         input_frame.setFrameStyle(QFrame.Shape.Box)
-        input_frame.setStyleSheet("background-color: #f0f8ff; border: 1px solid #3498db;")
+        _adm_input_bg = "#0d1f30" if _dm_adm else "#f0f8ff"
+        input_frame.setStyleSheet(f"background-color: {_adm_input_bg}; border: 1px solid #3498db;")
         input_layout = QHBoxLayout(input_frame)
 
         input_layout.addWidget(QLabel(TR("lbl_symbol")))
@@ -9480,6 +10184,9 @@ class PortfolioDialog(QMainWindow):
             return
 
         # Vorschau-Dialog anzeigen
+        from PyQt6.QtGui import QPalette as _QPalette_sq
+        _dm_sq = QApplication.palette().color(_QPalette_sq.ColorRole.Window).lightness() < 128
+
         preview_dialog = QDialog(self)
         preview_dialog.setWindowTitle(TR("title_swissquote_import"))
         preview_dialog.setMinimumSize(750, 500)
@@ -9518,7 +10225,10 @@ class PortfolioDialog(QMainWindow):
         all_rows = sorted(kauf_rows + verkauf_rows, key=lambda x: x['date'], reverse=True)
         for idx2, row in enumerate(all_rows):
             r_widget = QWidget()
-            bg = "#f9f9f9" if idx2 % 2 == 0 else "white"
+            if _dm_sq:
+                bg = "#1e2535" if idx2 % 2 == 0 else "#161d2b"
+            else:
+                bg = "#f9f9f9" if idx2 % 2 == 0 else "white"
             r_widget.setStyleSheet(f"background-color: {bg};")
             r_layout = QHBoxLayout(r_widget)
             r_layout.setContentsMargins(4, 2, 4, 2)
@@ -9543,12 +10253,16 @@ class PortfolioDialog(QMainWindow):
             tbl_layout.addWidget(r_widget)
 
         tbl_layout.addStretch()
+        if _dm_sq:
+            tbl_widget.setStyleSheet("background: #161d2b;")
         scroll.setWidget(tbl_widget)
         dlg_layout.addWidget(scroll)
 
         # Optionen
         opt_frame = QFrame()
-        opt_frame.setStyleSheet("background-color: #eaf4fb; border: 1px solid #aed6f1;")
+        opt_frame.setStyleSheet(
+            "background-color: #0d2030; border: 1px solid #1a4060;" if _dm_sq
+            else "background-color: #eaf4fb; border: 1px solid #aed6f1;")
         opt_layout = QVBoxLayout(opt_frame)
         opt_layout.addWidget(QLabel("<b>Import-Optionen:</b>"))
 
@@ -9560,7 +10274,7 @@ class PortfolioDialog(QMainWindow):
         chk_skip_existing.setChecked(True)
         chk_yahoo_price = QCheckBox(TR("chk_swissquote_yahoo_price"))
         chk_yahoo_price.setChecked(True)
-        chk_yahoo_price.setStyleSheet("color: #155724; font-weight: normal;")
+        chk_yahoo_price.setStyleSheet("color: #a8d8a8; font-weight: normal;" if _dm_sq else "color: #155724; font-weight: normal;")
 
         opt_layout.addWidget(chk_kauf)
         opt_layout.addWidget(chk_verkauf)
@@ -9571,7 +10285,7 @@ class PortfolioDialog(QMainWindow):
         # Progress-Anzeige für den Import
         progress_label = QLabel("")
         progress_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        progress_label.setStyleSheet("color: #2980b9; font-style: italic;")
+        progress_label.setStyleSheet("color: #74b9ff; font-style: italic;" if _dm_sq else "color: #2980b9; font-style: italic;")
         dlg_layout.addWidget(progress_label)
 
         # Buttons
@@ -9836,6 +10550,8 @@ class PortfolioDialog(QMainWindow):
             progress_label.setText("")
             self.save_portfolio()
             self._invalidate_cache()
+            if getattr(self, '_embed_callback', None):
+                self._open_overview_on_load = True
             self._master_load()
             preview_dialog.accept()
 
@@ -10104,6 +10820,8 @@ class PortfolioDialog(QMainWindow):
 
         # ── 7. Mapping-Dialog (wenn kein Profil erkannt) ──────────────────────
         # Auch wenn Profil erkannt: zeige dem User was erkannt wurde (lesbare Zusammenfassung)
+        from PyQt6.QtGui import QPalette as _QPalette_gm
+        _dm_gm = QApplication.palette().color(_QPalette_gm.ColorRole.Window).lightness() < 128
 
         mapping_dialog = QDialog(self)
         mapping_dialog.setWindowTitle(TR("title_csv_mapping"))
@@ -10123,7 +10841,9 @@ class PortfolioDialog(QMainWindow):
 
         # Vorschau: erste 3 Datenzeilen als Tabelle
         prev_frame = QFrame()
-        prev_frame.setStyleSheet("background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px;")
+        prev_frame.setStyleSheet(
+            "background:#1e2535; border:1px solid #2a3a50; border-radius:4px;" if _dm_gm
+            else "background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px;")
         prev_vlayout = QVBoxLayout(prev_frame)
         prev_vlayout.addWidget(QLabel(TR("lbl_file_preview")))
 
@@ -10134,6 +10854,10 @@ class PortfolioDialog(QMainWindow):
         prev_tbl.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         prev_tbl.setMaximumHeight(130)
         prev_tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        if _dm_gm:
+            prev_tbl.setStyleSheet(
+                "QTableWidget { background:#1e2535; color:#cdd6f4; gridline-color:#2a3a50; }"
+                "QHeaderView::section { background:#313244; color:#cdd6f4; border:none; }")
         for row_i, dline in enumerate(data_lines[:n_preview]):
             dcols = [c.strip().strip('"') for c in dline.split(sep)]
             for col_i in range(n_cols):
@@ -10144,11 +10868,33 @@ class PortfolioDialog(QMainWindow):
 
         # Spalten-Mapping
         mapping_frame = QFrame()
-        mapping_frame.setStyleSheet("background:#eaf4fb; border:1px solid #aed6f1; border-radius:4px;")
+        mapping_frame.setStyleSheet(
+            "background:#0d2030; border:1px solid #1a4060; border-radius:4px;" if _dm_gm
+            else "background:#eaf4fb; border:1px solid #aed6f1; border-radius:4px;")
         map_layout = QVBoxLayout(mapping_frame)
         map_layout.addWidget(QLabel(TR("lbl_column_mapping")))
 
         col_options = ["— nicht vorhanden —"] + header_cols
+
+        if not _dm_gm:
+            from PyQt6.QtWidgets import QStyledItemDelegate as _SID, QStyle as _QST
+            from PyQt6.QtGui import QColor as _QCfx
+            from PyQt6.QtCore import Qt as _Qtfx
+
+            class _ComboDelegate(_SID):
+                def paint(self, painter, option, index):
+                    if option.state & _QST.StateFlag.State_Selected:
+                        painter.save()
+                        painter.fillRect(option.rect, _QCfx('#d6eaf8'))
+                        painter.setPen(_QCfx('#1a252f'))
+                        painter.drawText(option.rect.adjusted(6, 0, -4, 0),
+                                         _Qtfx.AlignmentFlag.AlignVCenter,
+                                         index.data() or '')
+                        painter.restore()
+                    else:
+                        super().paint(painter, option, index)
+        else:
+            _ComboDelegate = None
 
         def make_row(label_text, hint, profile_key, col_name_fallback):
             """Erstellt eine Zeile mit Label + ComboBox + Hinweis."""
@@ -10163,6 +10909,8 @@ class PortfolioDialog(QMainWindow):
             combo = QComboBox()
             combo.addItems(col_options)
             combo.setMinimumWidth(240)
+            if _ComboDelegate is not None:
+                combo.setItemDelegate(_ComboDelegate(combo))
             # Auto-select: erst aus Profil, dann fuzzy
             auto_idx = 0
             if matched_profile and profile_key in matched_profile:
@@ -10175,12 +10923,12 @@ class PortfolioDialog(QMainWindow):
                     auto_idx = idx + 1
             combo.setCurrentIndex(auto_idx)
             row_h.addWidget(combo)
-            hint_lbl = QLabel(f"<small style='color:#7f8c8d'>{hint}</small>")
+            hint_lbl = QLabel(f"<small style='color:{'#aaa' if _dm_gm else '#7f8c8d'}'>{hint}</small>")
             row_h.addWidget(hint_lbl)
             row_h.addStretch()
             return row_w, combo
 
-        map_layout.addWidget(QLabel(f"<small style='color:#555'>{TR('lbl_required_fields_hint')}</small>"))
+        map_layout.addWidget(QLabel(f"<small style='color:{'#aaa' if _dm_gm else '#555'}'>{TR('lbl_required_fields_hint')}</small>"))
 
         row_sym,    cmb_sym    = make_row(TR("lbl_csv_col_symbol"),  TR("ph_csv_symbol"),  'col_symbol',  'symbol')
         row_date,   cmb_date   = make_row(TR("lbl_csv_col_date"),    TR("ph_csv_date"),    'col_date',    'datum')
@@ -10194,10 +10942,12 @@ class PortfolioDialog(QMainWindow):
 
         # Typ-Schlüsselwörter
         kw_frame = QFrame()
-        kw_frame.setStyleSheet("background:#fff8e1; border:1px solid #f0d080; border-radius:3px; margin:2px;")
+        kw_frame.setStyleSheet(
+            "background:#2a2010; border:1px solid #5a4020; border-radius:3px; margin:2px;" if _dm_gm
+            else "background:#fff8e1; border:1px solid #f0d080; border-radius:3px; margin:2px;")
         kw_layout = QVBoxLayout(kw_frame)
         kw_layout.addWidget(QLabel(TR("lbl_tx_keywords")
-                                   + "<small style='color:#7f8c8d'>(kommagetrennt, Gross-/Kleinschreibung egal)</small>"))
+                                   + f"<small style='color:{'#aaa' if _dm_gm else '#7f8c8d'}'>(kommagetrennt, Gross-/Kleinschreibung egal)</small>"))
         from PyQt6.QtWidgets import QLineEdit
         kw_h = QHBoxLayout()
         kw_h.addWidget(QLabel(TR("lbl_kauf")))
@@ -10246,6 +10996,8 @@ class PortfolioDialog(QMainWindow):
         dec_h = QHBoxLayout()
         dec_h.addWidget(QLabel("<b>Dezimaltrennzeichen:</b>"))
         cmb_decimal = QComboBox()
+        if _ComboDelegate is not None:
+            cmb_decimal.setItemDelegate(_ComboDelegate(cmb_decimal))
         cmb_decimal.addItems([TR("combo_csv_comma"), TR("combo_csv_dot")])
         if matched_profile:
             cmb_decimal.setCurrentIndex(0 if matched_profile.get('decimal_sep', ',') == ',' else 1)
@@ -10510,10 +11262,14 @@ class PortfolioDialog(QMainWindow):
             for ut in unknown_types:
                 row_w2 = QWidget()
                 row_h2 = QHBoxLayout(row_w2)
-                lbl2 = QLabel(f"<code style='background:#f0f0f0; padding:2px 6px'>{ut}</code>")
+                _ub = "#313244" if _dm_gm else "#f0f0f0"
+                _uc = "#cdd6f4" if _dm_gm else "#333"
+                lbl2 = QLabel(f"<code style='background:{_ub}; color:{_uc}; padding:2px 6px'>{ut}</code>")
                 lbl2.setMinimumWidth(200)
                 row_h2.addWidget(lbl2)
                 cmb2 = QComboBox()
+                if _ComboDelegate is not None:
+                    cmb2.setItemDelegate(_ComboDelegate(cmb2))
                 cmb2.addItems([TR("combo_skip"), TR("lbl_tx_as_buy"), TR("lbl_tx_as_sell"),
                                TR("lbl_tx_as_split"), TR("lbl_tx_as_div")])
                 row_h2.addWidget(cmb2)
@@ -10553,6 +11309,9 @@ class PortfolioDialog(QMainWindow):
             return
 
         # ── 10. Vorschau-Dialog ───────────────────────────────────────────────
+        from PyQt6.QtGui import QPalette as _QPalette_gc
+        _dm_gc = QApplication.palette().color(_QPalette_gc.ColorRole.Window).lightness() < 128
+
         prev_dlg = QDialog(self)
         prev_dlg.setWindowTitle(TR("title_csv_preview"))
         prev_dlg.setMinimumSize(780, 520)
@@ -10580,7 +11339,9 @@ class PortfolioDialog(QMainWindow):
         isin_rows = [r for r in kauf_rows + verkauf_rows if len(r['symbol']) == 12 and r['symbol'][:2].isalpha()]
         if isin_rows:
             isin_warn = QLabel(TR("lbl_isin_warning", n=len(isin_rows)))
-            isin_warn.setStyleSheet("color: #e67e22; background:#fff8e1; padding:4px; border-radius:3px;")
+            isin_warn.setStyleSheet(
+                "color: #e67e22; background:#2a2010; padding:4px; border-radius:3px;" if _dm_gc
+                else "color: #e67e22; background:#fff8e1; padding:4px; border-radius:3px;")
             isin_warn.setWordWrap(True)
             prev_dlg_layout.addWidget(isin_warn)
 
@@ -10590,6 +11351,8 @@ class PortfolioDialog(QMainWindow):
         tbl2_widget = QWidget()
         tbl2_layout = QVBoxLayout(tbl2_widget)
         tbl2_layout.setSpacing(1)
+        if _dm_gc:
+            tbl2_widget.setStyleSheet("background: #161d2b;")
 
         hdr2 = QWidget()
         hdr2.setStyleSheet("background-color: #2c3e50; color: white;")
@@ -10607,7 +11370,10 @@ class PortfolioDialog(QMainWindow):
                            key=lambda x: x['date'], reverse=True)
         for idx3, row in enumerate(all_rows2):
             rw = QWidget()
-            bg = "#f9f9f9" if idx3 % 2 == 0 else "white"
+            if _dm_gc:
+                bg = "#1e2535" if idx3 % 2 == 0 else "#161d2b"
+            else:
+                bg = "#f9f9f9" if idx3 % 2 == 0 else "white"
             rw.setStyleSheet(f"background-color: {bg};")
             rl = QHBoxLayout(rw)
             rl.setContentsMargins(4, 2, 4, 2)
@@ -10641,7 +11407,9 @@ class PortfolioDialog(QMainWindow):
 
         # Import-Optionen
         opt2_frame = QFrame()
-        opt2_frame.setStyleSheet("background-color: #eaf4fb; border: 1px solid #aed6f1;")
+        opt2_frame.setStyleSheet(
+            "background-color: #0d2030; border: 1px solid #1a4060;" if _dm_gc
+            else "background-color: #eaf4fb; border: 1px solid #aed6f1;")
         opt2_layout = QVBoxLayout(opt2_frame)
         opt2_layout.addWidget(QLabel("<b>Import-Optionen:</b>"))
         chk2_kauf    = QCheckBox(TR("lbl_import_buy_chk", n=len(kauf_rows)))
@@ -10657,7 +11425,7 @@ class PortfolioDialog(QMainWindow):
 
         prog2_lbl = QLabel("")
         prog2_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        prog2_lbl.setStyleSheet("color: #2980b9; font-style: italic;")
+        prog2_lbl.setStyleSheet("color: #74b9ff; font-style: italic;" if _dm_gc else "color: #2980b9; font-style: italic;")
         prev_dlg_layout.addWidget(prog2_lbl)
 
         btn_row2 = QHBoxLayout()
@@ -10843,6 +11611,8 @@ class PortfolioDialog(QMainWindow):
             prog2_lbl.setText("")
             self.save_portfolio()
             self._invalidate_cache()
+            if getattr(self, '_embed_callback', None):
+                self._open_overview_on_load = True
             self._master_load()
             prev_dlg.accept()
 
@@ -10947,12 +11717,18 @@ class PortfolioDialog(QMainWindow):
         dlg_layout = QVBoxLayout(dlg)
         dlg_layout.setSpacing(4)
 
+        if _DEMO_CUTOFF:
+            dlg_layout.addWidget(_make_demo_banner(top=True))
+
         # Bildschirmgrösse ermitteln für adaptive Button-Beschriftungen
         _ov_screen = QApplication.primaryScreen().geometry()
         _ov_is_fullhd = _ov_screen.width() <= 1920
 
+        # Dark-Mode-Erkennung für das Übersichts-Widget
+        from PyQt6.QtGui import QPalette as _QPalette_ov
+        _dm_ov = QApplication.palette().color(_QPalette_ov.ColorRole.Window).lightness() < 128
+
         # ── Administration-Zeile ─────────────────────────────────────────────
-        # Emoji-Font für alle Buttons in dieser Zeile
         from PyQt6.QtGui import QFontDatabase as _QFDB_ov
         _ov_emoji_font = None
         for _fc_ov in ['Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji']:
@@ -10975,30 +11751,19 @@ class PortfolioDialog(QMainWindow):
             btn.setStyleSheet("padding: 2px 10px;")
             return btn
 
-        # Full HD: QGridLayout fuer perfekte Spaltenausrichtung | 4K: 1 HBoxLayout
+        # Full HD: 2 unabhängige HBoxLayouts (Zeile 1 + Zeile 2) | 4K: 1 HBoxLayout
         if _ov_is_fullhd:
-            from PyQt6.QtWidgets import QSizePolicy as _QSP
-            btn_grid = QGridLayout()
-            btn_grid.setHorizontalSpacing(5)
-            btn_grid.setVerticalSpacing(3)
-            _col1 = [0]; _col2 = [2]  # Zeile2 startet ab Spalte 2 (nach Admin+Akt.)
+            _btn_top = QHBoxLayout(); _btn_top.setSpacing(4); _btn_top.setContentsMargins(0,0,0,0)
+            _btn_bot = QHBoxLayout(); _btn_bot.setSpacing(4); _btn_bot.setContentsMargins(0,0,0,0)
             def _add_btn(btn, row=1):
-                if row == 1:
-                    btn_grid.addWidget(btn, 0, _col1[0]); _col1[0] += 1
-                else:
-                    btn_grid.addWidget(btn, 1, _col2[0]); _col2[0] += 1
+                if row == 1: _btn_top.addWidget(btn)
+                else:        _btn_bot.addWidget(btn)
             def _add_stretch(row=1):
-                sp = QWidget(); sp.setSizePolicy(_QSP.Policy.Expanding, _QSP.Policy.Preferred)
-                if row == 1:
-                    btn_grid.addWidget(sp, 0, _col1[0]); _col1[0] += 1
-                else:
-                    btn_grid.addWidget(sp, 1, _col2[0]); _col2[0] += 1
+                if row == 1: _btn_top.addStretch()
+                else:        _btn_bot.addStretch()
             def _add_spacing(px, row=1):
-                sp = QWidget(); sp.setFixedWidth(px)
-                if row == 1:
-                    btn_grid.addWidget(sp, 0, _col1[0]); _col1[0] += 1
-                else:
-                    btn_grid.addWidget(sp, 1, _col2[0]); _col2[0] += 1
+                if row == 1: _btn_top.addSpacing(px)
+                else:        _btn_bot.addSpacing(px)
         else:
             admin_row = QHBoxLayout(); admin_row.setSpacing(6)
             def _add_btn(btn, row=1):    admin_row.addWidget(btn)
@@ -11081,7 +11846,7 @@ class PortfolioDialog(QMainWindow):
 
         perf_chart_btn = _make_ov_btn(
             TR("btn_ov_perf_hd") if _ov_is_fullhd else TR("btn_ov_perf_4k"),
-            TR("tip_ov_perf"), 155)
+            TR("tip_ov_perf"), 120 if _ov_is_fullhd else 155)
         perf_chart_btn.clicked.connect(self.show_portfolio_performance_chart)
         _add_btn(perf_chart_btn, 1)
 
@@ -11093,7 +11858,7 @@ class PortfolioDialog(QMainWindow):
 
         bar_btn2 = _make_ov_btn(
             TR("btn_ov_bar_hd") if _ov_is_fullhd else TR("btn_ov_bar_4k"),
-            TR("tip_ov_bar"), 170)
+            TR("tip_ov_bar"), 125 if _ov_is_fullhd else 170)
         bar_btn2.clicked.connect(self.show_bar_chart)
         _add_btn(bar_btn2, 1)
 
@@ -11132,10 +11897,16 @@ class PortfolioDialog(QMainWindow):
             TR("tip_ov_dividends"), 130)
         # Full HD: Zeile 1 (nach Branchen); 4K: Zeile 2
         div_btn.clicked.connect(self.show_dividend_chart)
-        _div_col_idx = [_col1[0]] if _ov_is_fullhd else [None]  # Spalte von Dividenden in Zeile 0
         _add_btn(div_btn, 1 if _ov_is_fullhd else 2)
+
+        pf_bewertung_btn = _make_ov_btn(
+            TR("btn_ov_pf_bewertung_hd") if _ov_is_fullhd else TR("btn_ov_pf_bewertung"),
+            TR("tip_ov_pf_bewertung"),
+            90 if _ov_is_fullhd else 130)
+        pf_bewertung_btn.clicked.connect(self.show_portfolio_assessment)
         if _ov_is_fullhd:
-            _add_stretch(1)  # Full HD: Stretch nach Dividenden in Zeile 1
+            _add_stretch(1)  # Stretch vor Export (Zeile 1)
+        # 4K: wird weiter unten in _tax_row_4k vor Indizes platziert
 
         # ── Steuern-Button ────────────────────────────────────────────────────
         def _make_tax_popup(anchor_ref):
@@ -11184,14 +11955,6 @@ class PortfolioDialog(QMainWindow):
         tax_btn_ov.setText("\u2004\u2004\u2004" + tax_btn_ov.text())
         _tax_btn_ref = [tax_btn_ov]
         tax_btn_ov.clicked.connect(_make_tax_popup(_tax_btn_ref))
-        # Full HD: per _add_btn in Zeile 2 eingefügt (Platzhalter oben gesetzt)
-        # → Steuern erscheint zwischen Sharpe und AI-Balance = visuell unter Dividenden
-        if _ov_is_fullhd:
-            # Full HD: direkt unter Dividenden (gleiche Spalte, Zeile 1 des Grids)
-            btn_grid.addWidget(tax_btn_ov, 1, _div_col_idx[0])
-        # 4K: Steuern wird weiter unten in einer eigenen Zeile unter Exportieren platziert
-        # (siehe dlg_layout.addLayout weiter unten)
-
 
         ai_balance_btn = _make_ov_btn(
             TR("btn_ov_ai_balance"),
@@ -11205,13 +11968,30 @@ class PortfolioDialog(QMainWindow):
         ki_btn.clicked.connect(self.show_ki_analysis)
         _add_btn(ki_btn, 2)
 
+        korr_btn = _make_ov_btn(
+            TR("btn_ov_correlation"),
+            TR("tip_ov_correlation"), 120)
+        korr_btn.clicked.connect(self.show_correlation_matrix)
+        if _ov_is_fullhd:
+            _add_btn(korr_btn, 1)   # Full HD: Row 1, links neben Export
+
+        notes_ov_btn = _make_ov_btn(
+            TR("btn_ov_notes"),
+            TR("tip_ov_notes"), 110)
+        notes_ov_btn.clicked.connect(self.show_portfolio_notes)
+        if _ov_is_fullhd:
+            _add_btn(notes_ov_btn, 2)
+            _add_btn(tax_btn_ov, 2)
+        # 4K: wird weiter unten in _tax_row_4k links neben PF-Bewertung platziert
+
         indices_btn = _make_ov_btn(
             TR("btn_ov_indices"),
             TR("tip_ov_indices"), 105)
         indices_btn.clicked.connect(self.show_indices_comparison)
         if _ov_is_fullhd:
-            # Full HD: direkt neben Steuern in Zeile 1 (unter Performance-Vergleich)
-            btn_grid.addWidget(indices_btn, 1, _div_col_idx[0] + 1)
+            _add_btn(indices_btn, 2)
+            pf_bewertung_btn.setStyleSheet("padding: 2px 10px;")
+            _add_btn(pf_bewertung_btn, 2)
         # 4K: wird unten in _tax_row_4k neben Steuern platziert
 
 
@@ -11436,7 +12216,6 @@ class PortfolioDialog(QMainWindow):
             ov_export_btn.setStyleSheet("padding:2px 12px;")
             if _ov_emoji_font:
                 ov_export_btn.setFont(_ov_emoji_font)
-            _export_col = _col1[0]
             _add_btn(ov_export_btn, 1)
         else:
             # 4K: Stretch vor Exportieren → Button gehört zur rechten Gruppe
@@ -11451,9 +12230,8 @@ class PortfolioDialog(QMainWindow):
 
 
         clear_all_btn = _make_ov_btn(
-            TR("btn_ov_clear_all") if _ov_is_fullhd else TR("btn_ov_clear_all"),
-            TR("tip_portfolio_clear_ov"), 100 if _ov_is_fullhd else 130)
-        if _ov_is_fullhd: clear_all_btn.setStyleSheet("padding: 2px 10px;")
+            TR("btn_ov_clear_all_hd") if _ov_is_fullhd else TR("btn_ov_clear_all"),
+            TR("tip_portfolio_clear_ov"), 120 if _ov_is_fullhd else 130)
         def do_clear_all():
             if not self.portfolio_data:
                 QMessageBox.information(dlg, TR("msg_title_info"), TR("msg_portfolio_empty"))
@@ -11476,14 +12254,9 @@ class PortfolioDialog(QMainWindow):
                 self._update_portfolio_name_label("")
                 QMessageBox.information(self, TR("msg_title_done"), TR("msg_all_removed"))
         clear_all_btn.clicked.connect(do_clear_all)
-        if _ov_is_fullhd:
-            btn_grid.addWidget(clear_all_btn, 1, _export_col)  # direkt unter Exportieren
-        else:
-            _add_btn(clear_all_btn, 2)
         _add_spacing(10, 2)
 
-        # API-Key Button: Full HD → direkt unter Schliessen (Zeile 1, gleiche Spalte)
-        #                 4K    → vor Hilfe in der HBox
+        # API-Key Button
         def _show_settings_from_overview():
             main_app = self.parent()
             while main_app and not hasattr(main_app, 'show_settings'):
@@ -11494,10 +12267,12 @@ class PortfolioDialog(QMainWindow):
         apikey_btn_ov.clicked.connect(_show_settings_from_overview)
         if _ov_is_fullhd:
             apikey_btn_ov.setStyleSheet("padding: 2px 10px;")
-            _close_col = _col1[0] - 1
-            btn_grid.addWidget(apikey_btn_ov, 1, _close_col)
+            _add_btn(apikey_btn_ov, 2)
+            clear_all_btn.setStyleSheet("padding: 2px 10px;")
+            _add_btn(clear_all_btn, 2)
         else:
             _add_btn(apikey_btn_ov, 2)
+            _add_btn(clear_all_btn, 2)
 
         help_btn2 = _make_ov_btn(TR("btn_help"), TR("tip_help"), 80)
         if _ov_is_fullhd: help_btn2.setStyleSheet("padding: 2px 10px;")
@@ -11519,13 +12294,9 @@ class PortfolioDialog(QMainWindow):
         close_btn_top = _make_ov_btn(TR("btn_ov_close"), TR("tip_ov_close"), 115)
         if _ov_is_fullhd: close_btn_top.setStyleSheet("padding: 2px 10px;")
         close_btn_top.clicked.connect(_close_overview_top)
-        # Gleiche Breite: tax_btn_ov auf Breite von div_btn fixieren (Full HD) bzw. close_btn_top (4K)
+        # 4K: Steuern und Schliessen auf gleiche Breite bringen
         def _sync_ov_btn_width():
-            if _ov_is_fullhd:
-                _w = div_btn.width()
-                if _w > 0:
-                    tax_btn_ov.setFixedWidth(_w)
-            else:
+            if not _ov_is_fullhd:
                 _w = close_btn_top.width()
                 if _w > 0:
                     tax_btn_ov.setFixedWidth(_w)
@@ -11534,7 +12305,6 @@ class PortfolioDialog(QMainWindow):
         _add_btn(close_btn_top, 1 if _ov_is_fullhd else 2)
 
         if _ov_is_fullhd:
-            # Portfolio-Name Label in Zeile 2 des Grids (unter Admin/Akt., gleiche Zeile wie Alpha usw.)
             self._portfolio_name_label_ov = QLabel()
             _active = self._get_active_portfolio_name()
             if _active:
@@ -11542,11 +12312,11 @@ class PortfolioDialog(QMainWindow):
             else:
                 self._portfolio_name_label_ov.setText(TR("lbl_no_portfolio_loaded"))
             self._portfolio_name_label_ov.setStyleSheet("color: #2980b9; font-size: 11px; padding-left: 4px;")
-            btn_grid.addWidget(self._portfolio_name_label_ov, 1, 0, 1, 2)  # row 1, col 0, span 2 cols
-            dlg_layout.addLayout(btn_grid)
-            # Dividenden-Spalte breiter setzen damit Button in normaler Grösse dargestellt wird
-            if _div_col_idx[0] is not None:
-                btn_grid.setColumnMinimumWidth(_div_col_idx[0], 135)
+            _btn_bot.insertWidget(0, self._portfolio_name_label_ov)
+            _btn_bot.insertSpacing(1, 8)
+            _btn_bot.addStretch()
+            dlg_layout.addLayout(_btn_top)
+            dlg_layout.addLayout(_btn_bot)
         else:
             dlg_layout.addLayout(admin_row)
             # 4K: zweite Zeile mit Steuern direkt unter Exportieren
@@ -11556,6 +12326,9 @@ class PortfolioDialog(QMainWindow):
             _tax_row_4k.setSpacing(6)
             _tax_row_4k.setContentsMargins(0, 0, 0, 0)
             _tax_row_4k.addStretch()
+            _tax_row_4k.addWidget(korr_btn)
+            _tax_row_4k.addWidget(notes_ov_btn)
+            _tax_row_4k.addWidget(pf_bewertung_btn)
             _tax_row_4k.addWidget(indices_btn)
             _tax_row_4k.addWidget(tax_btn_ov)
             dlg_layout.addLayout(_tax_row_4k)
@@ -11672,11 +12445,20 @@ class PortfolioDialog(QMainWindow):
 
         # ── Header-Zeile ────────────────────────────────────────────────────
         hdr = QWidget()
-        hdr.setStyleSheet("background:#f0f0f0; border-bottom:2px solid #bdc3c7;")
+        _hdr_bg = "#2c3e50" if _dm_ov else "#f0f0f0"
+        hdr.setStyleSheet(f"background:{_hdr_bg}; border-bottom:2px solid #bdc3c7;")
         hdr_layout = QHBoxLayout(hdr)
         hdr_layout.setContentsMargins(8, 5, 8, 5)
         hdr_layout.setSpacing(0)
         sort_state = {'col': 'value', 'asc': False}   # Standardsortierung
+
+        _hdr_btn_style = (
+            "font-weight:bold; text-align:left; border:none; padding:0px 2px;"
+            "QPushButton:hover{color:#89b4fa;}"
+        ) if _dm_ov else (
+            "font-weight:bold; text-align:left; border:none; padding:0px 2px;"
+            "QPushButton:hover{color:#2980b9;}"
+        )
 
         hdr_btns = {}
         for (name, w, key, _) in COLS:
@@ -11686,9 +12468,9 @@ class PortfolioDialog(QMainWindow):
                 hdr_layout.addWidget(hdr_spacer)
             b = QPushButton(name)
             b.setFlat(True)
-            b.setMinimumWidth(w); b.setMaximumWidth(w)
-            b.setStyleSheet("color:#2c3e50; font-weight:bold; text-align:left;"
-                            "QPushButton:hover{color:#2980b9;} border:none; padding:0px 2px;")
+            _bw = w if (key != 'sector' or _ov_is_fullhd) else 500
+            b.setMinimumWidth(_bw); b.setMaximumWidth(_bw)
+            b.setStyleSheet(_hdr_btn_style)
             hdr_layout.addWidget(b)
             hdr_btns[key] = (b, name)
         hdr_layout.addStretch()
@@ -11708,7 +12490,8 @@ class PortfolioDialog(QMainWindow):
 
         # ── Summen-Zeile ────────────────────────────────────────────────────
         sum_frame = QFrame()
-        sum_frame.setStyleSheet("background:#ecf0f1; border-top:2px solid #bdc3c7; padding:4px;")
+        _sum_bg = "#1a2533" if _dm_ov else "#ecf0f1"
+        sum_frame.setStyleSheet(f"background:{_sum_bg}; border-top:2px solid #bdc3c7; padding:4px;")
         _sum_is_fullhd = QApplication.primaryScreen().geometry().width() <= 1920
         if _sum_is_fullhd:
             # Full HD: zwei Zeilen in VBoxLayout
@@ -11814,7 +12597,11 @@ class PortfolioDialog(QMainWindow):
                 if col == 'cost':     return d['cost_usd']
                 if col == 'price':    return d['price_usd']
                 if col == 'value':    return d['value_usd']
-                if col == 'pnl':      return d['value_usd'] - d['cost_usd']
+                if col == 'pnl':
+                    cc = d.get('cost_chf', 0); vc = d.get('value_chf', 0)
+                    if cc > 0 and vc > 0:
+                        return vc - cc
+                    return d['value_usd'] - d['cost_usd']
                 if col == 'pnl_pct':
                     cc = d.get('cost_chf', 0); vc = d.get('value_chf', 0)
                     if cc > 0 and vc > 0:
@@ -11822,7 +12609,11 @@ class PortfolioDialog(QMainWindow):
                     c = d['cost_usd']
                     return (d['value_usd'] - c) / c if c > 0 else 0
                 if col == 'share':    return d['value_usd'] / total_value_usd if total_value_usd else 0
-                if col == 'perf_contrib': return (d['value_usd'] - d['cost_usd']) / total_cost_usd if total_cost_usd else 0
+                if col == 'perf_contrib':
+                    cc = d.get('cost_chf', 0); vc = d.get('value_chf', 0)
+                    if cc > 0 and vc > 0 and total_cost_chf > 0:
+                        return (vc - cc) / total_cost_chf
+                    return (d['value_usd'] - d['cost_usd']) / total_cost_usd if total_cost_usd else 0
                 if col == 'sector_contrib':
                     _sc = _get_sector_canon(sym)
                     _total = _sector_totals.get(_sc, -999)
@@ -11852,13 +12643,24 @@ class PortfolioDialog(QMainWindow):
                                     "border:none; padding:0px 2px;")
                 else:
                     b.setText(name)
-                    b.setStyleSheet("color:#2c3e50; font-weight:bold; text-align:left;"
-                                    "QPushButton:hover{color:#2980b9;} border:none; padding:0px 2px;")
+                    b.setStyleSheet(_hdr_btn_style)
 
             # Zeilen löschen
             while rows_layout.count() > 1:
                 item = rows_layout.takeAt(0)
                 if item.widget(): item.widget().deleteLater()
+
+            _pf_self = self
+            from PyQt6.QtCore import QObject as _QObject
+            class _SymTipFilter(_QObject):
+                def __init__(self_, sym, parent=None):
+                    super().__init__(parent)
+                    self_._sym = sym
+                def eventFilter(self_, obj, ev):
+                    if ev.type() == QEvent.Type.ToolTip:
+                        _c = getattr(_pf_self, '_company_cache', {}).get(self_._sym, '')
+                        obj.setToolTip(f"{_c}\n{TR('wl_click_hint')}" if _c else TR("wl_click_hint"))
+                    return False
 
             def _make_row(symbol, d, idx):
                 qty       = d['qty']
@@ -11880,14 +12682,22 @@ class PortfolioDialog(QMainWindow):
 
                 share_pct = val_usd / total_value_usd * 100 if total_value_usd > 0 else 0
                 # Performance-Beitrag: Anteil dieses G&V am Gesamt-G&V
-                perf_contrib = pnl_usd / total_cost_usd * 100 if total_cost_usd > 0 else 0
+                if cost_chf > 0 and val_chf > 0 and total_cost_chf > 0:
+                    perf_contrib = (val_chf - cost_chf) / total_cost_chf * 100
+                elif total_cost_usd > 0:
+                    perf_contrib = pnl_usd / total_cost_usd * 100
+                else:
+                    perf_contrib = 0
                 s = fx
                 c_pnl = "#27ae60" if pnl_pct >= 0 else "#c0392b"
                 sign  = "+" if pnl_pct >= 0 else ""
-                bg    = "#f8f9fa" if idx % 2 == 0 else "white"
+                if _dm_ov:
+                    bg = "#1e2535" if idx % 2 == 0 else "#161d2b"
+                else:
+                    bg = "#f8f9fa" if idx % 2 == 0 else "white"
 
                 row = QWidget()
-                row.setStyleSheet(f"background:{bg}; border-bottom:1px solid #ecf0f1;")
+                row.setStyleSheet(f"background:{bg};")
                 row.setCursor(Qt.CursorShape.ArrowCursor)
                 rl = QHBoxLayout(row)
                 rl.setContentsMargins(8, 4, 8, 4)
@@ -11905,10 +12715,8 @@ class PortfolioDialog(QMainWindow):
                         l.setFont(_ov_emoji_font)
                     return l
 
-                _company = getattr(self, '_company_cache', {}).get(symbol, '')
-                _tooltip = f"{_company}\n{TR('wl_click_hint')}" if _company else TR("wl_click_hint")
                 sym_lbl = mk(f"<b>{symbol}</b>", 80, "#2980b9")
-                sym_lbl.setToolTip(_tooltip)
+                sym_lbl.installEventFilter(_SymTipFilter(symbol, sym_lbl))
                 sym_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
                 rl.addWidget(sym_lbl)
                 _qty_txt = f"{_fmt(qty, 4) if qty != int(qty) else str(int(qty))}"
@@ -12023,11 +12831,20 @@ class PortfolioDialog(QMainWindow):
                 rl.addWidget(_price_lbl)
                 rl.addWidget(mk(f"{_fmt(val_usd*s)}",     120,  right=True))
                 rl.addWidget(mk(f"{sign}{_fmt(abs(pnl_usd*s))}", 115, c_pnl, True, True))
-                _pnl_pct_lbl = mk(f"{sign}{pnl_pct:.1f}%", 80, c_pnl, True, True)
                 _ri = (pnl_pct / share_pct) if share_pct > 0 else 0
                 _ri_icon = "✅" if _ri >= 1 else "⚠️"
+                _pnl_pct_lbl = mk(f"{sign}{pnl_pct:.1f}% {_ri_icon}", 95, c_pnl, True, True)
+                _pnl_pct_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
                 _pnl_pct_lbl.setToolTip(TR("tip_ri_factor",
                     share=share_pct, pnl_pct=pnl_pct, ri=_ri, icon=_ri_icon))
+                def _ri_click(ev, _self=self):
+                    from PyQt6.QtCore import Qt as _Qt
+                    if ev.button() == _Qt.MouseButton.LeftButton:
+                        _app = _self.parent()
+                        while _app and not hasattr(_app, 'show_help'):
+                            _app = _app.parent() if hasattr(_app, 'parent') else None
+                        if _app: _app.show_help(anchor="ri-faktor")
+                _pnl_pct_lbl.mousePressEvent = _ri_click
                 rl.addWidget(_pnl_pct_lbl)
                 rl.addWidget(mk(f"{share_pct:.1f}%",      75,  right=True))
                 # Performance-Beitrag Spalte
@@ -12071,7 +12888,7 @@ class PortfolioDialog(QMainWindow):
                     # Farbe: aktueller Kurs nahe Jahreshoch → orange; nahe Jahrestief → rot
                     _pct_from_high = (_cur_disp - _w52h) / _w52h * 100 if _w52h > 0 else 0
                     _pct_from_low  = (_cur_disp - _w52l) / _w52l * 100 if _w52l  > 0 else 0
-                    _h_color = "#e67e22" if _pct_from_high > -5 else "#555"
+                    _h_color = "#e67e22" if _pct_from_high > -5 else ("#aaa" if _dm_ov else "#555")
                     _l_color = "#c0392b" if _pct_from_low  <  10 else "#27ae60"
                     _w52h_lbl = mk(f"{_fmt(_w52h)}", 70, _h_color, right=True)
                     _w52l_lbl = mk(f"{_fmt(_w52l)}", 70, _l_color, right=True)
@@ -12104,10 +12921,15 @@ class PortfolioDialog(QMainWindow):
                     else:
                         _sector_canon, _ind_group, _industry_disp, _sub_industry = \
                             _gics_lookup(_raw_sector, _raw_industry)
-                        if _sub_industry and _sub_industry != _sector_canon:
-                            _display_txt = f"{_sector_canon}  ›  {_sub_industry}"
-                        else:
+                        if _ov_is_fullhd:
+                            # Full HD: nur Sektor-Name (1. Ebene), Sub-Industry im Tooltip
                             _display_txt = _sector_canon
+                        else:
+                            # 4K: voller Text mit Sub-Industry
+                            if _sub_industry and _sub_industry != _sector_canon:
+                                _display_txt = f"{_sector_canon}  ›  {_sub_industry}"
+                            else:
+                                _display_txt = _sector_canon
                         _tt = []
                         if _company_name:
                             _tt.append(_company_name); _tt.append("")
@@ -12118,9 +12940,9 @@ class PortfolioDialog(QMainWindow):
                             _tt.append(f"Sub-Industry:    {_sub_industry}")
                         _tooltip_txt = "\n".join(_tt)
 
-                sector_lbl = mk(_display_txt, 300, "#555")
+                sector_lbl = mk(_display_txt, 300, "#aaa" if _dm_ov else "#555")
                 sector_lbl.setMinimumWidth(160)
-                sector_lbl.setMaximumWidth(400)
+                sector_lbl.setMaximumWidth(300 if _ov_is_fullhd else 16777215)
                 sector_lbl.setContentsMargins(12, 0, 0, 0)
                 if _tooltip_txt:
                     sector_lbl.setToolTip(_tooltip_txt)
@@ -12146,7 +12968,8 @@ class PortfolioDialog(QMainWindow):
                         close_btn.clicked.connect(chart_win.close)
                         layout_cw.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignLeft)
                         chart_widget = StockChartWidget(sym, zoom_mode=True,
-                            avg_buy_price=avg_usd if price_usd else None)
+                            avg_buy_price=avg_usd if price_usd else None,
+                            demo_watermark=bool(_DEMO_CUTOFF))
                         _sym_lim = getattr(self, '_limits', {}).get(sym, {})
                         chart_widget.own_stop    = _sym_lim.get('stop')
                         chart_widget.own_target  = _sym_lim.get('target')
@@ -12425,6 +13248,8 @@ class PortfolioDialog(QMainWindow):
                 fx_disp['USD'] = 1.0
                 results['__fx__'] = fx_disp
                 for i, sym in enumerate(syms):
+                    if self.isInterruptionRequested():
+                        return
                     self.progress.emit(i+1, total, sym)
                     positions = self._data[sym]
                     if '=' in sym:
@@ -12523,8 +13348,28 @@ class PortfolioDialog(QMainWindow):
                                         'cost_chf': 0, 'value_chf': 0}
                 self.data_ready.emit(results)
 
+        # Alter Worker kooperativ stoppen – finished.connect(deleteLater) bereits gesetzt
+        if hasattr(self, '_overview_worker') and self._overview_worker is not None:
+            try:
+                _old_ow = self._overview_worker
+                self._overview_worker = None
+                if _old_ow.isRunning():
+                    _old_ow.requestInterruption()
+                    _old_ow.quit()
+                elif not _old_ow.isFinished():
+                    # Nie gestartet – direkt löschen
+                    try: _old_ow.deleteLater()
+                    except RuntimeError: pass
+            except RuntimeError:
+                self._overview_worker = None
+
         worker = OverviewWorker(self.portfolio_data, parent=self)
         self._overview_worker = worker
+        worker.finished.connect(
+            lambda ow=worker: setattr(self, '_overview_worker', None)
+            if self._overview_worker is ow else None
+        )
+        worker.finished.connect(worker.deleteLater)
 
         def on_progress(cur, tot, sym):
             try:
@@ -12565,6 +13410,8 @@ class PortfolioDialog(QMainWindow):
             worker.progress.connect(on_progress, Qt.ConnectionType.QueuedConnection)
             worker.data_ready.connect(on_data,    Qt.ConnectionType.QueuedConnection)
             worker.start()
+        if _DEMO_CUTOFF:
+            dlg_layout.addWidget(_make_demo_banner(top=False))
         # Fenster bereits oben konfiguriert
 
 
@@ -12595,6 +13442,9 @@ class PortfolioDialog(QMainWindow):
         dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
                     screen.y() + (screen.height() - dlg_h) // 2)
 
+        from PyQt6.QtGui import QPalette as _QPalette_ppc
+        _dm_ppc = QApplication.palette().color(_QPalette_ppc.ColorRole.Window).lightness() < 128
+
         outer = QVBoxLayout(dialog)
         outer.setSpacing(6)
         outer.setContentsMargins(14, 10, 14, 10)
@@ -12603,7 +13453,8 @@ class PortfolioDialog(QMainWindow):
             TR("lbl_twr_mwr_info")
         )
         info.setWordWrap(True)
-        info.setStyleSheet("background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:12px;")
+        _ppc_info_bg = "#0d2a3d" if _dm_ppc else "#EBF5FB"
+        info.setStyleSheet(f"background:{_ppc_info_bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
         outer.addWidget(info)
 
         # ── Steuerleiste ──────────────────────────────────────────────────
@@ -12704,8 +13555,9 @@ class PortfolioDialog(QMainWindow):
 
         stats_label = QLabel("")
         stats_label.setWordWrap(True)
+        _ppc_stats_bg = "#0d2a1a" if _dm_ppc else "#EAFAF1"
         stats_label.setStyleSheet(
-            "background:#EAFAF1; border-radius:5px; padding:6px 12px; font-size:12px;")
+            f"background:{_ppc_stats_bg}; border-radius:5px; padding:6px 12px; font-size:12px;")
         stats_label.setVisible(False)
         outer.addWidget(stats_label)
 
@@ -13241,13 +14093,17 @@ class PortfolioDialog(QMainWindow):
                     pass
             dialog.finished.connect(_repaint_perf)
 
+        from PyQt6.QtGui import QPalette as _QPalette_mc
+        _dm_mc = QApplication.palette().color(_QPalette_mc.ColorRole.Window).lightness() < 128
+
         outer = QVBoxLayout(dialog)
         outer.setSpacing(6)
         outer.setContentsMargins(14, 10, 14, 10)
 
         info = QLabel(TR("lbl_mc_info"))
         info.setWordWrap(True)
-        info.setStyleSheet("background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:12px;")
+        _mc_info_bg = "#0d2a3d" if _dm_mc else "#EBF5FB"
+        info.setStyleSheet(f"background:{_mc_info_bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
         outer.addWidget(info)
 
         ctrl = QHBoxLayout(); ctrl.setSpacing(8)
@@ -13631,7 +14487,12 @@ class PortfolioDialog(QMainWindow):
                     (TR("mc_row_p75"),    p75[-1], v0),
                     (TR("mc_row_p90"),    p90[-1], v0),
                 ]
-                ROW_COLORS = ['#f8f9fa','#fdecea','#fef5ec','#eaf6fb','#eafaf1','#d5f5e3']
+                if _dm_mc:
+                    ROW_COLORS = ['#1e2a35','#2d1515','#2d1f0a','#0d2030','#0d2a1a','#0a2015']
+                    _tbl_txt = "#cdd6f4"
+                else:
+                    ROW_COLORS = ['#f8f9fa','#fdecea','#fef5ec','#eaf6fb','#eafaf1','#d5f5e3']
+                    _tbl_txt = "#2c3e50"
                 result_table.setRowCount(len(ROWS))
                 for i, (lbl, val, base) in enumerate(ROWS):
                     pct     = (val - base) / base * 100 if base > 0 and i > 0 else 0
@@ -13645,9 +14506,12 @@ class PortfolioDialog(QMainWindow):
                     item_pct.setTextAlignment(
                         Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                     from PyQt6.QtGui import QColor
-                    if i > 0: item_pct.setForeground(QColor(pct_col))
+                    row_bg = QColor(ROW_COLORS[i])
                     for item in (item_lbl, item_val, item_pct):
-                        item.setBackground(QColor(ROW_COLORS[i]))
+                        item.setBackground(row_bg)
+                        item.setForeground(QColor(_tbl_txt))
+                    if i > 0:
+                        item_pct.setForeground(QColor(pct_col))
                     result_table.setItem(i, 0, item_lbl)
                     result_table.setItem(i, 1, item_val)
                     result_table.setItem(i, 2, item_pct)
@@ -14284,6 +15148,8 @@ class PortfolioDialog(QMainWindow):
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
         from matplotlib.figure import Figure
         import matplotlib.ticker as _mticker
+        from PyQt6.QtGui import QPalette as _QPalette_ecy
+        _dm_ecy = QApplication.palette().color(_QPalette_ecy.ColorRole.Window).lightness() < 128
 
         outer = QVBoxLayout(dialog)
         outer.setSpacing(6)
@@ -14293,7 +15159,8 @@ class PortfolioDialog(QMainWindow):
         head_row = QHBoxLayout()
         info = QLabel(TR("lbl_ecy_info"))
         info.setWordWrap(True)
-        info.setStyleSheet("background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:12px;")
+        _ecy_info_bg = "#0d2a3d" if _dm_ecy else "#EBF5FB"
+        info.setStyleSheet(f"background:{_ecy_info_bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
         head_row.addWidget(info, stretch=1)
 
         _ecy_export_data = [{}]
@@ -14780,6 +15647,231 @@ class PortfolioDialog(QMainWindow):
         dialog.exec()
 
 
+    @safe_slot
+    def show_portfolio_assessment(self):
+        """Portfolio-Bewertung: regelbasierte Analyse (Stufe 1) + erweiterte Synthese (Stufe 2)."""
+        if not self.portfolio_data:
+            QMessageBox.information(self, TR("msg_title_info"),
+                                    "Keine Portfolio-Daten vorhanden."
+                                    if True else "No portfolio data available.")
+            return
+
+        from portfolio_analysis import analyze_portfolio
+        from translations import get_language
+        from PyQt6.QtWidgets import QTextEdit
+        from PyQt6.QtGui import QPalette
+
+        # ── Dark-mode detection ───────────────────────────────────────
+        palette   = QApplication.palette()
+        dark_mode = palette.color(QPalette.ColorRole.Window).lightness() < 128
+
+        def _run_stage1():
+            return analyze_portfolio(
+                portfolio_data=self.portfolio_data,
+                price_cache=self._price_cache or {},
+                sector_cache=getattr(self, '_sector_cache', {}) or {},
+                limits=self._limits or {},
+                language=get_language(),
+                dark_mode=dark_mode,
+            )
+
+        result = _run_stage1()
+
+        # ── Dialog ────────────────────────────────────────────────────
+        dialog = QDialog(self)
+        dialog.setWindowTitle(TR("title_pf_bewertung"))
+        import sys as _sys_pfa
+        if _sys_pfa.platform == 'win32':
+            dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
+        screen = QApplication.primaryScreen().availableGeometry()
+        dlg_w  = min(860, int(screen.width()  * 0.65))
+        dlg_h  = min(920, int(screen.height() * 0.92))
+        dialog.resize(dlg_w, dlg_h)
+        dialog.move(
+            screen.x() + (screen.width()  - dlg_w) // 2,
+            screen.y() + (screen.height() - dlg_h) // 2,
+        )
+        outer = QVBoxLayout(dialog)
+        outer.setSpacing(8)
+        outer.setContentsMargins(14, 12, 14, 10)
+
+        # ── PROMINENTER DISCLAIMER ────────────────────────────────────
+        disclaimer_banner = QLabel(TR("lbl_disclaimer_pf_bewertung"))
+        disclaimer_banner.setWordWrap(True)
+        disclaimer_banner.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if dark_mode:
+            disclaimer_banner.setStyleSheet(
+                "QLabel {"
+                "  background: #3a2800;"
+                "  border: 2px solid #a07000;"
+                "  border-radius: 8px;"
+                "  padding: 12px 18px;"
+                "  font-size: 13px;"
+                "  font-weight: bold;"
+                "  color: #ffd166;"
+                "}"
+            )
+        else:
+            disclaimer_banner.setStyleSheet(
+                "QLabel {"
+                "  background: #fff3cd;"
+                "  border: 2px solid #e6a817;"
+                "  border-radius: 8px;"
+                "  padding: 12px 18px;"
+                "  font-size: 13px;"
+                "  font-weight: bold;"
+                "  color: #7d5a00;"
+                "}"
+            )
+        outer.addWidget(disclaimer_banner)
+
+        # ── Buttons ───────────────────────────────────────────────────
+        _pf_export_data = [{}]
+        btn_row = QHBoxLayout()
+        refresh_btn = QPushButton(TR("btn_reanalyse"))
+        refresh_btn.setMinimumHeight(28)
+        refresh_btn.setStyleSheet("font-weight:bold; padding:2px 14px;")
+        btn_row.addWidget(refresh_btn)
+
+        ext_btn_label = "🔍 Erweiterte Analyse" if get_language() == 'DE' else "🔍 Extended Analysis"
+        ext_btn = QPushButton(ext_btn_label)
+        ext_btn.setMinimumHeight(28)
+        ext_btn.setStyleSheet(
+            "QPushButton { font-weight:bold; padding:2px 14px; "
+            "background:#1a6fbf; color:white; border-radius:4px; }"
+            "QPushButton:hover { background:#1558a0; }"
+            "QPushButton:disabled { background:#555; color:#999; }"
+        )
+        btn_row.addWidget(ext_btn)
+        btn_row.addStretch()
+
+        export_btn = self._make_export_btn(
+            lambda: _pf_export_data[0], TR("export_btn_pf_bewertung"))
+        btn_row.addWidget(export_btn)
+
+        close_btn = QPushButton(TR("btn_close"))
+        close_btn.setMaximumWidth(110)
+        close_btn.setMinimumHeight(28)
+        close_btn.clicked.connect(dialog.close)
+        btn_row.addWidget(close_btn)
+        outer.addLayout(btn_row)
+
+        # ── Inhaltsbereich ────────────────────────────────────────────
+        text_area = QTextEdit()
+        text_area.setReadOnly(True)
+        if dark_mode:
+            text_area.setStyleSheet(
+                "QTextEdit { background:#1a1a1a; border:1px solid #3a3a3a; "
+                "border-radius:6px; padding:8px; font-size:13px; color:#d0d0d0; }"
+            )
+        else:
+            text_area.setStyleSheet(
+                "QTextEdit { background:#fafafa; border:1px solid #ddd; "
+                "border-radius:6px; padding:8px; font-size:13px; }"
+            )
+        text_area.setHtml(result['html'])
+        _pf_export_data[0] = {
+            'title': TR("export_col_pf_bewertung"),
+            'headers': [TR("export_col_pf_bewertung")],
+            'rows': [[l] for l in text_area.toPlainText().splitlines() if l.strip()],
+            'fig': None,
+        }
+        outer.addWidget(text_area, stretch=1)
+
+        # ── Stage-1 refresh ───────────────────────────────────────────
+        def _refresh():
+            new_result = _run_stage1()
+            text_area.setHtml(new_result['html'])
+            _pf_export_data[0] = {
+                'title': TR("export_col_pf_bewertung"),
+                'headers': [TR("export_col_pf_bewertung")],
+                'rows': [[l] for l in text_area.toPlainText().splitlines() if l.strip()],
+                'fig': None,
+            }
+        refresh_btn.clicked.connect(_refresh)
+
+        # ── Stage-2 extended analysis (QThread + Dollarnote overlay) ──
+        _ext_workers = []
+
+        def _run_extended():
+            from portfolio_analysis_extended import analyze_extended
+            ext_btn.setEnabled(False)
+            overlay = self._show_risk_loading(
+                dialog, dlg_w, dlg_h, "📋",
+                "Erweiterte Analyse" if get_language() == 'DE' else "Extended Analysis",
+                "1y",
+            )
+
+            class _ExtWorker(QThread):
+                done = pyqtSignal(str)
+
+                def __init__(self, pd, pc, sc_, lm, lang, dm):
+                    super().__init__()
+                    self._pd = pd; self._pc = pc; self._sc = sc_
+                    self._lm = lm; self._lang = lang; self._dm = dm
+
+                def run(self):
+                    try:
+                        res = analyze_extended(
+                            portfolio_data=self._pd,
+                            price_cache=self._pc,
+                            sector_cache=self._sc,
+                            limits=self._lm,
+                            language=self._lang,
+                            dark_mode=self._dm,
+                            period='1y',
+                        )
+                        self.done.emit(res.get('html', ''))
+                    except Exception as exc:
+                        self.done.emit(
+                            f"<p style='color:#e74c3c;padding:12px'>"
+                            f"Fehler: {exc}</p>"
+                        )
+
+            worker = _ExtWorker(
+                self.portfolio_data,
+                self._price_cache or {},
+                getattr(self, '_sector_cache', {}) or {},
+                self._limits or {},
+                get_language(),
+                dark_mode,
+            )
+            _ext_workers.append(worker)
+
+            def _on_done(ext_html):
+                try:
+                    overlay.hide()
+                    overlay.deleteLater()
+                except RuntimeError:
+                    pass
+                try:
+                    stage1_html = _run_stage1()['html']
+                    sep = (
+                        "<hr style='border:none;border-top:1px solid #888;"
+                        "margin:18px 0'>"
+                    )
+                    text_area.setHtml(ext_html + sep + stage1_html)
+                    text_area.verticalScrollBar().setValue(0)
+                    _pf_export_data[0] = {
+                        'title': TR("export_col_pf_bewertung"),
+                        'headers': [TR("export_col_pf_bewertung")],
+                        'rows': [[l] for l in text_area.toPlainText().splitlines() if l.strip()],
+                        'fig': None,
+                    }
+                except RuntimeError:
+                    pass
+                ext_btn.setEnabled(True)
+
+            worker.done.connect(_on_done)
+            worker.finished.connect(worker.deleteLater)
+            worker.finished.connect(lambda: _ext_workers.remove(worker)
+                                    if worker in _ext_workers else None)
+            worker.start()
+
+        ext_btn.clicked.connect(_run_extended)
+        dialog.exec()
+
+
     def show_dividend_chart(self):
         """Portfolio-Performance: 3 Balken – Gesamt, Wachstum, Dividenden."""
         if not self.portfolio_data:
@@ -14806,6 +15898,9 @@ class PortfolioDialog(QMainWindow):
         dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
                     screen.y() + (screen.height() - dlg_h) // 2)
 
+        from PyQt6.QtGui import QPalette as _QPalette_dv
+        _dm_dv = QApplication.palette().color(_QPalette_dv.ColorRole.Window).lightness() < 128
+
         outer = QVBoxLayout(dialog)
         outer.setSpacing(6)
         outer.setContentsMargins(14, 10, 14, 10)
@@ -14814,7 +15909,8 @@ class PortfolioDialog(QMainWindow):
             TR("lbl_div_perf_info") + " " + TR("lbl_crypto_warning")
         )
         info.setWordWrap(True)
-        info.setStyleSheet("background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:12px;")
+        _dv_info_bg = "#0d2a3d" if _dm_dv else "#EBF5FB"
+        info.setStyleSheet(f"background:{_dv_info_bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
         self._ef(info)
         outer.addWidget(info)
 
@@ -15247,7 +16343,8 @@ class PortfolioDialog(QMainWindow):
 
                 hi_info = QLabel(TR("status_loading_line2"))
                 hi_info.setWordWrap(True)
-                hi_info.setStyleSheet("background:#EBF5FB; border-radius:8px; padding:10px 14px; font-size:11px;")
+                _hi_info_bg = "#0d2a3d" if _dm_dv else "#EBF5FB"
+                hi_info.setStyleSheet(f"background:{_hi_info_bg}; border-radius:8px; padding:10px 14px; font-size:11px;")
                 hi_layout.addWidget(hi_info)
 
                 hi_fig   = Figure(figsize=(det_fig_w, det_fig_h))
@@ -15766,6 +16863,17 @@ class PortfolioDialog(QMainWindow):
                         c_status.setText(f"💵 {TR("status_loading_line2")} {msg}")
                     except RuntimeError: pass
 
+                class _SortItem(QTableWidgetItem):
+                    """QTableWidgetItem mit numerischem Sort-Key für korrekte Datums-/Zahlen-Sortierung."""
+                    def __init__(self, text, sort_key):
+                        super().__init__(text)
+                        self._sk = sort_key
+                    def __lt__(self, other):
+                        try:
+                            return self._sk < other._sk
+                        except TypeError:
+                            return super().__lt__(other)
+
                 def on_cal_done(rows):
                     try: _ov.hide(); _ov.deleteLater()
                     except: pass
@@ -15776,21 +16884,24 @@ class PortfolioDialog(QMainWindow):
                         return
                     try:
                         table.setRowCount(len(rows))
+                        _TS_MAX = pd.Timestamp.max.timestamp()
                         for r, row in enumerate(rows):
                             cur_s = {'USD':'$','EUR':'€','CHF':'CHF ','GBP':'£',
                                      'JPY':'¥','CAD':'C$','AUD':'A$'}.get(row['cur'], row['cur']+' ')
-                            vals = [
-                                row['sym'],
-                                row['name'],
-                                fmt_date(row['ex_d']),
-                                fmt_date(row['pay_d']),
-                                f"{cur_s}{row['div_amt']:.4f}",
-                                row['cur'],
-                                str(int(row['qty'])),
-                                f"{cur_s}{row['expected']:.2f}",
+                            ex_ts  = row['ex_d'].timestamp()  if row['ex_d']  else _TS_MAX
+                            pay_ts = row['pay_d'].timestamp() if row['pay_d'] else _TS_MAX
+                            cell_data = [
+                                (row['sym'],                           row['sym']),
+                                (row['name'],                          row['name']),
+                                (fmt_date(row['ex_d']),                ex_ts),
+                                (fmt_date(row['pay_d']),               pay_ts),
+                                (f"{cur_s}{row['div_amt']:.4f}",      row['div_amt']),
+                                (row['cur'],                           row['cur']),
+                                (str(int(row['qty'])),                 row['qty']),
+                                (f"{cur_s}{row['expected']:.2f}",     row['expected']),
                             ]
-                            for c, v in enumerate(vals):
-                                item = QTableWidgetItem(v)
+                            for c, (v, sk) in enumerate(cell_data):
+                                item = _SortItem(v, sk)
                                 item.setTextAlignment(Qt.AlignmentFlag.AlignVCenter |
                                     (Qt.AlignmentFlag.AlignRight if c in (4,6,7) else Qt.AlignmentFlag.AlignLeft))
                                 table.setItem(r, c, item)
@@ -15843,8 +16954,16 @@ class PortfolioDialog(QMainWindow):
                     except: pass
                 else:
                     _cal_worker = CalWorker(syms_qty)
+                    if not hasattr(self, '_cal_workers'):
+                        self._cal_workers = []
+                    self._cal_workers.append(_cal_worker)
                     _cal_worker.progress.connect(on_cal_progress, Qt.ConnectionType.QueuedConnection)
                     _cal_worker.done.connect(on_cal_done, Qt.ConnectionType.QueuedConnection)
+                    _cal_worker.finished.connect(_cal_worker.deleteLater)
+                    _cal_worker.finished.connect(
+                        lambda w=_cal_worker: self._cal_workers.remove(w)
+                        if w in self._cal_workers else None
+                    )
                     _cal_worker.start()
 
                 # Overlay über dialog
@@ -15886,6 +17005,9 @@ class PortfolioDialog(QMainWindow):
         if not positions:
             QMessageBox.information(self, TR("msg_title_no_transactions"), TR("msg_no_tx_for_symbol", symbol=symbol))
             return
+
+        from PyQt6.QtGui import QPalette as _QPalette_tx
+        _dm_tx = QApplication.palette().color(_QPalette_tx.ColorRole.Window).lightness() < 128
 
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Transaktionshistorie: {symbol}")
@@ -15948,7 +17070,10 @@ class PortfolioDialog(QMainWindow):
             date_raw  = p.get('buy_date', '–')
             currency  = p.get('currency', 'USD')
             cost      = qty * price
-            bg        = "#f8f9fa" if i % 2 == 0 else "white"
+            if _dm_tx:
+                bg = "#1e2535" if i % 2 == 0 else "#161d2b"
+            else:
+                bg = "#f8f9fa" if i % 2 == 0 else "white"
 
             try:
                 date_disp = _app_config.fmt_date(date_raw) if date_raw and date_raw != '–' else '–'
@@ -15958,7 +17083,7 @@ class PortfolioDialog(QMainWindow):
             cost_disp  = _fmt(cost,  2)
 
             row = QWidget()
-            row.setStyleSheet(f"background:{bg}; border-bottom:1px solid #ecf0f1;")
+            row.setStyleSheet(f"background:{bg};")
             rl = QHBoxLayout(row)
             rl.setContentsMargins(8, 5, 8, 5)
             rl.setSpacing(0)
@@ -15974,12 +17099,12 @@ class PortfolioDialog(QMainWindow):
                 return l
 
             qty_str = f"{qty:,.4f}".rstrip('0').rstrip('.') if qty != int(qty) else str(int(qty))
-            rl.addWidget(_c(str(i+1),    36,  "#888"))
+            rl.addWidget(_c(str(i+1),    36))
             rl.addWidget(_c(date_disp,   110))
             rl.addWidget(_c(qty_str,     100,  bold=True, right=True))
             rl.addWidget(_c(price_disp,  110,  right=True))
-            rl.addWidget(_c(cost_disp,   120,  "#555", right=True))
-            rl.addWidget(_c(currency,     80,  "#777"))
+            rl.addWidget(_c(cost_disp,   120,  right=True))
+            rl.addWidget(_c(currency,     80))
             rl.addStretch()
             cl.addWidget(row)
 
@@ -15989,7 +17114,8 @@ class PortfolioDialog(QMainWindow):
 
         # Zusammenfassung
         summary = QWidget()
-        summary.setStyleSheet("background:#EBF5FB; border-radius:4px; padding:4px;")
+        _tx_sum_bg = "#0d2a3d" if _dm_tx else "#EBF5FB"
+        summary.setStyleSheet(f"background:{_tx_sum_bg}; border-radius:4px; padding:4px;")
         sl = QHBoxLayout(summary)
         sl.setContentsMargins(10, 6, 10, 6)
         qty_str_tot = f"{total_qty:,.4f}".rstrip('0').rstrip('.') if total_qty != int(total_qty) else str(int(total_qty))
@@ -16014,6 +17140,9 @@ class PortfolioDialog(QMainWindow):
         if not self.portfolio_data:
             QMessageBox.information(self, TR("msg_title_info"), "Keine Portfolio-Daten vorhanden.")
             return
+
+        from PyQt6.QtGui import QPalette as _QPalette_aib
+        _dm_aib = QApplication.palette().color(_QPalette_aib.ColorRole.Window).lightness() < 128
 
         CRYPTO_SUFFIXES = ('-USD', '-EUR', '-CHF', '-BTC')
         def is_crypto(sym): return any(sym.upper().endswith(s) for s in CRYPTO_SUFFIXES)
@@ -16044,7 +17173,8 @@ class PortfolioDialog(QMainWindow):
             TR("lbl_ai_balance_info") + " " + TR("lbl_crypto_warning")
         )
         info.setWordWrap(True)
-        info.setStyleSheet("background:#EBF5FB; border-radius:6px; padding:10px 14px; font-size:13px;")
+        _aib_info_bg = "#0d2a3d" if _dm_aib else "#EBF5FB"
+        info.setStyleSheet(f"background:{_aib_info_bg}; border-radius:6px; padding:10px 14px; font-size:13px;")
         self._ef(info)
         outer.addWidget(info)
 
@@ -16277,8 +17407,9 @@ class PortfolioDialog(QMainWindow):
             # Info-Banner
             cmp_info = QLabel(TR("lbl_portfolios_compare_info"))
             cmp_info.setWordWrap(True)
+            _cmp_info_bg = "#0d2a3d" if _dm_aib else "#EBF5FB"
             cmp_info.setStyleSheet(
-                "background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:13px;")
+                f"background:{_cmp_info_bg}; border-radius:6px; padding:8px 14px; font-size:13px;")
             cmp_outer.addWidget(cmp_info)
 
             # ── Steuerzeile: Zeitraum + Währung + Buttons ───────────────
@@ -16773,6 +17904,7 @@ class PortfolioDialog(QMainWindow):
                     _draw_bar_chart(result, _cur_snap, _fr_snap)
 
                 _cmp_worker[0].done.connect(_on_cmp_done)
+                _cmp_worker[0].finished.connect(_cmp_worker[0].deleteLater)
                 _cmp_worker[0].start()
                 return   # UI bleibt responsiv; _on_cmp_done → _draw_bar_chart
 
@@ -17456,8 +18588,9 @@ class PortfolioDialog(QMainWindow):
 
             t_info = QLabel(TR("lbl_targeted_info"))
             t_info.setWordWrap(True)
+            _ti_info_bg = "#0d2a3d" if _dm_aib else "#EBF5FB"
             t_info.setStyleSheet(
-                "background:#EBF5FB; border-radius:6px; padding:8px 14px; font-size:12px;")
+                f"background:{_ti_info_bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
             tlayout.addWidget(t_info)
 
             # ── Helper: Abschnitt mit Checkbox + SpinBox-Zeilen ───────────────
@@ -17713,7 +18846,7 @@ class PortfolioDialog(QMainWindow):
             l = QLabel(f"<b>{text}</b>")
             l.setFixedWidth(w)
             l.setAlignment(align)
-            l.setStyleSheet(f"color:#444; font-size:{FS};")
+            l.setStyleSheet(f"font-size:{FS};")
             return l
 
         hdr_row = QHBoxLayout()
@@ -17734,7 +18867,8 @@ class PortfolioDialog(QMainWindow):
         hdr_row.addWidget(_hdr(TR("lbl_action_qty"),        85, Qt.AlignmentFlag.AlignRight))
         hdr_row.addStretch()
         hdr_frame = QFrame()
-        hdr_frame.setStyleSheet("background:#e8edf2; border-radius:5px; padding:3px;")
+        _aib_hdr_bg = "#1a2d3d" if _dm_aib else "#e8edf2"
+        hdr_frame.setStyleSheet(f"background:{_aib_hdr_bg}; border-radius:5px; padding:3px;")
         hdr_frame.setLayout(hdr_row)
         outer.addWidget(hdr_frame)
 
@@ -17752,13 +18886,13 @@ class PortfolioDialog(QMainWindow):
 
         sum_label = QLabel("")
         sum_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        sum_label.setStyleSheet(f"font-size:{FS}; color:#333; padding:5px; border-top:1px solid #ddd; font-weight:bold;")
+        sum_label.setStyleSheet(f"font-size:{FS}; padding:5px; border-top:1px solid #ddd; font-weight:bold;")
         outer.addWidget(sum_label)
 
         status_label = QLabel(TR("lbl_period_status2"))
         status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         try:
-            status_label.setStyleSheet("color:#888; font-size:11px;")
+            status_label.setStyleSheet("font-size:11px;")
         except RuntimeError:
             pass
         outer.addWidget(status_label)
@@ -17770,7 +18904,7 @@ class PortfolioDialog(QMainWindow):
         )
         legend.setWordWrap(True)
         legend.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        legend.setStyleSheet("color:#888; font-size:11px; padding:3px 8px;")
+        legend.setStyleSheet("font-size:11px; padding:3px 8px;")
         outer.addWidget(legend)
 
         disclaimer = QLabel(
@@ -17778,7 +18912,7 @@ class PortfolioDialog(QMainWindow):
         )
         disclaimer.setWordWrap(True)
         disclaimer.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        disclaimer.setStyleSheet("color:#888; font-size:11px; font-style:italic; padding:4px 12px; border-top:1px solid #ddd;")
+        disclaimer.setStyleSheet("font-size:11px; font-style:italic; padding:4px 12px; border-top:1px solid #ddd;")
         outer.addWidget(disclaimer)
 
 
@@ -17832,7 +18966,10 @@ class PortfolioDialog(QMainWindow):
                 results.append({**entry, 'rank': rank+1, 'soll_val': soll_val,
                                  'soll_qty': soll_qty, 'diff': diff})
 
-            row_colors = ["#ffffff", "#f5f8fc"]
+            if _dm_aib:
+                row_colors = ["#1e2535", "#161d2b"]
+            else:
+                row_colors = ["#ffffff", "#f5f8fc"]
 
             for i, r in enumerate(results):
                 bg = row_colors[i % 2]
@@ -19688,11 +20825,543 @@ class PortfolioDialog(QMainWindow):
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
         dialog.exec()
 
+    # ── Portfolio-Korrelationsmatrix ───────────────────────────────────────────
+    def show_correlation_matrix(self):
+        """Korrelationsmatrix aller Portfolio-Wertpapiere."""
+        from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView, QScrollArea
+        from PyQt6.QtGui import QColor, QFont as _QFont, QPalette
+        from PyQt6.QtCore import QObject
+
+        syms_vals = self._get_symbols_values_for_risk()
+        if len(syms_vals) < 2:
+            QMessageBox.information(self, TR("title_correlation"),
+                                    TR("lbl_correlation_min_stocks"))
+            return
+
+        symbols = [s for s, _ in syms_vals]
+
+        # ── Dialog ────────────────────────────────────────────────────────────
+        dialog = QDialog(self)
+        dialog.setWindowTitle(TR("title_correlation"))
+        dialog.setWindowFlag(Qt.WindowType.Window, True)
+        screen = QApplication.primaryScreen().availableGeometry()
+        dlg_w  = min(int(screen.width() * 0.72), 1200)
+        dlg_h  = min(int(screen.height() * 0.80), 900)
+        dialog.resize(dlg_w, dlg_h)
+        dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
+                    screen.y() + (screen.height() - dlg_h) // 2)
+
+        outer = QVBoxLayout(dialog)
+        outer.setSpacing(6)
+        outer.setContentsMargins(14, 10, 14, 10)
+
+        _dm = QApplication.palette().color(QPalette.ColorRole.Window).lightness() < 128
+        _muted = "#ccc" if _dm else "#666"
+
+        # ── Steuerleiste ──────────────────────────────────────────────────────
+        ctrl = QHBoxLayout(); ctrl.setSpacing(8)
+
+        periods = [
+            (TR("period_1mo"), "1mo"), (TR("period_3mo"), "3mo"),
+            (TR("period_6mo"), "6mo"), ("YTD", "ytd"),
+            (TR("period_1y"),  "1y"),  (TR("period_2y"),  "2y"),
+            (TR("period_5y"),  "5y"),
+        ]
+        period_combo = QComboBox()
+        for label, _ in periods:
+            period_combo.addItem(label)
+        period_combo.setCurrentText(TR("period_1y"))
+        period_combo.setMinimumWidth(140)
+        ctrl.addWidget(QLabel(TR("lbl_period")))
+        ctrl.addWidget(period_combo)
+
+        calc_btn = QPushButton(TR("btn_calculate"))
+        calc_btn.setMinimumHeight(30)
+        calc_btn.setStyleSheet("font-weight:bold; padding:2px 16px;")
+        ctrl.addWidget(calc_btn)
+        ctrl.addStretch()
+
+        export_data = [{}]
+        exp_btn = self._make_export_btn(lambda: export_data[0], TR("title_correlation"))
+        exp_btn.setMinimumHeight(30)
+        ctrl.addWidget(exp_btn)
+
+        close_btn = QPushButton(TR("btn_close"))
+        close_btn.setMinimumHeight(30)
+        close_btn.setStyleSheet("padding:2px 12px;")
+        close_btn.clicked.connect(dialog.close)
+        ctrl.addWidget(close_btn)
+        outer.addLayout(ctrl)
+
+        # Info-Zeile
+        info_lbl = QLabel(TR("lbl_correlation_info"))
+        info_lbl.setStyleSheet(f"color:{_muted}; font-size:10px; padding:2px 0;")
+        outer.addWidget(info_lbl)
+
+        # ── Tabelle (in ScrollArea) ───────────────────────────────────────────
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        outer.addWidget(scroll, stretch=1)
+
+        table_holder = QWidget()
+        table_lay = QVBoxLayout(table_holder)
+        table_lay.setContentsMargins(0, 0, 0, 0)
+        scroll.setWidget(table_holder)
+
+        # Status
+        status_lbl = QLabel("")
+        status_lbl.setStyleSheet(f"color:{_muted}; font-size:11px; padding:2px 0;")
+        status_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        outer.addWidget(status_lbl)
+
+        # Disclaimer
+        disc = QLabel(TR("lbl_disclaimer_general"))
+        disc.setWordWrap(True)
+        disc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        _border_col = "#555" if _dm else "#ddd"
+        disc.setStyleSheet(
+            f"color:{_muted}; font-size:10px; font-style:italic;"
+            f"padding:4px 12px; border-top:1px solid {_border_col};")
+        outer.addWidget(disc)
+
+        # ── Lade-Overlay ──────────────────────────────────────────────────────
+        _ov = [None]
+        def _show_overlay(period_label):
+            _hide_overlay()
+            ov = QFrame(dialog)
+            ov.setStyleSheet(
+                "QFrame{background:rgba(240,248,255,230);"
+                "border:2px solid #3498db;border-radius:12px;}")
+            ol = QVBoxLayout(ov)
+            ol.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            ico = QLabel("🔗")
+            ico.setFont(QFont("Segoe UI Emoji", 36))
+            ico.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            ico.setStyleSheet("border:none; background:transparent;")
+            ol.addWidget(ico)
+            lbl = QLabel(f"<b>{TR('title_correlation')}</b>  —  {period_label}")
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl.setStyleSheet("font-size:12px; font-weight:bold; border:none; background:transparent;")
+            ol.addWidget(lbl)
+            sub = QLabel(TR("lbl_correlation_loading"))
+            sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            sub.setStyleSheet("font-size:10px; color:#666; border:none; background:transparent;")
+            ol.addWidget(sub)
+            ow, oh = 380, 180
+            ov.setGeometry((dlg_w - ow) // 2, (dlg_h - oh) // 2, ow, oh)
+            ov.show(); ov.raise_()
+            _ov[0] = ov
+            QApplication.processEvents()
+
+        def _hide_overlay():
+            if _ov[0]:
+                try: _ov[0].hide(); _ov[0].deleteLater()
+                except RuntimeError: pass
+                _ov[0] = None
+
+        # ── Lokaler Signal-Bridge (thread-safe Callbacks auf Main-Thread) ────────
+        class _Bridge(QObject):
+            call = pyqtSignal(object)
+        _bridge = _Bridge()
+        _bridge.call.connect(lambda fn: fn())
+
+        # ── Worker-Thread ─────────────────────────────────────────────────────
+        _worker = [None]
+
+        def _cell_color(val):
+            """Zellenfarbe nach Korrelationsstärke (Palette: rot–weiß–grün)."""
+            if val is None: return None
+            v = max(-1.0, min(1.0, float(val)))
+            if v >= 0:
+                # 0 → weiß, 1 → grün
+                g = int(180 + 75 * v)
+                r = int(255 - 80 * v)
+                b = int(255 - 80 * v)
+            else:
+                # 0 → weiß, -1 → rot
+                r = int(255)
+                g = int(200 + 55 * v)
+                b = int(200 + 55 * v)
+            return QColor(r, g, b)
+
+        def _build_table(corr_df):
+            # Alte Tabelle entfernen
+            while table_lay.count():
+                item = table_lay.takeAt(0)
+                if item.widget(): item.widget().deleteLater()
+
+            syms = list(corr_df.columns)
+            n = len(syms)
+
+            tbl = QTableWidget(n, n)
+            tbl.setHorizontalHeaderLabels(syms)
+            tbl.setVerticalHeaderLabels(syms)
+            tbl.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+            tbl.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+            tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+            tbl.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+            tbl.setStyleSheet(
+                "QTableWidget { font-size:11px; }"
+                "QHeaderView::section { background:#f0f4f8; color:#000000; font-weight:bold; padding:4px; }"
+            )
+            bold = _QFont(); bold.setBold(True)
+
+            export_rows = []
+            for i, s_row in enumerate(syms):
+                exp_row = [s_row]
+                for j, s_col in enumerate(syms):
+                    val = corr_df.loc[s_row, s_col]
+                    if i == j:
+                        text = "–"
+                        item = QTableWidgetItem(text)
+                        item.setBackground(QColor(230, 230, 230))
+                        item.setFont(bold)
+                    else:
+                        text = f"{val:+.3f}"
+                        item = QTableWidgetItem(text)
+                        bg = _cell_color(val)
+                        if bg: item.setBackground(bg)
+                    item.setForeground(QColor(0, 0, 0))
+                    item.setTextAlignment(
+                        Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+                    tbl.setItem(i, j, item)
+                    exp_row.append(text)
+                export_rows.append(tuple(exp_row))
+
+            table_lay.addWidget(tbl)
+
+            # Export-Daten aktualisieren
+            export_data[0] = {
+                'title':   TR("title_correlation"),
+                'headers': [""] + syms,
+                'rows':    export_rows,
+            }
+
+        def _run_calc():
+            idx = period_combo.currentIndex()
+            if idx < 0: return
+            period_label, period_code = periods[idx]
+
+            _show_overlay(period_label)
+            calc_btn.setEnabled(False)
+
+            _worker[0] = True  # laufende Berechnung markieren
+
+            def _on_done(corr_df):
+                _worker[0] = None
+                _hide_overlay()
+                calc_btn.setEnabled(True)
+                if corr_df is None or (hasattr(corr_df, 'empty') and corr_df.empty):
+                    status_lbl.setText(TR("lbl_correlation_no_data"))
+                    return
+                _build_table(corr_df)
+                n_sym = corr_df.shape[1]
+                status_lbl.setText(
+                    f"{TR('title_correlation')}  —  {period_label}"
+                    f"  |  {n_sym} {TR('col_symbol').lower()}s")
+
+            def _on_progress(msg):
+                try:
+                    if _ov[0]:
+                        for child in _ov[0].children():
+                            if isinstance(child, QLabel) and "🔗" not in child.text():
+                                child.setText(msg)
+                                break
+                except RuntimeError:
+                    pass
+
+            def _do():
+                import yfinance as yf
+                import pandas as pd
+                try:
+                    _bridge.call.emit(lambda m=f"({len(symbols)} {TR('col_symbol').lower()}s)": _on_progress(m))
+                    raw = yf.download(
+                        symbols, period=period_code,
+                        auto_adjust=True, progress=False,
+                        group_by='column'
+                    )
+                    if raw is None or raw.empty:
+                        _bridge.call.emit(lambda: _on_done(None)); return
+
+                    if len(symbols) == 1:
+                        close = raw[['Close']] if 'Close' in raw.columns else raw
+                        close.columns = symbols
+                    else:
+                        close = raw['Close'] if 'Close' in raw.columns else raw
+                        if hasattr(close, 'columns'):
+                            close = close[[s for s in symbols if s in close.columns]]
+
+                    returns = close.dropna(how='all').pct_change().dropna(how='all')
+                    if returns.empty or returns.shape[1] < 2:
+                        _bridge.call.emit(lambda: _on_done(None)); return
+
+                    corr = returns.corr()
+                    _bridge.call.emit(lambda c=corr: _on_done(c))
+                except Exception:
+                    _bridge.call.emit(lambda: _on_done(None))
+
+            import threading as _threading
+            _threading.Thread(target=_do, daemon=True).start()
+
+        calc_btn.clicked.connect(_run_calc)
+        # Sofort beim Öffnen berechnen
+        QTimer.singleShot(100, _run_calc)
+
+        dialog.exec()
+
+    # ── Portfolio-Notizen ──────────────────────────────────────────────────────
+    def show_portfolio_notes(self):
+        """Journal-Notizen für das aktuelle Portfolio anzeigen und bearbeiten."""
+        import uuid as _uuid
+        from datetime import datetime as _dt
+        from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout,
+                                     QLabel, QTextEdit, QPushButton,
+                                     QScrollArea, QWidget, QFrame,
+                                     QFileDialog, QMessageBox, QSizePolicy)
+        from PyQt6.QtCore import Qt
+        from PyQt6.QtGui import QPalette as _QPalette_notes
+
+        _dm = QApplication.palette().color(_QPalette_notes.ColorRole.Window).lightness() < 128
+
+        pf_name = self._get_active_portfolio_name()
+        dlg = QDialog(self)
+        dlg.setWindowTitle(TR("title_notes"))
+        dlg.setMinimumSize(520, 480)
+        dlg.resize(580, 560)
+        lay = QVBoxLayout(dlg)
+        lay.setSpacing(8)
+
+        if not pf_name:
+            lay.addWidget(QLabel(TR("lbl_notes_no_portfolio")))
+            close_btn = QPushButton(TR("btn_close"))
+            close_btn.clicked.connect(dlg.accept)
+            lay.addWidget(close_btn)
+            dlg.exec()
+            return
+
+        # Header
+        hdr = QLabel(f"<b>{TR('title_notes')}</b> – <i>{pf_name}</i>")
+        hdr.setStyleSheet("font-size:13px; padding-bottom:4px;")
+        lay.addWidget(hdr)
+
+        # Scroll-Bereich für Einträge
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.StyledPanel)
+        entries_widget = QWidget()
+        entries_lay = QVBoxLayout(entries_widget)
+        entries_lay.setSpacing(6)
+        entries_lay.setAlignment(Qt.AlignmentFlag.AlignTop)
+        scroll.setWidget(entries_widget)
+        lay.addWidget(scroll, 1)
+
+        def _rebuild_entries():
+            while entries_lay.count():
+                item = entries_lay.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+
+            notes = list(reversed(self._portfolio_notes))  # neueste zuerst
+            if not notes:
+                lbl = QLabel(TR("lbl_no_notes"))
+                lbl.setStyleSheet("color: #888; font-style: italic; padding: 8px;")
+                lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                entries_lay.addWidget(lbl)
+                return
+
+            for note in notes:
+                card = QFrame()
+                card.setFrameShape(QFrame.Shape.StyledPanel)
+                if _dm:
+                    card.setStyleSheet("QFrame { background:#1e2535; border:1px solid #3a4a6a; border-radius:6px; }")
+                else:
+                    card.setStyleSheet("QFrame { background:#f8f9fa; border:1px solid #dee2e6; border-radius:6px; }")
+                card_lay = QVBoxLayout(card)
+                card_lay.setContentsMargins(10, 6, 10, 6)
+                card_lay.setSpacing(4)
+
+                top_row = QHBoxLayout()
+                ts_lbl = QLabel(note.get("timestamp", ""))
+                ts_lbl.setStyleSheet("font-size:11px; color: #888;")
+                top_row.addWidget(ts_lbl)
+                top_row.addStretch()
+
+                del_btn = QPushButton(TR("btn_delete_note"))
+                del_btn.setFixedSize(60, 22)
+                del_btn.setStyleSheet("font-size:11px; padding:1px 4px;")
+                note_id = note.get("id", "")
+
+                def _make_delete(nid):
+                    def _do_delete():
+                        reply = QMessageBox.question(
+                            dlg, TR("btn_delete_note"),
+                            TR("msg_note_delete_confirm"),
+                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                            QMessageBox.StandardButton.No
+                        )
+                        if reply == QMessageBox.StandardButton.Yes:
+                            self._portfolio_notes = [n for n in self._portfolio_notes if n.get("id") != nid]
+                            self.save_portfolio()
+                            _rebuild_entries()
+                    return _do_delete
+
+                del_btn.clicked.connect(_make_delete(note_id))
+                top_row.addWidget(del_btn)
+                card_lay.addLayout(top_row)
+
+                txt_lbl = QLabel(note.get("text", ""))
+                txt_lbl.setWordWrap(True)
+                txt_lbl.setTextFormat(Qt.TextFormat.PlainText)
+                txt_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+                card_lay.addWidget(txt_lbl)
+
+                entries_lay.addWidget(card)
+
+        _rebuild_entries()
+
+        # Eingabe
+        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
+        lay.addWidget(sep)
+
+        input_lbl = QLabel(TR("lbl_note_placeholder"))
+        input_lbl.setStyleSheet("font-size:11px; color:#888;")
+        lay.addWidget(input_lbl)
+
+        text_edit = QTextEdit()
+        text_edit.setPlaceholderText(TR("lbl_note_placeholder"))
+        text_edit.setFixedHeight(80)
+        lay.addWidget(text_edit)
+
+        btn_row = QHBoxLayout()
+
+        from PyQt6.QtGui import QFontDatabase as _QFD_notes
+        _ef_notes = next(
+            (QFont(f, 10) for f in ['Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji']
+             if f in _QFD_notes.families()), None)
+
+        add_btn = QPushButton(TR("btn_add_note"))
+        add_btn.setStyleSheet("background:#27ae60; color:white; padding:5px 14px; font-weight:bold;")
+
+        def _add_note():
+            txt = text_edit.toPlainText().strip()
+            if not txt:
+                QMessageBox.information(dlg, TR("title_notes"), TR("msg_note_empty"))
+                return
+            entry = {
+                "id":        str(_uuid.uuid4()),
+                "timestamp": _dt.now().strftime("%Y-%m-%d %H:%M"),
+                "text":      txt,
+            }
+            self._portfolio_notes.append(entry)
+            self.save_portfolio()
+            text_edit.clear()
+            _rebuild_entries()
+
+        add_btn.clicked.connect(_add_note)
+        btn_row.addWidget(add_btn)
+
+        def _do_export_txt():
+            if not self._portfolio_notes:
+                QMessageBox.information(dlg, TR("btn_export_notes_txt"), TR("lbl_no_notes"))
+                return
+            fname, _ = QFileDialog.getSaveFileName(
+                dlg, TR("btn_export_notes_txt"),
+                f"{pf_name}_notes.txt", "Text (*.txt)"
+            )
+            if not fname:
+                return
+            lines = [f"=== {TR('title_notes')} – {pf_name} ===\n"]
+            for note in reversed(self._portfolio_notes):
+                lines.append(f"[{note.get('timestamp','')}]")
+                lines.append(note.get("text", ""))
+                lines.append("")
+            try:
+                with open(fname, "w", encoding="utf-8") as f:
+                    f.write("\n".join(lines))
+                QMessageBox.information(dlg, TR("btn_export_notes_txt"),
+                                        TR("msg_notes_exported", path=fname))
+            except Exception as ex:
+                QMessageBox.warning(dlg, TR("msg_title_error"), str(ex))
+
+        def _do_export_pdf():
+            if not self._portfolio_notes:
+                QMessageBox.information(dlg, TR("btn_export_notes_pdf"), TR("lbl_no_notes"))
+                return
+            fname, _ = QFileDialog.getSaveFileName(
+                dlg, TR("btn_export_notes_pdf"),
+                f"{pf_name}_notes.pdf", "PDF (*.pdf)"
+            )
+            if not fname:
+                return
+            try:
+                from reportlab.lib.pagesizes import A4
+                from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                from reportlab.lib import colors
+                from reportlab.lib.units import cm
+                doc = SimpleDocTemplate(fname, pagesize=A4,
+                                        leftMargin=2*cm, rightMargin=2*cm,
+                                        topMargin=2*cm, bottomMargin=2*cm)
+                styles = getSampleStyleSheet()
+                title_style = ParagraphStyle('title', parent=styles['Heading1'],
+                                             fontSize=14, spaceAfter=6)
+                ts_style = ParagraphStyle('ts', parent=styles['Normal'],
+                                          fontSize=9, textColor=colors.grey, spaceAfter=2)
+                body_style = ParagraphStyle('body', parent=styles['Normal'],
+                                            fontSize=11, spaceAfter=4)
+                story = [
+                    Paragraph(f"📝 {TR('title_notes')} – {pf_name}", title_style),
+                    Spacer(1, 0.3*cm),
+                ]
+                for note in reversed(self._portfolio_notes):
+                    story.append(Paragraph(note.get('timestamp', ''), ts_style))
+                    txt_safe = note.get('text', '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    story.append(Paragraph(txt_safe, body_style))
+                    story.append(Spacer(1, 0.4*cm))
+                doc.build(story)
+                QMessageBox.information(dlg, TR("btn_export_notes_pdf"),
+                                        TR("msg_notes_exported", path=fname))
+            except ImportError:
+                QMessageBox.warning(dlg, TR("msg_title_error"),
+                    "reportlab nicht installiert.\n"
+                    "pip install reportlab --break-system-packages")
+            except Exception as ex:
+                QMessageBox.warning(dlg, TR("msg_title_error"), str(ex))
+
+        exp_txt_btn = QPushButton(TR("btn_export_notes_txt"))
+        exp_txt_btn.setStyleSheet("padding:5px 10px;")
+        if _ef_notes: exp_txt_btn.setFont(_ef_notes)
+        exp_txt_btn.clicked.connect(_do_export_txt)
+        btn_row.addWidget(exp_txt_btn)
+
+        exp_pdf_btn = QPushButton(TR("btn_export_notes_pdf"))
+        exp_pdf_btn.setStyleSheet("padding:5px 10px;")
+        if _ef_notes: exp_pdf_btn.setFont(_ef_notes)
+        exp_pdf_btn.clicked.connect(_do_export_pdf)
+        btn_row.addWidget(exp_pdf_btn)
+
+        btn_row.addStretch()
+
+        close_btn = QPushButton(TR("btn_close"))
+        close_btn.setStyleSheet("padding:5px 12px;")
+        close_btn.clicked.connect(dlg.accept)
+        btn_row.addWidget(close_btn)
+
+        lay.addLayout(btn_row)
+
+        if sys.platform == 'win32':
+            dlg.finished.connect(lambda: (self.raise_(), self.activateWindow()))
+        dlg.exec()
+
     def show_portfolio_balance(self):
         """Rebalancing-Vorschlag: Positionsgrössen nach Performance-Rang umverteilen (ohne Krypto)"""
         if not self.portfolio_data:
             QMessageBox.information(self, TR("msg_title_info"), "Keine Portfolio-Daten vorhanden.")
             return
+
+        from PyQt6.QtGui import QPalette as _QPalette_pb
+        _dm_pb = QApplication.palette().color(_QPalette_pb.ColorRole.Window).lightness() < 128
 
         # ── Dialog aufbauen ────────────────────────────────────────────────
         dialog = QDialog(self)
@@ -19715,7 +21384,8 @@ class PortfolioDialog(QMainWindow):
             TR("lbl_rebalancing_idea")
         )
         info.setWordWrap(True)
-        info.setStyleSheet("background: #EBF5FB; border-radius: 6px; padding: 10px 14px; font-size: 13px;")
+        _info_bg = "#0d2a3d" if _dm_pb else "#EBF5FB"
+        info.setStyleSheet(f"background: {_info_bg}; border-radius: 6px; padding: 10px 14px; font-size: 13px;")
         outer.addWidget(info)
 
         # Zeitraum-Auswahl
@@ -19752,7 +21422,7 @@ class PortfolioDialog(QMainWindow):
             l = QLabel(f"<b>{text}</b>")
             l.setFixedWidth(w)
             l.setAlignment(align)
-            l.setStyleSheet(f"color: #444; font-size: {FS};")
+            l.setStyleSheet(f"font-size: {FS};")
             return l
 
         header_row = QHBoxLayout()
@@ -19770,7 +21440,8 @@ class PortfolioDialog(QMainWindow):
         header_row.addStretch()
 
         hdr_frame = QFrame()
-        hdr_frame.setStyleSheet("background: #e8edf2; border-radius: 5px; padding: 3px;")
+        _pb_hdr_bg = "#1a2d3d" if _dm_pb else "#e8edf2"
+        hdr_frame.setStyleSheet(f"background: {_pb_hdr_bg}; border-radius: 5px; padding: 3px;")
         hdr_frame.setLayout(header_row)
         outer.addWidget(hdr_frame)
 
@@ -19789,13 +21460,13 @@ class PortfolioDialog(QMainWindow):
         # Status + Summe
         sum_label = QLabel("")
         sum_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        sum_label.setStyleSheet(f"font-size: {FS}; color: #333; padding: 5px; border-top: 1px solid #ddd; font-weight: bold;")
+        sum_label.setStyleSheet(f"font-size: {FS}; padding: 5px; border-top: 1px solid #ddd; font-weight: bold;")
         outer.addWidget(sum_label)
 
         status_label = QLabel(TR("lbl_period_status2"))
         status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         try:
-            status_label.setStyleSheet("color: #888; font-size: 11px;")
+            status_label.setStyleSheet("font-size: 11px;")
         except RuntimeError:
             pass
         outer.addWidget(status_label)
@@ -19803,7 +21474,7 @@ class PortfolioDialog(QMainWindow):
         disclaimer = QLabel(TR("lbl_disclaimer_rebalancing"))
         disclaimer.setWordWrap(True)
         disclaimer.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        disclaimer.setStyleSheet("color: #888; font-size: 11px; font-style: italic; padding: 4px 12px; border-top: 1px solid #ddd;")
+        disclaimer.setStyleSheet("font-size: 11px; font-style: italic; padding: 4px 12px; border-top: 1px solid #ddd;")
         outer.addWidget(disclaimer)
 
         _alpha_export_data = [{}]
@@ -19855,7 +21526,10 @@ class PortfolioDialog(QMainWindow):
             total_ist  = sum(r['ist_val']  for r in results)
             total_soll = sum(r['soll_val'] for r in results)
 
-            row_colors = ["#ffffff", "#f5f8fc"]
+            if _dm_pb:
+                row_colors = ["#1e2535", "#161d2b"]
+            else:
+                row_colors = ["#ffffff", "#f5f8fc"]
 
             for i, r in enumerate(results):
                 bg = row_colors[i % 2]
@@ -20151,8 +21825,12 @@ class PortfolioDialog(QMainWindow):
 
     def _make_risk_section(self, title_text, value, color_fn, fmt_fn, explanation_fn, bg_color):
         """Erstellt einen farbigen Abschnitt mit Kennzahl + Erklärung."""
+        from PyQt6.QtGui import QPalette as _QPalette_rs
+        _dm_rs = QApplication.palette().color(_QPalette_rs.ColorRole.Window).lightness() < 128
+        _rs_border = "#3a4255" if _dm_rs else "#d0d0d0"
+        _rs_txt    = "#cdd6f4" if _dm_rs else "#2c3e50"
         frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {bg_color}; border-radius: 10px; border: 1px solid #d0d0d0; }}")
+        frame.setStyleSheet(f"QFrame {{ background: {bg_color}; border-radius: 10px; border: 1px solid {_rs_border}; }}")
         fl = QVBoxLayout(frame)
         fl.setSpacing(8)
         fl.setContentsMargins(18, 14, 18, 14)
@@ -20167,7 +21845,7 @@ class PortfolioDialog(QMainWindow):
         fl.addWidget(bv)
         exp = QLabel(explanation_fn(value))
         exp.setWordWrap(True)
-        exp.setStyleSheet("font-size: 13px; color: #2c3e50; border: none; background: transparent; padding: 6px 0px;")
+        exp.setStyleSheet(f"font-size: 13px; color: {_rs_txt}; border: none; background: transparent; padding: 6px 0px;")
         fl.addWidget(exp)
         return frame
 
@@ -20235,6 +21913,9 @@ class PortfolioDialog(QMainWindow):
 
         dialog, outer, period_combo, periods, calc_btn, result_layout, status_label, dlg_w, dlg_h, _alpha_export_data = \
             self._make_risk_dialog("Portfolio Alpha-Analyse", "α")
+
+        from PyQt6.QtGui import QPalette as _QPalette_alp
+        _dm_alp = QApplication.palette().color(_QPalette_alp.ColorRole.Window).lightness() < 128
 
         CRYPTO_SUFFIXES = ('-USD', '-EUR', '-CHF', '-BTC')
         def is_crypto(sym): return any(sym.upper().endswith(s) for s in CRYPTO_SUFFIXES)
@@ -20358,13 +22039,17 @@ class PortfolioDialog(QMainWindow):
                 while result_layout.count():
                     item = result_layout.takeAt(0)
                     if item.widget(): item.widget().deleteLater()
+                if _dm_alp:
+                    _alp_bg1, _alp_bg2, _alp_bg3, _alp_bg4 = "#0d2a3d", "#0d2a1a", "#2a0d25", "#2a2210"
+                else:
+                    _alp_bg1, _alp_bg2, _alp_bg3, _alp_bg4 = "#EBF5FB", "#EAFAF1", "#FDF2F8", "#FEF9E7"
                 sections = [
-                    (f"🌐  {TR('lbl_total_portfolio')}",      a_all,       "gesamt", "#EBF5FB"),
-                    (f"📈  {TR('lbl_only_stocks_etf')}",     a_stocks,    "aktien", "#EAFAF1"),
-                    (f"🪙  {TR('lbl_only_crypto')}",   a_crypto,    "krypto", "#FDF2F8"),
+                    (f"🌐  {TR('lbl_total_portfolio')}",      a_all,       "gesamt", _alp_bg1),
+                    (f"📈  {TR('lbl_only_stocks_etf')}",     a_stocks,    "aktien", _alp_bg2),
+                    (f"🪙  {TR('lbl_only_crypto')}",   a_crypto,    "krypto", _alp_bg3),
                 ]
                 if commodity_sv:
-                    sections.append((f"🥇  {TR('lbl_only_commodities')}", a_commodity, "aktien", "#FEF9E7"))
+                    sections.append((f"🥇  {TR('lbl_only_commodities')}", a_commodity, "aktien", _alp_bg4))
                 for title, val, scope, bg in sections:
                     result_layout.addWidget(self._make_risk_section(
                         title, val, _color, _fmt_alpha,
@@ -20406,6 +22091,9 @@ class PortfolioDialog(QMainWindow):
         dialog, outer, period_combo, periods, calc_btn, result_layout, status_label, dlg_w, dlg_h, _sharpe_export_data = \
             self._make_risk_dialog("Portfolio Sharpe-Ratio", "S")
 
+        from PyQt6.QtGui import QPalette as _QPalette_shp
+        _dm_shp = QApplication.palette().color(_QPalette_shp.ColorRole.Window).lightness() < 128
+
         CRYPTO_SUFFIXES = ('-USD', '-EUR', '-CHF', '-BTC')
         def is_crypto(sym): return any(sym.upper().endswith(s) for s in CRYPTO_SUFFIXES)
 
@@ -20440,7 +22128,7 @@ class PortfolioDialog(QMainWindow):
             else:                   desc = TR("lbl_scope_crypto")
             interp, color = _interp(s)
             lines = [
-                TR("lbl_sharpe_explanation", val=_fmt(s), desc=desc, units=abs(s)),
+                TR("lbl_sharpe_explanation", val=_fmt(s), desc=desc, units=s),
                 "",
                 TR("lbl_sharpe_jensens_explanation"),
                 "",
@@ -20535,13 +22223,17 @@ class PortfolioDialog(QMainWindow):
                 while result_layout.count():
                     item = result_layout.takeAt(0)
                     if item.widget(): item.widget().deleteLater()
+                if _dm_shp:
+                    _shp_bg1, _shp_bg2, _shp_bg3, _shp_bg4 = "#0d2a3d", "#0d2a1a", "#2a0d25", "#2a2210"
+                else:
+                    _shp_bg1, _shp_bg2, _shp_bg3, _shp_bg4 = "#EBF5FB", "#EAFAF1", "#FDF2F8", "#FEF9E7"
                 sections = [
-                    (f"🌐  {TR('lbl_total_portfolio')}",    s_all,       "gesamt", "#EBF5FB"),
-                    (f"📈  {TR('lbl_only_stocks_etf')}",   s_stocks,    "aktien", "#EAFAF1"),
-                    (f"🪙  {TR('lbl_only_crypto')}",   s_crypto,    "krypto", "#FDF2F8"),
+                    (f"🌐  {TR('lbl_total_portfolio')}",    s_all,       "gesamt", _shp_bg1),
+                    (f"📈  {TR('lbl_only_stocks_etf')}",   s_stocks,    "aktien", _shp_bg2),
+                    (f"🪙  {TR('lbl_only_crypto')}",   s_crypto,    "krypto", _shp_bg3),
                 ]
                 if commodity_sv:
-                    sections.append((f"🥇  {TR('lbl_only_commodities')}", s_commodity, "aktien", "#FEF9E7"))
+                    sections.append((f"🥇  {TR('lbl_only_commodities')}", s_commodity, "aktien", _shp_bg4))
                 for title, val, scope, bg in sections:
                     result_layout.addWidget(self._make_risk_section(
                         title, val, _color, _fmt,
@@ -20581,6 +22273,9 @@ class PortfolioDialog(QMainWindow):
             return
 
         # ── Dialog aufbauen ────────────────────────────────────────────────
+        from PyQt6.QtGui import QPalette as _QPalette_beta
+        _dm_beta = QApplication.palette().color(_QPalette_beta.ColorRole.Window).lightness() < 128
+
         dialog = QDialog(self)
         dialog.setWindowTitle(TR("title_beta_analysis"))
         screen = QApplication.primaryScreen().availableGeometry()
@@ -20775,10 +22470,12 @@ class PortfolioDialog(QMainWindow):
 
         def _make_section(title_text, beta_val, scope, bg_color):
             """Erstellt einen Abschnitt mit Beta-Wert und Erklärung."""
+            _rs_border = "#3a4255" if _dm_beta else "#d0d0d0"
+            _rs_txt    = "#cdd6f4" if _dm_beta else "#2c3e50"
             frame = QFrame()
             frame.setStyleSheet(
                 f"QFrame {{ background: {bg_color}; border-radius: 10px; "
-                f"border: 1px solid #d0d0d0; }}"
+                f"border: 1px solid {_rs_border}; }}"
             )
             fl = QVBoxLayout(frame)
             fl.setSpacing(8)
@@ -20801,7 +22498,7 @@ class PortfolioDialog(QMainWindow):
             exp = QLabel(_beta_explanation(beta_val, scope))
             exp.setWordWrap(True)
             exp.setStyleSheet(
-                "font-size: 13px; color: #2c3e50; border: none; background: transparent; "
+                f"font-size: 13px; color: {_rs_txt}; border: none; background: transparent; "
                 "padding: 6px 0px; line-height: 1.5;"
             )
             fl.addWidget(exp)
@@ -20901,11 +22598,15 @@ class PortfolioDialog(QMainWindow):
                     if item.widget():
                         item.widget().deleteLater()
 
-                result_layout.addWidget(_make_section(f"🌐  {TR('lbl_total_portfolio')}",    b_all,    "gesamt", "#EBF5FB"))
-                result_layout.addWidget(_make_section(f"📈  {TR('lbl_only_stocks_etf')}",  b_stocks, "aktien", "#EAFAF1"))
-                result_layout.addWidget(_make_section(f"🪙  {TR('lbl_only_crypto')}",b_crypto, "krypto", "#FDF2F8"))
+                if _dm_beta:
+                    _bt_bg1, _bt_bg2, _bt_bg3, _bt_bg4 = "#0d2a3d", "#0d2a1a", "#2a0d25", "#2a2210"
+                else:
+                    _bt_bg1, _bt_bg2, _bt_bg3, _bt_bg4 = "#EBF5FB", "#EAFAF1", "#FDF2F8", "#FEF9E7"
+                result_layout.addWidget(_make_section(f"🌐  {TR('lbl_total_portfolio')}",    b_all,    "gesamt", _bt_bg1))
+                result_layout.addWidget(_make_section(f"📈  {TR('lbl_only_stocks_etf')}",  b_stocks, "aktien", _bt_bg2))
+                result_layout.addWidget(_make_section(f"🪙  {TR('lbl_only_crypto')}",b_crypto, "krypto", _bt_bg3))
                 if commodity_sv:
-                    result_layout.addWidget(_make_section(f"🥇  {TR('lbl_only_commodities')}",  b_commodity, "aktien", "#FEF9E7"))
+                    result_layout.addWidget(_make_section(f"🥇  {TR('lbl_only_commodities')}",  b_commodity, "aktien", _bt_bg4))
                 result_layout.addStretch()
                 _fmt_b = lambda v: f"{v:.4f}" if v is not None else "n/a"
                 _beta_rows = [
@@ -22668,7 +24369,7 @@ class PortfolioDialog(QMainWindow):
                                 info = yf.Ticker(sym).info
                                 sector = info.get('sector','') or ''; industry = info.get('industry','') or ''
                             except Exception: pass
-                        sector_map[sym] = sector if sector else 'Unknown'
+                        sector_map[sym] = _SECTOR_ALIASES.get(sector, sector) if sector else 'Unknown'
                         if industry: industry_map[sym] = industry
                     _FX_PAIRS = {
                         'JPY':('JPY=X',True),'KRW':('KRW=X',True),'HKD':('HKD=X',True),
@@ -23293,11 +24994,16 @@ class PortfolioDialog(QMainWindow):
         self._price_cache_ts    = 0.0
         self._overview_cache    = None
         self._overview_cache_ts = 0.0
-        # Laufende Worker stoppen
+        # Laufende Worker kooperativ stoppen
         for attr in ('_master_worker', '_worker', '_overview_worker'):
-            w = getattr(self, attr, None)
-            if w and w.isRunning():
-                w.quit(); w.wait(1000)
+            try:
+                w = getattr(self, attr, None)
+                if w and w.isRunning():
+                    w.requestInterruption()
+                    w.quit()
+                    w.wait(2000)
+            except RuntimeError:
+                pass
 
     def refresh_table(self, force=False):
         """Lädt alle Kurse und zeigt die Portfolio-Tabelle an.
@@ -23322,11 +25028,15 @@ class PortfolioDialog(QMainWindow):
                 self._start_bg_price_fetch()
             return
 
-        # Laufenden Worker stoppen (wait blockiert max. 2s)
-        if self._worker is not None and self._worker.isRunning():
-            self._worker.quit()
-            self._worker.wait(2000)
-            self._worker = None
+        # Laufenden Worker kooperativ stoppen
+        try:
+            if self._worker is not None and self._worker.isRunning():
+                self._worker.requestInterruption()
+                self._worker.quit()
+                self._worker.wait(2000)
+        except RuntimeError:
+            pass
+        self._worker = None
 
         self._show_portfolio_loading()
         self._worker = PortfolioWorker(self.portfolio_data, parent=self)
@@ -23334,18 +25044,31 @@ class PortfolioDialog(QMainWindow):
             self._update_portfolio_loading, Qt.ConnectionType.QueuedConnection)
         self._worker.data_ready.connect(
             self._on_prices_ready, Qt.ConnectionType.QueuedConnection)
+        _pw = self._worker
+        self._worker.finished.connect(
+            lambda w=_pw: setattr(self, '_worker', None) if self._worker is w else None
+        )
+        self._worker.finished.connect(self._worker.deleteLater)
         self._worker.start()
 
     def _start_bg_price_fetch(self):
         """Stilles Hintergrund-Update – kein Loading-Overlay."""
-        if self._worker is not None and self._worker.isRunning():
-            return
+        try:
+            if self._worker is not None and self._worker.isRunning():
+                return
+        except RuntimeError:
+            self._worker = None
         self._worker = PortfolioWorker(self.portfolio_data, parent=self)
         def _silent_done(price_map):
             self._price_cache    = price_map
             self._price_cache_ts = self._time.time()
             self._build_table(price_map)
         self._worker.data_ready.connect(_silent_done, Qt.ConnectionType.QueuedConnection)
+        _bw = self._worker
+        self._worker.finished.connect(
+            lambda w=_bw: setattr(self, '_worker', None) if self._worker is w else None
+        )
+        self._worker.finished.connect(self._worker.deleteLater)
         self._worker.start()
 
     def _on_prices_ready(self, price_map):
@@ -23363,8 +25086,12 @@ class PortfolioDialog(QMainWindow):
             if item.widget():
                 item.widget().deleteLater()
 
+        from PyQt6.QtGui import QPalette as _QPalette_bt
+        _dm = QApplication.palette().color(_QPalette_bt.ColorRole.Window).lightness() < 128
+
         total_invested = 0.0
         total_current  = 0.0
+        _row_idx = 0
 
         for symbol, positions in self.portfolio_data.items():
             d = price_map.get(symbol, {})
@@ -23386,7 +25113,12 @@ class PortfolioDialog(QMainWindow):
                 pnl_pct    = (pnl / buy_value * 100) if pnl is not None and buy_value != 0 else None
 
                 row = QWidget()
-                row.setStyleSheet("background-color: white; border-bottom: 1px solid #ddd;")
+                if _dm:
+                    _bg = "#1e2535" if _row_idx % 2 == 0 else "#161d2b"
+                else:
+                    _bg = "#f8f9fa" if _row_idx % 2 == 0 else "white"
+                row.setStyleSheet(f"background-color: {_bg};")
+                _row_idx += 1
                 row_layout = QHBoxLayout(row)
                 row_layout.setContentsMargins(0, 2, 0, 2)
 
@@ -23599,13 +25331,14 @@ class BatchDataFetchWorker(QThread):
 
     MAX_PARALLEL = 4   # Yahoo toleriert ~4 gleichzeitige Requests zuverlässig
 
-    def __init__(self, symbols, period, interval, custom_start=None, custom_end=None):
+    def __init__(self, symbols, period, interval, custom_start=None, custom_end=None, demo_cutoff=None):
         super().__init__()
         self.symbols      = list(symbols)
         self.period       = period
         self.interval     = interval
         self.custom_start = custom_start
         self.custom_end   = custom_end
+        self.demo_cutoff  = demo_cutoff
 
     def run(self):
         import pandas as pd
@@ -23615,16 +25348,25 @@ class BatchDataFetchWorker(QThread):
             """Lädt Daten für ein Symbol – identisch zu DataFetchWorker.run()."""
             try:
                 ticker = yf.Ticker(sym)
-                if self.custom_start and self.custom_end:
-                    data = ticker.history(
-                        start=self.custom_start, end=self.custom_end,
-                        interval=self.interval, auto_adjust=True)
+                _end   = self.demo_cutoff or (str(self.custom_end) if self.custom_end else None)
+                _start = str(self.custom_start) if self.custom_start else None
+                if _start and _end:
+                    data = ticker.history(start=_start, end=_end,
+                                          interval=self.interval, auto_adjust=True)
+                elif self.demo_cutoff:
+                    from datetime import datetime as _ddt, timedelta as _dtd
+                    _days = {'1d':2,'5d':7,'1mo':35,'3mo':95,'6mo':185,
+                             '1y':370,'2y':740,'5y':1830,'max':7300,'ytd':370}.get(self.period, 370)
+                    _cutoff = _ddt.strptime(self.demo_cutoff, "%Y-%m-%d")
+                    _s = (_cutoff - _dtd(days=_days)).strftime("%Y-%m-%d")
+                    data = ticker.history(start=_s, end=self.demo_cutoff,
+                                          interval=self.interval, auto_adjust=True)
                 else:
                     data = ticker.history(
                         period=self.period, interval=self.interval,
                         auto_adjust=True)
                 # Fallback wenn zu wenig Daten
-                if len(data) < 5 and self.period not in ('1d', '5d'):
+                if len(data) < 5 and self.period not in ('1d', '5d') and not self.demo_cutoff:
                     data = self._fallback(ticker)
                 cur = getattr(ticker.fast_info, 'currency', None) or 'USD'
                 return sym, data, cur
@@ -23669,13 +25411,14 @@ class DataFetchWorker(QThread):
     data_ready = pyqtSignal(object, str, object, object, str)  # data, currency, target_price, beta_value, company_name
     error = pyqtSignal(str)
     
-    def __init__(self, symbol, period, interval, custom_start=None, custom_end=None):
+    def __init__(self, symbol, period, interval, custom_start=None, custom_end=None, demo_cutoff=None):
         super().__init__()
         self.symbol = symbol
         self.period = period
         self.interval = interval
         self.custom_start = custom_start
-        self.custom_end = custom_end
+        self.custom_end   = custom_end
+        self.demo_cutoff  = demo_cutoff
     
     def run(self):
         try:
@@ -23693,13 +25436,24 @@ class DataFetchWorker(QThread):
                         continue
 
             ticker = yf.Ticker(fetch_symbol)
-            if self.custom_start and self.custom_end:
+            _end = self.demo_cutoff or (self.custom_end.strftime('%Y-%m-%d') if self.custom_end else None)
+            _start = self.custom_start.strftime('%Y-%m-%d') if self.custom_start else None
+            if _start and _end:
                 data = ticker.history(
-                    start=self.custom_start,
-                    end=self.custom_end,
+                    start=_start,
+                    end=_end,
                     interval=self.interval,
                     auto_adjust=True
                 )
+            elif self.demo_cutoff:
+                from datetime import datetime as _ddt, timedelta as _dtd
+                _period_days = {'1d':2,'5d':7,'1mo':35,'3mo':95,'6mo':185,
+                                '1y':370,'2y':740,'5y':1830,'max':7300,'ytd':370}
+                _days = _period_days.get(self.period, 370)
+                _cutoff = _ddt.strptime(self.demo_cutoff, "%Y-%m-%d")
+                _s = (_cutoff - _dtd(days=_days)).strftime("%Y-%m-%d")
+                data = ticker.history(start=_s, end=self.demo_cutoff,
+                                      interval=self.interval, auto_adjust=True)
             else:
                 data = ticker.history(
                     period=self.period,
@@ -23795,7 +25549,7 @@ def _make_flag_btn(b64, tooltip, lang_code=None):
             btn.clicked.connect(lambda: None)
         else:
             btn.setStyleSheet("QPushButton{border:1px solid #ccc;border-radius:3px;"
-                              "background:#f0f0f0;opacity:0.7;}"
+                              "background:#f0f0f0;}"
                               "QPushButton:hover{background:#e0e0e0;border-color:#aaa;}")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
 
@@ -23833,9 +25587,11 @@ def _make_flag_btn(b64, tooltip, lang_code=None):
 
 class StockMonitorApp(QMainWindow):
     """Hauptfenster mit 4 oder 6 Charts"""
-    
+    _thread_call = pyqtSignal(object)  # thread-safe call-on-main-thread
+
     def __init__(self):
         super().__init__()
+        self._thread_call.connect(lambda fn: fn())
         
         self.charts = []
         self.fullscreen_widget = None
@@ -23897,9 +25653,20 @@ class StockMonitorApp(QMainWindow):
             self._startup_target = 88.0
             self.loading_dialog.update_progress(65, TR("status_creating_charts"))
             _scr = QApplication.primaryScreen()
-            _sw = int((_scr.size().width() * _scr.devicePixelRatio()) if _scr else 1920)
-            _default_charts = 16 if _sw >= 3840 else 12
+            if _scr:
+                _geom_w = _scr.geometry().width()
+                _dpr    = _scr.devicePixelRatio()
+                _sw     = _geom_w * _dpr
+                _pdpi   = _scr.physicalDotsPerInch()
+                _ldpi   = _scr.logicalDotsPerInch()
+            else:
+                _sw = 1920
+            _default_charts = 16 if round(_sw) >= 3840 else 12
             self.create_charts(_default_charts)
+            if hasattr(self, 'view_combo'):
+                self.view_combo.blockSignals(True)
+                self.view_combo.setCurrentText('16 (4x4)' if _default_charts == 16 else '12 (3x4)')
+                self.view_combo.blockSignals(False)
         QTimer.singleShot(80, self._init_step5)
 
     def _init_step5(self):
@@ -23952,7 +25719,7 @@ class StockMonitorApp(QMainWindow):
 
     def setup_ui(self):
         """UI initialisieren"""
-        self.setWindowTitle(TR("title_app"))
+        self.setWindowTitle(TR("title_app", version=APP_VERSION))
         
         # Hole Bildschirmgröße (für spätere Berechnungen)
         screen = QApplication.primaryScreen().geometry()
@@ -23973,11 +25740,12 @@ class StockMonitorApp(QMainWindow):
 
         self.main_layout = QVBoxLayout()
         
-        # Erkenne Full HD für 2-Zeilen-Layout (physische Pixel für HiDPI-Skalierung)
+        # Erkenne Full HD für 2-Zeilen-Layout
+        # geometry().width() liefert logische Pixel (skalierungsunabhängig).
+        # Kein * devicePixelRatio() – das würde auf HiDPI-Systemen falsch 4K melden.
         _scr0 = QApplication.primaryScreen()
-        _phys_w = int(_scr0.size().width() * _scr0.devicePixelRatio()) if _scr0 else 1920
         screen = _scr0.geometry() if _scr0 else QApplication.primaryScreen().geometry()
-        is_fullhd = _phys_w <= 1920
+        is_fullhd = screen.width() <= 1920
         
         if is_fullhd:
             # === FULL HD: 2-ZEILEN HEADER ===
@@ -24546,7 +26314,8 @@ class StockMonitorApp(QMainWindow):
                 except Exception:
                     pass
             dialog.update_selection_label()
-            dialog.compare_charts()
+            if sum(1 for cb in dialog.chart_checkboxes if cb.isChecked()) >= 2:
+                dialog.compare_charts()
 
         import sys as _sys_cmp2
         if _sys_cmp2.platform == 'win32':
@@ -24984,10 +26753,8 @@ class StockMonitorApp(QMainWindow):
         
         print(f">>> {len(positions)} Positionen definiert")
         
-        # Bestimme ob compact_mode nötig (Full HD: immer kompakt, physische Pixel für HiDPI)
         _scr1 = QApplication.primaryScreen()
-        _phys_w1 = int(_scr1.size().width() * _scr1.devicePixelRatio()) if _scr1 else 1920
-        is_fullhd = _phys_w1 <= 1920
+        is_fullhd = (_scr1.geometry().width() if _scr1 else 1920) <= 1920
         use_compact = is_fullhd  # Bei Full HD immer kompakt
         
         if use_compact:
@@ -25102,6 +26869,18 @@ class StockMonitorApp(QMainWindow):
                 try:
                     self._batch_workers.remove(bw)
                 except ValueError:
+                    pass
+                # Referenz in dead-pool halten bis Qt das Objekt sicher gelöscht hat
+                if not hasattr(self, '_dead_workers'):
+                    self._dead_workers = []
+                self._dead_workers.append(bw)
+                def _rm_bw(o=None, _w=bw):
+                    try: self._dead_workers.remove(_w)
+                    except (ValueError, RuntimeError): pass
+                try:
+                    bw.destroyed.connect(_rm_bw)
+                    bw.deleteLater()
+                except RuntimeError:
                     pass
 
             bw.chart_data_ready.connect(_on_ready)
@@ -26139,6 +27918,28 @@ class StockMonitorApp(QMainWindow):
                 pass
         StockChartWidget._worker_registry.clear()
 
+        # 4. Alle verbleibenden QThread-Kinder kooperativ stoppen
+        #    requestInterruption() statt terminate() – verhindert pthread_cancel()
+        #    auf Python-Threads (würde SIGABRT verursachen wenn GIL gehalten wird)
+        try:
+            from PyQt6.QtCore import QThread as _QThread
+            _threads = list(self.findChildren(_QThread))
+            for _t in _threads:
+                try:
+                    if _t.isRunning():
+                        _t.requestInterruption()
+                        _t.quit()
+                except Exception:
+                    pass
+            for _t in _threads:
+                try:
+                    if _t.isRunning():
+                        _t.wait(3000)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         event.accept()
         
     def refresh_all(self):
@@ -26210,7 +28011,11 @@ class StockMonitorApp(QMainWindow):
         ai_info = QTextBrowser()
         ai_info.setOpenExternalLinks(True)
         ai_info.setMaximumHeight(260)
-        ai_info.setStyleSheet("background:#f0fff0; border-radius:6px; font-size:12px;")
+        from PyQt6.QtGui import QPalette as _QPalette_set
+        _dm_set = QApplication.palette().color(_QPalette_set.ColorRole.Window).lightness() < 128
+        ai_info.setStyleSheet(
+            "background:#1e2a1e; border-radius:6px; font-size:12px; color:#cdd6f4;" if _dm_set
+            else "background:#f0fff0; border-radius:6px; font-size:12px;")
         ai_info.setHtml(TR("gemini_info_html"))
         ai_lay.addWidget(ai_info)
 
@@ -26234,7 +28039,7 @@ class StockMonitorApp(QMainWindow):
         ai_lay.addWidget(ai_status)
 
         ai_web_btn = QPushButton(TR("btn_google_ai_web"))
-        ai_web_btn.setStyleSheet("color:#1e8449; font-weight:bold;")
+        ai_web_btn.setStyleSheet("color:#27ae60; font-weight:bold;" if _dm_set else "color:#1e8449; font-weight:bold;")
         ai_web_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://aistudio.google.com/apikey")))
         ai_lay.addWidget(ai_web_btn)
         ai_lay.addStretch()
@@ -26298,24 +28103,23 @@ class StockMonitorApp(QMainWindow):
             QComboBox as _QCB_lang,
         )
         from PyQt6.QtCore import Qt
-        from PyQt6.QtGui import QFontDatabase as _QFDB_help, QFont as _QFontToc, QColor as _QColorToc
+        from PyQt6.QtGui import QFontDatabase as _QFDB_help, QFont as _QFontToc, QColor as _QColorToc, QPalette as _QPalette_help
         from help_texts import get_help
         from config import save_config, get_language
+
+        # ── Dark mode detection ───────────────────────────────────────────
+        _dm_help = QApplication.palette().color(_QPalette_help.ColorRole.Window).lightness() < 128
 
         # ── Current language & help data ──────────────────────────────────
         _current_lang = [get_language()]   # list so closure can mutate it
 
         def _load_help():
-            return get_help(_current_lang[0])
+            return get_help(_current_lang[0], dark_mode=_dm_help)
 
         # Parent: aufrufendes Fenster bevorzugt (bleibt darüber), sonst Hauptfenster
         _dlg_parent = parent_widget if parent_widget is not None else self
         dialog = QDialog(_dlg_parent)
         dialog.setWindowTitle(_load_help()["window_title"])
-        # Hilfe-Fenster bleibt immer über dem aufrufenden Fenster
-        dialog.setWindowFlags(
-            dialog.windowFlags() | Qt.WindowType.WindowStaysOnTopHint
-        )
         dialog.setMinimumSize(1000, 720)
         screen = QApplication.primaryScreen().availableGeometry()
         dlg_w = int(screen.width()  * 0.78)
@@ -26345,7 +28149,7 @@ class StockMonitorApp(QMainWindow):
         lang_hl.setSpacing(4)
 
         lang_lbl   = _QL_search(_load_help()["lang_label"])
-        lang_lbl.setStyleSheet("color:#555; font-size:11px; border:none;")
+        lang_lbl.setStyleSheet("font-size:11px; border:none;")
         lang_combo = _QCB_lang()
         lang_combo.addItem("DE")
         lang_combo.addItem("EN")
@@ -26360,7 +28164,7 @@ class StockMonitorApp(QMainWindow):
         _search_row = _QW_search()
         _search_row.setMaximumHeight(32)
         _search_row.setStyleSheet(
-            "QWidget { border:1px solid #bbb; border-radius:4px; background:#fff; }"
+            "QWidget { border:1px solid #888; border-radius:4px; }"
             "QWidget:focus-within { border-color:#3498db; }"
         )
         _search_hl = _QHL_help(_search_row)
@@ -26401,8 +28205,12 @@ class StockMonitorApp(QMainWindow):
                         _fsep.setPointSize(8)
                     _fsep.setBold(True)
                     _item.setFont(_fsep)
-                    _item.setForeground(_QColorToc("#2c3e50"))
-                    _item.setBackground(_QColorToc("#dce8f5"))
+                    if _dm_help:
+                        _item.setForeground(_QColorToc("#89b4fa"))
+                        _item.setBackground(_QColorToc("#1a3a5c"))
+                    else:
+                        _item.setForeground(_QColorToc("#2c3e50"))
+                        _item.setBackground(_QColorToc("#dce8f5"))
                 toc.addItem(_item)
 
         _populate_toc(_load_help()["toc_items"])
@@ -26537,7 +28345,7 @@ class StockMonitorApp(QMainWindow):
 
         worker = _W(self)
         worker.done.connect(fn_result, Qt.ConnectionType.QueuedConnection)
-        worker.done.connect(worker.deleteLater)
+        worker.finished.connect(worker.deleteLater)
         if not hasattr(self, '_update_workers'):
             self._update_workers = []
         self._update_workers.append(worker)
@@ -26567,9 +28375,11 @@ class StockMonitorApp(QMainWindow):
                     data = _json.loads(resp.read().decode())
                 latest = data.get("tag_name", "").lstrip("v")
                 if not latest:
-                    return "error", APP_VERSION, "", "", ""
+                    return "error", APP_VERSION, "", "", "", "", "", ""
                 zip_url = ""
                 flatpak_url = ""
+                deb_url = ""
+                rpm_url = ""
                 for asset in data.get("assets", []):
                     name = asset.get("name", "").lower()
                     dl = asset.get("browser_download_url", "")
@@ -26577,6 +28387,10 @@ class StockMonitorApp(QMainWindow):
                         zip_url = dl
                     elif name.endswith(".flatpak"):
                         flatpak_url = dl
+                    elif name.endswith(".deb"):
+                        deb_url = dl
+                    elif name.endswith(".rpm") and "src" not in name:
+                        rpm_url = dl
                 def _vtuple(v):
                     try: return tuple(int(x) for x in v.split("."))
                     except: return (0,)
@@ -26584,14 +28398,14 @@ class StockMonitorApp(QMainWindow):
                     return ("update_available", latest,
                             data.get("html_url") or "",
                             data.get("body") or "",
-                            zip_url, flatpak_url)
-                return "current", APP_VERSION, "", "", "", ""
+                            zip_url, flatpak_url, deb_url, rpm_url)
+                return "current", APP_VERSION, "", "", "", "", "", ""
             except Exception:
-                return "error", APP_VERSION, "", "", "", ""
+                return "error", APP_VERSION, "", "", "", "", "", ""
 
         def _on_result(result):
             try:
-                status, version, url, notes, zip_url, flatpak_url = result
+                status, version, url, notes, zip_url, flatpak_url, deb_url, rpm_url = result
                 if status == "update_available":
                     if status_label:
                         status_label.setText(
@@ -26611,12 +28425,12 @@ class StockMonitorApp(QMainWindow):
                             update_btn.clicked.disconnect()
                         except Exception:
                             pass
-                        def _open_release(checked=False, _url=url, _v=version, _n=notes, _z=zip_url, _fz=flatpak_url):
-                            self._show_app_update_dialog(_v, _url, _n, _z, _fz)
+                        def _open_release(checked=False, _url=url, _v=version, _n=notes, _z=zip_url, _fz=flatpak_url, _dz=deb_url, _rz=rpm_url):
+                            self._show_app_update_dialog(_v, _url, _n, _z, _fz, _dz, _rz)
                         update_btn.clicked.connect(_open_release)
                     # Eigenständiger Dialog (kein status_label von aussen)
                     if not status_label:
-                        self._show_app_update_dialog(version, url, notes, zip_url, flatpak_url)
+                        self._show_app_update_dialog(version, url, notes, zip_url, flatpak_url, deb_url, rpm_url)
                 elif status == "current":
                     if status_label:
                         status_label.setText(
@@ -26636,7 +28450,7 @@ class StockMonitorApp(QMainWindow):
 
         self._start_update_worker(_do_check, _on_result)
 
-    def _show_app_update_dialog(self, version, url, notes, zip_url="", flatpak_url=""):
+    def _show_app_update_dialog(self, version, url, notes, zip_url="", flatpak_url="", deb_url="", rpm_url=""):
         """Zeigt einen Nicht-Blocking-Dialog wenn eine neue App-Version verfügbar ist."""
         dlg = QDialog(self)
         dlg.setWindowTitle(TR("title_update_check"))
@@ -26662,6 +28476,12 @@ class StockMonitorApp(QMainWindow):
 
         _in_flatpak = os.path.exists('/.flatpak-info')
         _is_exe_win = getattr(sys, 'frozen', False) and sys.platform == "win32"
+        _is_opt_install = os.path.abspath(__file__).startswith('/opt/stock-monitor/')
+        _is_deb = _is_opt_install and os.path.exists('/etc/debian_version')
+        _is_rpm = (_is_opt_install and not _is_deb and (
+            os.path.exists('/etc/fedora-release') or os.path.exists('/etc/redhat-release')
+            or os.path.exists('/etc/suse-release')
+        ))
 
         if _in_flatpak:
             hint_lbl = QLabel(TR("lbl_app_update_flatpak_hint"))
@@ -26698,6 +28518,30 @@ class StockMonitorApp(QMainWindow):
                 self._do_flatpak_install(_v, _fz)
             install_btn.clicked.connect(_do_flatpak)
             btn_row.addWidget(install_btn)
+        if _is_deb and deb_url:
+            deb_btn = QPushButton(TR("btn_auto_update"))
+            deb_btn.setStyleSheet(
+                "QPushButton{background:#27ae60;color:white;font-weight:bold;"
+                "border-radius:6px;padding:4px 14px;}"
+                "QPushButton:hover{background:#1e8449;}"
+            )
+            def _do_deb(checked=False, _v=version, _dz=deb_url):
+                dlg.close()
+                self._do_deb_update(_v, _dz)
+            deb_btn.clicked.connect(_do_deb)
+            btn_row.addWidget(deb_btn)
+        if _is_rpm and rpm_url:
+            rpm_btn = QPushButton(TR("btn_auto_update"))
+            rpm_btn.setStyleSheet(
+                "QPushButton{background:#27ae60;color:white;font-weight:bold;"
+                "border-radius:6px;padding:4px 14px;}"
+                "QPushButton:hover{background:#1e8449;}"
+            )
+            def _do_rpm(checked=False, _v=version, _rz=rpm_url):
+                dlg.close()
+                self._do_rpm_update(_v, _rz)
+            rpm_btn.clicked.connect(_do_rpm)
+            btn_row.addWidget(rpm_btn)
         if url:
             open_btn = QPushButton(TR("btn_open_release_page"))
             open_btn.setStyleSheet(
@@ -26751,54 +28595,66 @@ class StockMonitorApp(QMainWindow):
         QApplication.setActiveWindow(dlg)
 
     def _do_flatpak_install(self, version, flatpak_url):
-        """Lädt die .flatpak-Datei nach ~/Downloads und installiert sie direkt."""
-        import subprocess, threading
+        """Lädt die .flatpak-Datei herunter (0-85 % real) und installiert sie (85-100 % animiert)."""
+        import subprocess, threading, urllib.request, ssl
+        from PyQt6.QtCore import pyqtSignal, QObject
+
+        class _Sigs(QObject):
+            progress = pyqtSignal(int, str)   # Prozent, Statustext
+
+        sigs = _Sigs(self)
 
         prog_dlg = QDialog(self)
         prog_dlg.setWindowTitle(TR("title_flatpak_install"))
-        prog_dlg.setFixedWidth(420)
+        prog_dlg.setFixedWidth(440)
         prog_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
         lay = QVBoxLayout(prog_dlg)
         lay.setContentsMargins(20, 16, 20, 14)
-        lay.setSpacing(10)
-        msg_lbl = QLabel(TR("lbl_flatpak_downloading", version=version))
-        msg_lbl.setWordWrap(True)
-        lay.addWidget(msg_lbl)
-        from PyQt6.QtWidgets import QProgressBar
+        lay.setSpacing(8)
+
+        title_lbl = QLabel(TR("lbl_flatpak_downloading", version=version))
+        title_lbl.setWordWrap(True)
+        lay.addWidget(title_lbl)
+
         prog = QProgressBar()
-        prog.setRange(0, 0)
+        prog.setRange(0, 100)
+        prog.setValue(0)
         lay.addWidget(prog)
+
+        status_lbl = QLabel("")
+        status_lbl.setStyleSheet("color:#888; font-size:11px;")
+        lay.addWidget(status_lbl)
+
         prog_dlg.show()
 
-        def _run():
-            try:
-                tmpdir = os.path.join(os.path.expanduser("~"), ".cache", "stockmonitor-update")
-                os.makedirs(tmpdir, exist_ok=True)
-                fname = f"StockMonitor-{version}.flatpak"
-                fpath = os.path.join(tmpdir, fname)
-                # Download via host curl (umgeht Sandbox-SSL-Probleme)
-                dl = subprocess.run(
-                    ['flatpak-spawn', '--host', 'curl', '-L', '--fail',
-                     '-o', fpath, flatpak_url],
-                    capture_output=True, text=True, timeout=600
-                )
-                if dl.returncode != 0:
-                    QTimer.singleShot(0, lambda e=(dl.stderr or dl.stdout or "curl error").strip(): _on_error(e))
+        _state = {'timer': None, 'done': False}
+
+        sigs.progress.connect(
+            lambda v, t: (prog.setValue(v), status_lbl.setText(t)),
+            Qt.ConnectionType.QueuedConnection
+        )
+
+        def _start_install_animation():
+            if _state['done']:
+                return
+            title_lbl.setText(TR("lbl_flatpak_installing"))
+            _val = [85]
+            def _tick():
+                if _state['done'] or _val[0] >= 98:
                     return
-                result = subprocess.run(
-                    ['flatpak-spawn', '--host', 'flatpak', 'install',
-                     '--user', '--bundle', '--assumeyes', '--noninteractive', fpath],
-                    capture_output=True, text=True, timeout=300
-                )
-                if result.returncode == 0:
-                    QTimer.singleShot(0, lambda: _on_success())
-                else:
-                    QTimer.singleShot(0, lambda: _on_error(
-                        (result.stderr or result.stdout or "").strip()))
-            except Exception as e:
-                QTimer.singleShot(0, lambda e=str(e): _on_error(e))
+                _val[0] += 1
+                sigs.progress.emit(_val[0], "")
+            timer = QTimer(prog_dlg)
+            timer.setInterval(800)
+            timer.timeout.connect(_tick)
+            timer.start()
+            _state['timer'] = timer
 
         def _on_success():
+            _state['done'] = True
+            if _state['timer']:
+                _state['timer'].stop()
+            prog.setValue(100)
             prog_dlg.close()
             from PyQt6.QtWidgets import QMessageBox
             mb = QMessageBox(self)
@@ -26808,11 +28664,297 @@ class StockMonitorApp(QMainWindow):
             mb.exec()
 
         def _on_error(err):
+            _state['done'] = True
+            if _state['timer']:
+                _state['timer'].stop()
             prog_dlg.close()
             from PyQt6.QtWidgets import QMessageBox
             mb = QMessageBox(self)
             mb.setWindowTitle(TR("title_flatpak_install"))
             mb.setText(TR("lbl_flatpak_install_error") + f"\n\n{err}")
+            mb.setIcon(QMessageBox.Icon.Warning)
+            mb.exec()
+
+        def _run():
+            try:
+                tmpdir = os.path.join(os.path.expanduser("~"), ".cache", "stockmonitor-update")
+                os.makedirs(tmpdir, exist_ok=True)
+                fpath = os.path.join(tmpdir, f"StockMonitor-{version}.flatpak")
+
+                # ── Phase 1: Download (0–85 %) ────────────────────────────
+                downloaded = False
+                try:
+                    try:
+                        import certifi
+                        ctx = ssl.create_default_context(cafile=certifi.where())
+                    except Exception:
+                        ctx = ssl.create_default_context()
+                    req = urllib.request.Request(
+                        flatpak_url, headers={"User-Agent": "StockMonitor"})
+                    with urllib.request.urlopen(req, timeout=600, context=ctx) as resp:
+                        total = int(resp.headers.get("Content-Length", 0))
+                        done  = 0
+                        with open(fpath, "wb") as f:
+                            while True:
+                                buf = resp.read(65536)
+                                if not buf:
+                                    break
+                                f.write(buf)
+                                done += len(buf)
+                                if total > 0:
+                                    pct = int(done / total * 85)
+                                    sigs.progress.emit(
+                                        pct,
+                                        f"{done/1_048_576:.0f} / {total/1_048_576:.0f} MB"
+                                    )
+                    downloaded = True
+                except Exception:
+                    pass   # Fallback: curl via Host
+
+                if not downloaded:
+                    # SSL-Fallback innerhalb Flatpak-Sandbox: curl auf dem Host
+                    sigs.progress.emit(0, "")
+                    dl = subprocess.run(
+                        ['flatpak-spawn', '--host', 'curl', '-L', '--fail',
+                         '-o', fpath, flatpak_url],
+                        capture_output=True, text=True, timeout=600
+                    )
+                    if dl.returncode != 0:
+                        err = (dl.stderr or dl.stdout or "curl error").strip()
+                        QTimer.singleShot(0, lambda e=err: _on_error(e))
+                        return
+                    sigs.progress.emit(85, "")
+
+                # ── Phase 2: Install (85–100 %, animiert) ─────────────────
+                sigs.progress.emit(85, "")
+                QTimer.singleShot(0, _start_install_animation)
+
+                result = subprocess.run(
+                    ['flatpak-spawn', '--host', 'flatpak', 'install',
+                     '--user', '--bundle', '--assumeyes', '--noninteractive', fpath],
+                    capture_output=True, text=True, timeout=300
+                )
+                if result.returncode == 0:
+                    QTimer.singleShot(0, _on_success)
+                else:
+                    err = (result.stderr or result.stdout or "").strip()
+                    QTimer.singleShot(0, lambda e=err: _on_error(e))
+            except Exception as e:
+                QTimer.singleShot(0, lambda e=str(e): _on_error(e))
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _do_deb_update(self, version, deb_url):
+        """Lädt das neue .deb herunter und installiert es via pkexec dpkg."""
+        import subprocess, threading, tempfile
+        from PyQt6.QtWidgets import QProgressBar, QMessageBox
+
+        prog_dlg = QDialog(self)
+        prog_dlg.setWindowTitle("Stock Monitor Update")
+        prog_dlg.setFixedWidth(420)
+        prog_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        lay = QVBoxLayout(prog_dlg)
+        lay.setContentsMargins(20, 16, 20, 14)
+        lay.setSpacing(10)
+        msg_lbl = QLabel(f"<b>Stock Monitor v{version}</b> wird heruntergeladen…")
+        msg_lbl.setWordWrap(True)
+        lay.addWidget(msg_lbl)
+        prog = QProgressBar()
+        prog.setRange(0, 100)
+        prog.setValue(0)
+        lay.addWidget(prog)
+        size_lbl = QLabel("")
+        size_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        size_lbl.setStyleSheet("color: #666; font-size: 10px;")
+        lay.addWidget(size_lbl)
+        prog_dlg.show()
+
+        def _run():
+            try:
+                import requests as _req, tempfile
+                tmpdir = tempfile.mkdtemp(prefix="sm_upd_")
+                fpath = os.path.join(tmpdir, f"stock-monitor_{version}_amd64.deb")
+                with _req.get(deb_url, stream=True, timeout=60,
+                              headers={"User-Agent": "StockMonitor"}) as resp:
+                    resp.raise_for_status()
+                    total = int(resp.headers.get("Content-Length") or 0)
+                    downloaded = 0
+                    with open(fpath, "wb") as f:
+                        for buf in resp.iter_content(chunk_size=65536):
+                            if not buf:
+                                continue
+                            f.write(buf)
+                            downloaded += len(buf)
+                            if total > 0:
+                                pct = int(downloaded * 100 / total)
+                                mb_done = downloaded / 1_048_576
+                                mb_total = total / 1_048_576
+                                QTimer.singleShot(0, lambda p=pct, d=mb_done, t=mb_total: (
+                                    prog.setValue(p),
+                                    size_lbl.setText(f"{d:.1f} MB / {t:.1f} MB")
+                                ))
+                result = subprocess.run(
+                    ["pkexec", "dpkg", "-i", fpath],
+                    capture_output=True, text=True, timeout=300
+                )
+                if result.returncode == 0:
+                    QTimer.singleShot(0, lambda: _on_success())
+                else:
+                    QTimer.singleShot(0, lambda e=(result.stderr or result.stdout or "").strip(): _on_error(e))
+            except Exception as e:
+                QTimer.singleShot(0, lambda e=str(e): _on_error(e))
+
+        def _on_success():
+            prog_dlg.close()
+            mb = QMessageBox(self)
+            mb.setWindowTitle("Stock Monitor Update")
+            mb.setText(f"Stock Monitor v{version} wurde erfolgreich installiert.")
+            mb.setInformativeText("Jetzt neu starten?")
+            mb.setIcon(QMessageBox.Icon.Information)
+            restart_btn = mb.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
+            mb.addButton("Später neu starten", QMessageBox.ButtonRole.RejectRole)
+            mb.exec()
+            if mb.clickedButton() is restart_btn:
+                _launcher = "/usr/bin/stock-monitor"
+                if os.path.exists(_launcher):
+                    import subprocess
+                    subprocess.Popen([_launcher])
+                else:
+                    import subprocess
+                    subprocess.Popen([sys.executable, os.path.abspath(__file__)])
+                QTimer.singleShot(300, QApplication.instance().quit)
+
+        def _on_error(err):
+            prog_dlg.close()
+            mb = QMessageBox(self)
+            mb.setWindowTitle("Update fehlgeschlagen")
+            mb.setText(f"Installation fehlgeschlagen:\n\n{err}")
+            mb.setIcon(QMessageBox.Icon.Warning)
+            mb.exec()
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _do_rpm_update(self, version, rpm_url):
+        """Lädt das neue .rpm herunter und installiert es via pkexec dnf/rpm."""
+        import subprocess, threading, tempfile
+        from PyQt6.QtCore import pyqtSignal, QObject
+        from PyQt6.QtWidgets import QProgressBar, QMessageBox
+
+        class _Sigs(QObject):
+            progress_update = pyqtSignal(int, str)
+            finished        = pyqtSignal(str, str)
+
+        sigs = _Sigs(self)
+
+        prog_dlg = QDialog(self)
+        prog_dlg.setWindowTitle("Stock Monitor Update")
+        prog_dlg.setFixedWidth(420)
+        prog_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        lay = QVBoxLayout(prog_dlg)
+        lay.setContentsMargins(20, 16, 20, 14)
+        lay.setSpacing(10)
+        msg_lbl = QLabel(f"<b>Stock Monitor v{version}</b> wird heruntergeladen…")
+        msg_lbl.setWordWrap(True)
+        lay.addWidget(msg_lbl)
+        prog = QProgressBar()
+        prog.setRange(0, 100)
+        prog.setValue(0)
+        lay.addWidget(prog)
+        size_lbl = QLabel("")
+        size_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        size_lbl.setStyleSheet("color: #666; font-size: 10px;")
+        lay.addWidget(size_lbl)
+        prog_dlg.show()
+
+        sigs.progress_update.connect(
+            lambda v, t: (prog.setValue(v), size_lbl.setText(t)),
+            Qt.ConnectionType.QueuedConnection
+        )
+
+        def _on_done(status, msg):
+            prog_dlg.close()
+            if status == "error":
+                _on_error(msg)
+            else:
+                _on_success()
+
+        sigs.finished.connect(_on_done, Qt.ConnectionType.QueuedConnection)
+
+        def _run():
+            try:
+                import urllib.request, ssl, tempfile
+                tmpdir = tempfile.mkdtemp(prefix="sm_upd_")
+                fpath = os.path.join(tmpdir, f"stock-monitor-{version}.x86_64.rpm")
+
+                sigs.progress_update.emit(2, "Verbindung wird hergestellt…")
+
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+
+                req = urllib.request.Request(rpm_url, headers={"User-Agent": "StockMonitor"})
+                with urllib.request.urlopen(req, timeout=120, context=ctx) as resp:
+                    total = int(resp.headers.get("Content-Length") or 0)
+                    downloaded = 0
+                    with open(fpath, "wb") as f:
+                        while True:
+                            buf = resp.read(65536)
+                            if not buf:
+                                break
+                            f.write(buf)
+                            downloaded += len(buf)
+                            if total > 0:
+                                pct = int(5 + downloaded * 90 / total)
+                                mb_d = downloaded / 1_048_576
+                                mb_t = total / 1_048_576
+                                sigs.progress_update.emit(pct, f"Download: {mb_d:.1f} / {mb_t:.1f} MB")
+                            else:
+                                mb_d = downloaded / 1_048_576
+                                sigs.progress_update.emit(30, f"Download: {mb_d:.1f} MB…")
+
+                sigs.progress_update.emit(96, "Wird installiert…")
+
+                # dnf bevorzugen (Fedora), Fallback auf rpm
+                if subprocess.run(["which", "dnf"], capture_output=True).returncode == 0:
+                    cmd = ["pkexec", "dnf", "install", "-y", fpath]
+                else:
+                    cmd = ["pkexec", "rpm", "-Uvh", "--force", fpath]
+
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                if result.returncode == 0:
+                    sigs.finished.emit("ok", "")
+                else:
+                    sigs.finished.emit("error", (result.stderr or result.stdout or "").strip())
+            except Exception as e:
+                sigs.finished.emit("error", str(e))
+
+        def _on_success():
+            prog_dlg.close()
+            mb = QMessageBox(self)
+            mb.setWindowTitle("Stock Monitor Update")
+            mb.setText(f"Stock Monitor v{version} wurde erfolgreich installiert.")
+            mb.setInformativeText("Jetzt neu starten?")
+            mb.setIcon(QMessageBox.Icon.Information)
+            restart_btn = mb.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
+            mb.addButton("Später neu starten", QMessageBox.ButtonRole.RejectRole)
+            mb.exec()
+            if mb.clickedButton() is restart_btn:
+                _launcher = "/usr/bin/stock-monitor"
+                if os.path.exists(_launcher):
+                    import subprocess
+                    subprocess.Popen([_launcher])
+                else:
+                    import subprocess
+                    subprocess.Popen([sys.executable, os.path.abspath(__file__)])
+                QTimer.singleShot(300, QApplication.instance().quit)
+
+        def _on_error(err):
+            prog_dlg.close()
+            mb = QMessageBox(self)
+            mb.setWindowTitle("Update fehlgeschlagen")
+            mb.setText(f"Installation fehlgeschlagen:\n\n{err}")
             mb.setIcon(QMessageBox.Icon.Warning)
             mb.exec()
 
@@ -26943,7 +29085,7 @@ class StockMonitorApp(QMainWindow):
 
         # Header
         hdr = QLabel(f"<b>📦 {TR('lbl_yf_toast_title')}</b>")
-        hdr.setStyleSheet("font-size:13px;")
+        hdr.setStyleSheet("font-size:13px; color:#1a1a1a;")
         lay.addWidget(hdr)
 
         _in_flatpak = os.path.exists('/.flatpak-info')
@@ -26973,15 +29115,74 @@ class StockMonitorApp(QMainWindow):
                 "QPushButton:hover{background:#1557b0;}"
             )
             def _run_pip(checked=False, _v=latest):
-                import subprocess, sys as _sys
-                try:
-                    subprocess.Popen(
-                        [_sys.executable, "-m", "pip", "install",
-                         "--upgrade", f"yfinance=={_v}"]
-                    )
-                except Exception as e:
-                    QMessageBox.warning(self, "pip", str(e))
+                import subprocess, threading, sys as _sys, platform as _plat
+                pip_btn.setEnabled(False)
+                pip_btn.setText("⏳ " + TR("lbl_update_connecting"))
                 toast.close()
+                def _do():
+                    try:
+                        # Pip-Version prüfen: --break-system-packages erst ab 22.3
+                        _pip_ver = subprocess.run(
+                            [_sys.executable, "-m", "pip", "--version"],
+                            capture_output=True, text=True
+                        ).stdout
+                        try:
+                            _pv = tuple(int(x) for x in _pip_ver.split()[1].split(".")[:2])
+                        except Exception:
+                            _pv = (0, 0)
+                        _bsp = ["--break-system-packages"] if _pv >= (22, 3) else []
+                        # Mit --user installieren: geht nach ~/.local/lib/pythonX.Y/site-packages
+                        # → immer in sys.path, unabhängig von PYTHONPATH
+                        r = subprocess.run(
+                            [_sys.executable, "-m", "pip", "install",
+                             "--upgrade", "--user"] + _bsp + [f"yfinance=={_v}"],
+                            capture_output=True, text=True
+                        )
+                        if r.returncode == 0:
+                            def _show_ok():
+                                mb = QMessageBox(self)
+                                mb.setWindowTitle("yfinance Update")
+                                mb.setText(TR("msg_yf_installed", version=_v))
+                                mb.setInformativeText(TR("msg_restart_now_question"))
+                                mb.setIcon(QMessageBox.Icon.Information)
+                                _rb = mb.addButton(TR("btn_restart_now"), QMessageBox.ButtonRole.AcceptRole)
+                                mb.addButton(TR("btn_restart_later"), QMessageBox.ButtonRole.RejectRole)
+                                mb.exec()
+                                if mb.clickedButton() is _rb:
+                                    try:
+                                        import subprocess as _sp
+                                        if _plat.system() == "Windows":
+                                            _sp.Popen(
+                                                [sys.executable] + sys.argv,
+                                                creationflags=_sp.DETACHED_PROCESS | _sp.CREATE_NO_WINDOW,
+                                                close_fds=True,
+                                            )
+                                        else:
+                                            _launcher = "/usr/bin/stock-monitor"
+                                            if os.path.exists(_launcher):
+                                                _sp.Popen([_launcher], start_new_session=True)
+                                            else:
+                                                _sp.Popen(
+                                                    [sys.executable] + sys.argv,
+                                                    start_new_session=True,
+                                                    close_fds=True,
+                                                )
+                                        QTimer.singleShot(300, QApplication.instance().quit)
+                                    except Exception:
+                                        _log.exception("Restart fehlgeschlagen")
+                                        QApplication.instance().quit()
+                            self._thread_call.emit(_show_ok)
+                        else:
+                            _err = r.stderr[-800:] or r.stdout[-800:]
+                            self._thread_call.emit(lambda: QMessageBox.warning(
+                                self, TR("lbl_update_error_title"),
+                                f"{TR('lbl_update_install_failed')}:\n\n{_err}"
+                            ))
+                    except Exception as e:
+                        _msg = str(e)
+                        self._thread_call.emit(lambda: QMessageBox.warning(
+                            self, TR("lbl_update_error_title"), _msg))
+                threading.Thread(target=_do, daemon=True).start()
             pip_btn.clicked.connect(_run_pip)
             btn_row.addWidget(pip_btn)
         elif _is_exe and wheel_url:
@@ -27004,7 +29205,7 @@ class StockMonitorApp(QMainWindow):
         lay.addLayout(btn_row)
 
         toast.setStyleSheet(
-            "QDialog{background:#fffbe6; border:2px solid #f0c040; border-radius:10px;}"
+            "QDialog{background:#fffbe6; border:2px solid #f0c040; border-radius:10px; color:#1a1a1a;}"
         )
 
         # Positionierung: Bildschirm-Mitte
@@ -27072,10 +29273,13 @@ class StockMonitorApp(QMainWindow):
             _yf_installed = "?"
         yf_hdr = QLabel(f"<b>yfinance</b>  <span style='color:#888;'>(installiert: {_yf_installed})</span>")
         yf_lay.addWidget(yf_hdr)
-        yf_status_lbl = QLabel(f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>")
+        _in_flatpak = os.path.exists('/.flatpak-info')
+        _yf_initial = (f"<span style='color:#27ae60;'>{TR('lbl_yf_flatpak_managed')}</span>"
+                       if _in_flatpak
+                       else f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>")
+        yf_status_lbl = QLabel(_yf_initial)
         yf_status_lbl.setWordWrap(True)
         yf_lay.addWidget(yf_status_lbl)
-        _in_flatpak = os.path.exists('/.flatpak-info')
         _is_frozen  = getattr(sys, 'frozen', False)
         yf_install_btn = QPushButton(TR("btn_install_yfinance"))
         yf_install_btn.setVisible(False)
@@ -27094,7 +29298,10 @@ class StockMonitorApp(QMainWindow):
 
         def _run_checks():
             app_status_lbl.setText(f"<span style='color:#888;'>{TR('lbl_update_checking_app')}</span>")
-            yf_status_lbl.setText(f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>")
+            if _in_flatpak:
+                yf_status_lbl.setText(f"<span style='color:#27ae60;'>{TR('lbl_yf_flatpak_managed')}</span>")
+            else:
+                yf_status_lbl.setText(f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>")
             app_update_btn.setVisible(False)
             recheck_btn.setEnabled(False)
 
@@ -27158,16 +29365,67 @@ class StockMonitorApp(QMainWindow):
                         )
                         yf_install_btn.setVisible(True)
                         def _run_pip(checked=False, _v=latest):
-                            import subprocess
+                            import subprocess, threading
+                            user_lib = os.path.join(
+                                os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")),
+                                "stock-monitor", "lib"
+                            )
+                            os.makedirs(user_lib, exist_ok=True)
                             yf_install_btn.setEnabled(False)
                             yf_status_lbl.setText(
                                 f"<span style='color:#888;'>⏳ yfinance=={_v} wird installiert...</span>"
                             )
-                            try:
-                                subprocess.Popen([sys.executable, "-m", "pip", "install",
-                                                  "--upgrade", f"yfinance=={_v}"])
-                            except Exception as e:
-                                QMessageBox.warning(dlg, "pip", str(e))
+                            def _do():
+                                try:
+                                    r = subprocess.run(
+                                        [sys.executable, "-m", "pip", "install",
+                                         "--target", user_lib, "--upgrade",
+                                         "--break-system-packages",
+                                         f"yfinance=={_v}"],
+                                        capture_output=True, text=True
+                                    )
+                                    if r.returncode == 0:
+                                        def _show_ok():
+                                            yf_status_lbl.setText(
+                                                f"<span style='color:#27ae60;'>"
+                                                f"✓ yfinance {_v} installiert.</span>"
+                                            )
+                                            dlg.close()
+                                            mb = QMessageBox(self)
+                                            mb.setWindowTitle("yfinance Update")
+                                            mb.setText(f"yfinance {_v} wurde installiert.")
+                                            mb.setInformativeText("Jetzt neu starten?")
+                                            mb.setIcon(QMessageBox.Icon.Information)
+                                            _rb = mb.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
+                                            mb.addButton("Später neu starten", QMessageBox.ButtonRole.RejectRole)
+                                            mb.exec()
+                                            if mb.clickedButton() is _rb:
+                                                _launcher = "/usr/bin/stock-monitor"
+                                                if os.path.exists(_launcher):
+                                                    import subprocess as _sp
+                                                    _sp.Popen([_launcher])
+                                                else:
+                                                    import subprocess as _sp
+                                                    _sp.Popen([sys.executable, os.path.abspath(__file__)])
+                                                QTimer.singleShot(300, QApplication.instance().quit)
+                                        self._thread_call.emit(_show_ok)
+                                    else:
+                                        _err = r.stderr[-600:] or r.stdout[-600:]
+                                        def _show_err():
+                                            yf_status_lbl.setText(
+                                                f"<span style='color:#e74c3c;'>Fehler: {_err}</span>"
+                                            )
+                                            yf_install_btn.setEnabled(True)
+                                        self._thread_call.emit(_show_err)
+                                except Exception as e:
+                                    _msg = str(e)
+                                    def _show_exc():
+                                        yf_status_lbl.setText(
+                                            f"<span style='color:#e74c3c;'>Fehler: {_msg}</span>"
+                                        )
+                                        yf_install_btn.setEnabled(True)
+                                    self._thread_call.emit(_show_exc)
+                            threading.Thread(target=_do, daemon=True).start()
                         yf_install_btn.clicked.connect(_run_pip)
                     elif _is_frozen and wheel_url:
                         # EXE-Modus: yfinance direkt aktualisieren
@@ -27254,7 +29512,10 @@ class StockMonitorApp(QMainWindow):
                     return "error", installed, "", ""
 
             self._start_update_worker(_check_app, _on_app)
-            self._start_update_worker(_check_yf,  _on_yf)
+            if not _in_flatpak:
+                self._start_update_worker(_check_yf, _on_yf)
+            else:
+                recheck_btn.setEnabled(True)
 
         recheck_btn.clicked.connect(_run_checks)
         btn_row.addWidget(recheck_btn)
@@ -27559,19 +29820,30 @@ class StockMonitorApp(QMainWindow):
             elif status == "ready":
                 msg = QMessageBox(self)
                 msg.setWindowTitle("yfinance Update")
-                msg.setText(f"yfinance {version} wurde installiert.")
-                msg.setInformativeText("Jetzt neu starten?")
-                btn_now   = msg.addButton("Jetzt neu starten", QMessageBox.ButtonRole.AcceptRole)
-                msg.addButton("Später neu starten",            QMessageBox.ButtonRole.RejectRole)
+                msg.setText(TR("msg_yf_installed", version=version))
+                msg.setInformativeText(TR("msg_restart_now_question"))
+                btn_now   = msg.addButton(TR("btn_restart_now"),   QMessageBox.ButtonRole.AcceptRole)
+                msg.addButton(TR("btn_restart_later"),             QMessageBox.ButtonRole.RejectRole)
                 msg.exec()
                 if msg.clickedButton() == btn_now:
-                    import subprocess
-                    subprocess.Popen(
-                        [sys.executable],
-                        creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
-                        close_fds=True,
-                    )
-                    QTimer.singleShot(300, QApplication.instance().quit)
+                    import subprocess, platform as _plat
+                    try:
+                        if _plat.system() == "Windows":
+                            subprocess.Popen(
+                                [sys.executable] + sys.argv,
+                                creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
+                                close_fds=True,
+                            )
+                        else:
+                            subprocess.Popen(
+                                [sys.executable] + sys.argv,
+                                start_new_session=True,
+                                close_fds=True,
+                            )
+                        QTimer.singleShot(300, QApplication.instance().quit)
+                    except Exception:
+                        _log.exception("Restart fehlgeschlagen")
+                        QApplication.instance().quit()
 
         sigs.finished.connect(_on_done, Qt.ConnectionType.QueuedConnection)
 
@@ -27701,7 +29973,8 @@ class StockMonitorApp(QMainWindow):
     def _startup_update_checks(self):
         """Wird beim App-Start (verzögert) aufgerufen – beide Checks im Hintergrund."""
         self.check_for_updates()          # App: Dialog nur bei Update (NonModal)
-        self.check_yfinance_update(silent=True)  # yfinance: Toast nur bei Update
+        if not os.path.exists('/.flatpak-info'):
+            self.check_yfinance_update(silent=True)  # yfinance: Toast nur bei Update
 
     def show_about(self):
         """Zeige About-Dialog"""
@@ -27982,7 +30255,7 @@ class StockMonitorApp(QMainWindow):
         sub = QLabel(TR("lbl_donate_text"))
         sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sub.setWordWrap(True)
-        sub.setStyleSheet("color: #555555; font-size: 11px;")
+        sub.setStyleSheet("font-size: 11px;")
         layout.addWidget(sub)
 
         layout.addSpacing(6)
@@ -28029,8 +30302,26 @@ class StockMonitorApp(QMainWindow):
         info_col.setSpacing(10)
 
         def _open_paypal():
-            import webbrowser
-            webbrowser.open("https://paypal.me/StockMonitor")
+            import sys
+            from PyQt6.QtGui import QDesktopServices
+            from PyQt6.QtCore import QUrl, QTimer
+            url = QUrl("https://paypal.me/StockMonitor")
+            if sys.platform == "win32":
+                # WindowStaysOnTopHint verhindert auf Windows, dass der Browser in den
+                # Vordergrund kommt. Flag kurz entfernen, URL öffnen, dann wiederherstellen.
+                flagged = [w for w in QApplication.topLevelWidgets()
+                           if w.isVisible() and (w.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)]
+                for w in flagged:
+                    w.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
+                    w.show()
+                QDesktopServices.openUrl(url)
+                def _restore():
+                    for w in flagged:
+                        w.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+                        w.show()
+                QTimer.singleShot(2000, _restore)
+            else:
+                QDesktopServices.openUrl(url)
         paypal_btn = QPushButton(TR("btn_paypal"))
         paypal_btn.setStyleSheet(
             "QPushButton { background-color: #003087; color: white; font-weight: bold; "
@@ -28040,10 +30331,15 @@ class StockMonitorApp(QMainWindow):
         paypal_btn.clicked.connect(_open_paypal)
         info_col.addWidget(paypal_btn)
 
+        from PyQt6.QtGui import QPalette as _QPalette_don
+        _dm_don = QApplication.palette().color(_QPalette_don.ColorRole.Window).lightness() < 128
+        _iban_bg  = "#0d2a3d" if _dm_don else "#f0f7ff"
+        _iban_brd = "#4a90d9" if _dm_don else "#2980b9"
+        _iban_col = "#89b4fa" if _dm_don else "#1a3a5c"
         iban_lbl = QLabel(
             "<b>Banküberweisung (CH):</b><br>"
-            "<span style='font-family:monospace; background:#f0f7ff; "
-            "border:1px solid #2980b9; border-radius:4px; padding:3px 8px;'>"
+            f"<span style='font-family:monospace; background:{_iban_bg}; "
+            f"border:1px solid {_iban_brd}; border-radius:4px; padding:3px 8px; color:{_iban_col};'>"
             "CH81 0900 0000 6010 1573 2</span>"
         )
         iban_lbl.setWordWrap(True)
@@ -29116,6 +31412,9 @@ class StockMonitorApp(QMainWindow):
 
     def show_currency_converter(self):
         """Währungsrechner-Dialog"""
+        from PyQt6.QtGui import QPalette as _QPalette_curr
+        _dm_curr = QApplication.palette().color(_QPalette_curr.ColorRole.Window).lightness() < 128
+
         dialog = QDialog(self)
         dialog.setWindowTitle(TR("title_currency"))
         dialog.setFixedSize(660, 320)
@@ -29131,7 +31430,7 @@ class StockMonitorApp(QMainWindow):
 
         hint = QLabel(TR("lbl_yahoo_delay"))
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint.setStyleSheet("color: #888; font-size: 10px;")
+        hint.setStyleSheet("font-size: 10px;")
         layout.addWidget(hint)
 
         layout.addSpacing(6)
@@ -29150,9 +31449,13 @@ class StockMonitorApp(QMainWindow):
                       TR('lbl_precious_metals_separator'),
                       TR('lbl_xau_label'), TR('lbl_xag_label'),
                       TR('lbl_xpt_label'), TR('lbl_xpd_label'), TR('lbl_xcu_label')]
+        _cc_cfg = _app_config.get_global_chart_settings()
+        _saved_from = _cc_cfg.get('currency_from', 'USD')
+        _saved_to   = _cc_cfg.get('currency_to',   'CHF')
+
         from_combo = QComboBox()
         from_combo.addItems(currencies)
-        from_combo.setCurrentText('USD')
+        from_combo.setCurrentText(_saved_from if _saved_from in currencies else 'USD')
         from_combo.setMinimumWidth(80)
         input_row.addWidget(from_combo)
 
@@ -29163,7 +31466,7 @@ class StockMonitorApp(QMainWindow):
 
         to_combo = QComboBox()
         to_combo.addItems(currencies)
-        to_combo.setCurrentText('CHF')
+        to_combo.setCurrentText(_saved_to if _saved_to in currencies else 'CHF')
         to_combo.setMinimumWidth(80)
         input_row.addWidget(to_combo)
 
@@ -29174,20 +31477,25 @@ class StockMonitorApp(QMainWindow):
         result_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         result_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         result_label.setWordWrap(True)
-        result_label.setStyleSheet(
-            "color: #1a5276; padding: 10px; background: #eaf4fb; border-radius: 6px;"
-        )
+        if _dm_curr:
+            result_label.setStyleSheet(
+                "color: #7fc8f0; padding: 10px; background: #0d2a3d; border-radius: 6px;"
+            )
+        else:
+            result_label.setStyleSheet(
+                "color: #1a5276; padding: 10px; background: #eaf4fb; border-radius: 6px;"
+            )
         layout.addWidget(result_label)
 
         rate_label = QLabel("")
         rate_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        rate_label.setStyleSheet("color: #555; font-size: 10px;")
+        rate_label.setStyleSheet("font-size: 10px;")
         layout.addWidget(rate_label)
 
         status_label = QLabel("")
         status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         try:
-            status_label.setStyleSheet("color: #888; font-size: 10px;")
+            status_label.setStyleSheet("font-size: 10px;")
         except RuntimeError:
             pass
         layout.addWidget(status_label)
@@ -29293,6 +31601,10 @@ class StockMonitorApp(QMainWindow):
             rate_label.setText("")
             dialog.repaint()
 
+            try:
+                _app_config.save_config({'currency_from': from_cur, 'currency_to': to_cur})
+            except Exception:
+                pass
             rate, err = _get_rate(from_cur, to_cur)
             if rate is None:
                 result_label.setText(TR("lbl_rate_unavailable"))
@@ -29367,8 +31679,17 @@ def main():
     app.setApplicationVersion(APP_VERSION)
     # Flatpak/Linux: Desktop-Dateiname setzen → korrektes Taskleisten-Symbol
     if os.environ.get("FLATPAK_ID") or sys.platform != "win32":
-        app.setDesktopFileName("ch.stockmonitor.StockMonitor")
+        app.setDesktopFileName("stock-monitor")
     app.setStyle('Fusion')  # KDE-freundlicher Style
+
+    # Snap: Emoji-Fonts explizit laden (fontconfig-Fallback reicht im Snap nicht)
+    _snap_dir = os.environ.get('SNAP', '')
+    if _snap_dir:
+        import glob as _glob
+        from PyQt6.QtGui import QFontDatabase as _QFD_snap
+        for _ef in _glob.glob(f'{_snap_dir}/usr/share/fonts/**/*.ttf', recursive=True) + \
+                   _glob.glob(f'{_snap_dir}/usr/share/fonts/**/*.otf', recursive=True):
+            _QFD_snap.addApplicationFont(_ef)
 
     # ── Windows Taskleisten-Icon Fix ──────────────────────────────────────
     import sys as _sys_plat
@@ -29391,6 +31712,12 @@ def main():
         except Exception:
             pass
         candidates.append("stock_monitor.ico")
+        # Linux System-Install (RPM/DEB): PNG im hicolor-Theme
+        candidates.append("/usr/share/icons/hicolor/256x256/apps/stock-monitor.png")
+        try:
+            candidates.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "stock_monitor.png"))
+        except Exception:
+            pass
         for p in candidates:
             if _os.path.exists(p):
                 return p
@@ -29400,6 +31727,12 @@ def main():
     if _icon_path:
         _app_icon = QIcon(_icon_path)
         app.setWindowIcon(_app_icon)
+    elif sys.platform != "win32":
+        # Fallback: Icon aus dem System-Theme laden (funktioniert nach gtk-update-icon-cache)
+        _theme_icon = QIcon.fromTheme("stock-monitor")
+        if not _theme_icon.isNull():
+            _app_icon = _theme_icon
+            app.setWindowIcon(_app_icon)
     # ──────────────────────────────────────────────────────────────────────
 
 
@@ -29436,7 +31769,6 @@ def main():
                 emoji_font = candidate
                 break
         if emoji_font:
-            import os
             fonts_conf_dir = os.path.expanduser('~/.config/fontconfig')
             fonts_conf_path = os.path.join(fonts_conf_dir, 'fonts.conf')
             os.makedirs(fonts_conf_dir, exist_ok=True)

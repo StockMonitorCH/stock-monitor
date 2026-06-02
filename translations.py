@@ -1702,7 +1702,8 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_app_update_flatpak_hint": "ℹ Du verwendest die Flatpak-Version. Klicke auf 'Flatpak installieren', um die neue Version direkt herunterzuladen und zu installieren.",
         "btn_flatpak_install":         "⬇ Flatpak installieren",
         "title_flatpak_install":       "Flatpak Update",
-        "lbl_flatpak_downloading":     "Version {version} wird heruntergeladen und installiert…",
+        "lbl_flatpak_downloading":     "Version {version} wird heruntergeladen…",
+        "lbl_flatpak_installing":      "Wird installiert…",
         "lbl_flatpak_install_done":    "✅ Stock Monitor v{version} wurde installiert!\n\nBitte starte die App neu, damit die neue Version aktiv wird.",
         "lbl_flatpak_install_error":   "❌ Installation fehlgeschlagen:",
 
@@ -3369,7 +3370,8 @@ more than enough for personal use.</p>
         "lbl_app_update_flatpak_hint": "ℹ You are using the Flatpak version. Click 'Install Flatpak' to download and install the new version directly.",
         "btn_flatpak_install":         "⬇ Install Flatpak",
         "title_flatpak_install":       "Flatpak Update",
-        "lbl_flatpak_downloading":     "Downloading and installing version {version}…",
+        "lbl_flatpak_downloading":     "Downloading version {version}…",
+        "lbl_flatpak_installing":      "Installing…",
         "lbl_flatpak_install_done":    "✅ Stock Monitor v{version} has been installed!\n\nPlease restart the app for the new version to take effect.",
         "lbl_flatpak_install_error":   "❌ Installation failed:",
 
