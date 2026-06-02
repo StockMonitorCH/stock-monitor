@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.4.0"                            # beim Release anpassen
+APP_VERSION  = "5.4.1"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -885,6 +885,8 @@ class PortfolioWorker(QThread):
         # ── Währung pro Symbol (fast_info, nur wenn Batch fehlschlug) ─
         cur_cache = {}
         for sym in real_syms:
+            if self.isInterruptionRequested():
+                return
             try:
                 fi = yf.Ticker(sym).fast_info
                 cur_cache[sym] = getattr(fi, 'currency', 'USD') or 'USD'
@@ -8287,6 +8289,12 @@ class PortfolioDialog(QMainWindow):
                 self._open_overview_on_load = False
                 QTimer.singleShot(100, self.show_overview)
             return
+        # Kein Doppelstart wenn bereits läuft
+        try:
+            if getattr(self, '_master_worker', None) and self._master_worker.isRunning():
+                return
+        except RuntimeError:
+            self._master_worker = None
 
         # Debug: Zeige ersten Sektor-Cache Eintrag
         if self._sector_cache:
@@ -8493,6 +8501,8 @@ class PortfolioDialog(QMainWindow):
                                     w52_low_map[sym] = w52l
                                 completed += 1
                                 self.progress.emit(completed, total, sym)
+                                if self.isInterruptionRequested():
+                                    return
                     except _cf.TimeoutError:
                         # Gesamt-Timeout überschritten – verbleibende Symbole überspringen
                         print("[Kurs Gesamt-Timeout] Nicht alle Symbole geladen – App läuft weiter", flush=True)
@@ -8501,6 +8511,8 @@ class PortfolioDialog(QMainWindow):
                                 print(f"[Kurs Timeout] {s} übersprungen", flush=True)
                                 _failed_syms.append(s)
                 self._last_failed_syms = _failed_syms   # für Status-Label nach dem Laden
+                if self.isInterruptionRequested():
+                    return
 
                 if 'USD_CHF' not in fx_chf:
                     fx_chf['USD_CHF'] = 0.9
@@ -8577,11 +8589,15 @@ class PortfolioDialog(QMainWindow):
                                 done_sectors += 1
                                 self.progress.emit(done_sectors, len(missing_sectors),
                                     f"{TR('status_sector_progress', done=done_sectors, total=len(missing_sectors), sym=sym)}")
+                                if self.isInterruptionRequested():
+                                    return
                     except Exception:
                         # Timeout oder anderer Fehler – restliche Symbole als Unknown markieren
                         for s in missing_sectors:
                             if s not in new_sectors:
                                 new_sectors[s] = 'Unknown'
+                    if self.isInterruptionRequested():
+                        return
                 else:
                     self.progress.emit(1, 1, TR("status_sectors_cached"))
 
@@ -8657,6 +8673,11 @@ class PortfolioDialog(QMainWindow):
         worker = MasterWorker(self.portfolio_data, self._sector_cache,
                               self._industry_cache, parent=self)
         self._master_worker = worker
+        worker.finished.connect(
+            lambda mw=worker: setattr(self, '_master_worker', None)
+            if self._master_worker is mw else None
+        )
+        worker.finished.connect(worker.deleteLater)
 
         def on_master_done(price_result, overview_result, sector_result, industry_result):
             now = self._time.time()
@@ -12576,7 +12597,11 @@ class PortfolioDialog(QMainWindow):
                 if col == 'cost':     return d['cost_usd']
                 if col == 'price':    return d['price_usd']
                 if col == 'value':    return d['value_usd']
-                if col == 'pnl':      return d['value_usd'] - d['cost_usd']
+                if col == 'pnl':
+                    cc = d.get('cost_chf', 0); vc = d.get('value_chf', 0)
+                    if cc > 0 and vc > 0:
+                        return vc - cc
+                    return d['value_usd'] - d['cost_usd']
                 if col == 'pnl_pct':
                     cc = d.get('cost_chf', 0); vc = d.get('value_chf', 0)
                     if cc > 0 and vc > 0:
@@ -12584,7 +12609,11 @@ class PortfolioDialog(QMainWindow):
                     c = d['cost_usd']
                     return (d['value_usd'] - c) / c if c > 0 else 0
                 if col == 'share':    return d['value_usd'] / total_value_usd if total_value_usd else 0
-                if col == 'perf_contrib': return (d['value_usd'] - d['cost_usd']) / total_cost_usd if total_cost_usd else 0
+                if col == 'perf_contrib':
+                    cc = d.get('cost_chf', 0); vc = d.get('value_chf', 0)
+                    if cc > 0 and vc > 0 and total_cost_chf > 0:
+                        return (vc - cc) / total_cost_chf
+                    return (d['value_usd'] - d['cost_usd']) / total_cost_usd if total_cost_usd else 0
                 if col == 'sector_contrib':
                     _sc = _get_sector_canon(sym)
                     _total = _sector_totals.get(_sc, -999)
@@ -12653,7 +12682,12 @@ class PortfolioDialog(QMainWindow):
 
                 share_pct = val_usd / total_value_usd * 100 if total_value_usd > 0 else 0
                 # Performance-Beitrag: Anteil dieses G&V am Gesamt-G&V
-                perf_contrib = pnl_usd / total_cost_usd * 100 if total_cost_usd > 0 else 0
+                if cost_chf > 0 and val_chf > 0 and total_cost_chf > 0:
+                    perf_contrib = (val_chf - cost_chf) / total_cost_chf * 100
+                elif total_cost_usd > 0:
+                    perf_contrib = pnl_usd / total_cost_usd * 100
+                else:
+                    perf_contrib = 0
                 s = fx
                 c_pnl = "#27ae60" if pnl_pct >= 0 else "#c0392b"
                 sign  = "+" if pnl_pct >= 0 else ""
@@ -13214,6 +13248,8 @@ class PortfolioDialog(QMainWindow):
                 fx_disp['USD'] = 1.0
                 results['__fx__'] = fx_disp
                 for i, sym in enumerate(syms):
+                    if self.isInterruptionRequested():
+                        return
                     self.progress.emit(i+1, total, sym)
                     positions = self._data[sym]
                     if '=' in sym:
@@ -13312,27 +13348,28 @@ class PortfolioDialog(QMainWindow):
                                         'cost_chf': 0, 'value_chf': 0}
                 self.data_ready.emit(results)
 
-        # Alter Worker sicher beenden bevor neuer gestartet wird (verhindert GC-ABRT)
+        # Alter Worker kooperativ stoppen – finished.connect(deleteLater) bereits gesetzt
         if hasattr(self, '_overview_worker') and self._overview_worker is not None:
-            _old_ow = self._overview_worker
-            self._overview_worker = None
-            if not hasattr(self, '_dead_workers'):
-                self._dead_workers = []
-            self._dead_workers.append(_old_ow)
-            def _cleanup_old_ow(w=_old_ow):
-                def _rm_ow(o=None, _w=w):
-                    try: self._dead_workers.remove(_w)
-                    except (ValueError, RuntimeError): pass
-                try:
-                    w.destroyed.connect(_rm_ow)
-                    w.deleteLater()
-                except RuntimeError:
-                    pass
-            _old_ow.finished.connect(_cleanup_old_ow)
-            _old_ow.quit()
+            try:
+                _old_ow = self._overview_worker
+                self._overview_worker = None
+                if _old_ow.isRunning():
+                    _old_ow.requestInterruption()
+                    _old_ow.quit()
+                elif not _old_ow.isFinished():
+                    # Nie gestartet – direkt löschen
+                    try: _old_ow.deleteLater()
+                    except RuntimeError: pass
+            except RuntimeError:
+                self._overview_worker = None
 
         worker = OverviewWorker(self.portfolio_data, parent=self)
         self._overview_worker = worker
+        worker.finished.connect(
+            lambda ow=worker: setattr(self, '_overview_worker', None)
+            if self._overview_worker is ow else None
+        )
+        worker.finished.connect(worker.deleteLater)
 
         def on_progress(cur, tot, sym):
             try:
@@ -16917,8 +16954,16 @@ class PortfolioDialog(QMainWindow):
                     except: pass
                 else:
                     _cal_worker = CalWorker(syms_qty)
+                    if not hasattr(self, '_cal_workers'):
+                        self._cal_workers = []
+                    self._cal_workers.append(_cal_worker)
                     _cal_worker.progress.connect(on_cal_progress, Qt.ConnectionType.QueuedConnection)
                     _cal_worker.done.connect(on_cal_done, Qt.ConnectionType.QueuedConnection)
+                    _cal_worker.finished.connect(_cal_worker.deleteLater)
+                    _cal_worker.finished.connect(
+                        lambda w=_cal_worker: self._cal_workers.remove(w)
+                        if w in self._cal_workers else None
+                    )
                     _cal_worker.start()
 
                 # Overlay über dialog
@@ -17859,6 +17904,7 @@ class PortfolioDialog(QMainWindow):
                     _draw_bar_chart(result, _cur_snap, _fr_snap)
 
                 _cmp_worker[0].done.connect(_on_cmp_done)
+                _cmp_worker[0].finished.connect(_cmp_worker[0].deleteLater)
                 _cmp_worker[0].start()
                 return   # UI bleibt responsiv; _on_cmp_done → _draw_bar_chart
 
@@ -24948,11 +24994,16 @@ class PortfolioDialog(QMainWindow):
         self._price_cache_ts    = 0.0
         self._overview_cache    = None
         self._overview_cache_ts = 0.0
-        # Laufende Worker stoppen
+        # Laufende Worker kooperativ stoppen
         for attr in ('_master_worker', '_worker', '_overview_worker'):
-            w = getattr(self, attr, None)
-            if w and w.isRunning():
-                w.quit(); w.wait(1000)
+            try:
+                w = getattr(self, attr, None)
+                if w and w.isRunning():
+                    w.requestInterruption()
+                    w.quit()
+                    w.wait(2000)
+            except RuntimeError:
+                pass
 
     def refresh_table(self, force=False):
         """Lädt alle Kurse und zeigt die Portfolio-Tabelle an.
@@ -24977,11 +25028,15 @@ class PortfolioDialog(QMainWindow):
                 self._start_bg_price_fetch()
             return
 
-        # Laufenden Worker stoppen (wait blockiert max. 2s)
-        if self._worker is not None and self._worker.isRunning():
-            self._worker.quit()
-            self._worker.wait(2000)
-            self._worker = None
+        # Laufenden Worker kooperativ stoppen
+        try:
+            if self._worker is not None and self._worker.isRunning():
+                self._worker.requestInterruption()
+                self._worker.quit()
+                self._worker.wait(2000)
+        except RuntimeError:
+            pass
+        self._worker = None
 
         self._show_portfolio_loading()
         self._worker = PortfolioWorker(self.portfolio_data, parent=self)
@@ -24989,18 +25044,31 @@ class PortfolioDialog(QMainWindow):
             self._update_portfolio_loading, Qt.ConnectionType.QueuedConnection)
         self._worker.data_ready.connect(
             self._on_prices_ready, Qt.ConnectionType.QueuedConnection)
+        _pw = self._worker
+        self._worker.finished.connect(
+            lambda w=_pw: setattr(self, '_worker', None) if self._worker is w else None
+        )
+        self._worker.finished.connect(self._worker.deleteLater)
         self._worker.start()
 
     def _start_bg_price_fetch(self):
         """Stilles Hintergrund-Update – kein Loading-Overlay."""
-        if self._worker is not None and self._worker.isRunning():
-            return
+        try:
+            if self._worker is not None and self._worker.isRunning():
+                return
+        except RuntimeError:
+            self._worker = None
         self._worker = PortfolioWorker(self.portfolio_data, parent=self)
         def _silent_done(price_map):
             self._price_cache    = price_map
             self._price_cache_ts = self._time.time()
             self._build_table(price_map)
         self._worker.data_ready.connect(_silent_done, Qt.ConnectionType.QueuedConnection)
+        _bw = self._worker
+        self._worker.finished.connect(
+            lambda w=_bw: setattr(self, '_worker', None) if self._worker is w else None
+        )
+        self._worker.finished.connect(self._worker.deleteLater)
         self._worker.start()
 
     def _on_prices_ready(self, price_map):
@@ -27850,18 +27918,23 @@ class StockMonitorApp(QMainWindow):
                 pass
         StockChartWidget._worker_registry.clear()
 
-        # 4. Alle verbleibenden QThread-Kinder stoppen (fängt alle nicht
-        #    explizit registrierten Worker ab – verhindert Qt-ABORT/Signal 6)
+        # 4. Alle verbleibenden QThread-Kinder kooperativ stoppen
+        #    requestInterruption() statt terminate() – verhindert pthread_cancel()
+        #    auf Python-Threads (würde SIGABRT verursachen wenn GIL gehalten wird)
         try:
             from PyQt6.QtCore import QThread as _QThread
-            for _t in self.findChildren(_QThread):
+            _threads = list(self.findChildren(_QThread))
+            for _t in _threads:
                 try:
                     if _t.isRunning():
+                        _t.requestInterruption()
                         _t.quit()
-                        _t.wait(800)
-                        if _t.isRunning():
-                            _t.terminate()
-                            _t.wait(300)
+                except Exception:
+                    pass
+            for _t in _threads:
+                try:
+                    if _t.isRunning():
+                        _t.wait(3000)
                 except Exception:
                     pass
         except Exception:
@@ -28272,7 +28345,7 @@ class StockMonitorApp(QMainWindow):
 
         worker = _W(self)
         worker.done.connect(fn_result, Qt.ConnectionType.QueuedConnection)
-        worker.done.connect(worker.deleteLater)
+        worker.finished.connect(worker.deleteLater)
         if not hasattr(self, '_update_workers'):
             self._update_workers = []
         self._update_workers.append(worker)
@@ -31557,6 +31630,12 @@ def main():
         except Exception:
             pass
         candidates.append("stock_monitor.ico")
+        # Linux System-Install (RPM/DEB): PNG im hicolor-Theme
+        candidates.append("/usr/share/icons/hicolor/256x256/apps/stock-monitor.png")
+        try:
+            candidates.append(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "stock_monitor.png"))
+        except Exception:
+            pass
         for p in candidates:
             if _os.path.exists(p):
                 return p
@@ -31566,6 +31645,12 @@ def main():
     if _icon_path:
         _app_icon = QIcon(_icon_path)
         app.setWindowIcon(_app_icon)
+    elif sys.platform != "win32":
+        # Fallback: Icon aus dem System-Theme laden (funktioniert nach gtk-update-icon-cache)
+        _theme_icon = QIcon.fromTheme("stock-monitor")
+        if not _theme_icon.isNull():
+            _app_icon = _theme_icon
+            app.setWindowIcon(_app_icon)
     # ──────────────────────────────────────────────────────────────────────
 
 

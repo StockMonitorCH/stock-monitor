@@ -7,7 +7,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="5.4.0"
+VERSION="5.4.1"
 PKG="stock-monitor-${VERSION}"
 RPMBUILD="$HOME/rpmbuild"
 
@@ -34,7 +34,8 @@ mkdir -p "$SRCDIR/wheels"
 # App-Dateien
 for f in stock_monitor.py portfolio_db.py config.py market_data.py \
           tax_module.py tax_translations.py translations.py help_texts.py \
-          world_map.py etf_holdings.py dividend_lists.json Demo.smpf LICENSE; do
+          world_map.py etf_holdings.py dividend_lists.json Demo.smpf LICENSE \
+          portfolio_analysis.py portfolio_analysis_extended.py portfolio_analysis_texts.py; do
     if [ -f "$f" ]; then
         cp "$f" "$SRCDIR/app/$f"
     else
@@ -48,8 +49,10 @@ cp stock-monitor.desktop                  "$SRCDIR/"
 cp stock-monitor.metainfo.xml             "$SRCDIR/"
 cp LICENSE                                "$SRCDIR/"
 
-# Icon aus fp/sources/
-if [ -f "fp/sources/stock-monitor-256.png" ]; then
+# Icon: Hauptverzeichnis hat Vorrang vor fp/sources/
+if [ -f "stock-monitor-256.png" ]; then
+    cp "stock-monitor-256.png" "$SRCDIR/"
+elif [ -f "fp/sources/stock-monitor-256.png" ]; then
     cp "fp/sources/stock-monitor-256.png" "$SRCDIR/"
 elif [ -f "fp/sources/ch.stockmonitor.StockMonitor.png" ]; then
     cp "fp/sources/ch.stockmonitor.StockMonitor.png" "$SRCDIR/stock-monitor-256.png"

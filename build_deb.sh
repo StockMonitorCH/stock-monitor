@@ -8,7 +8,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="5.4.0"
+VERSION="5.4.1"
 PKG="stock-monitor"
 PKGDIR="$(mktemp -d)/stock-monitor_${VERSION}_amd64"
 
@@ -36,7 +36,8 @@ mkdir -p "$PKGDIR/usr/share/doc/$PKG"
 # ── App-Dateien ────────────────────────────────────────────────────────────────
 for f in stock_monitor.py portfolio_db.py config.py market_data.py \
           tax_module.py tax_translations.py translations.py help_texts.py \
-          world_map.py etf_holdings.py dividend_lists.json Demo.smpf; do
+          world_map.py etf_holdings.py dividend_lists.json Demo.smpf \
+          portfolio_analysis.py portfolio_analysis_extended.py portfolio_analysis_texts.py; do
     [ -f "$f" ] && cp "$f" "$PKGDIR/opt/stock-monitor/app/$f" \
                 || echo "WARNUNG: $f nicht gefunden"
 done
@@ -60,7 +61,10 @@ cp stock-monitor.desktop \
    "$PKGDIR/usr/share/applications/stock-monitor.desktop"
 cp stock-monitor.metainfo.xml \
    "$PKGDIR/usr/share/metainfo/ch.stockmonitor.StockMonitor.metainfo.xml"
-if [ -f "fp/sources/stock-monitor-256.png" ]; then
+if [ -f "stock-monitor-256.png" ]; then
+    cp "stock-monitor-256.png" \
+       "$PKGDIR/usr/share/icons/hicolor/256x256/apps/stock-monitor.png"
+elif [ -f "fp/sources/stock-monitor-256.png" ]; then
     cp "fp/sources/stock-monitor-256.png" \
        "$PKGDIR/usr/share/icons/hicolor/256x256/apps/stock-monitor.png"
 fi
@@ -149,12 +153,10 @@ echo "$PYTHON" > /opt/stock-monitor/python_bin
 "$PYTHON" -m ensurepip --upgrade >/dev/null 2>&1 || \
     apt-get install -y python3-pip >/dev/null 2>&1 || true
 
-# PyQt6: universe aktivieren (python3-pyqt6 existiert erst ab Ubuntu 23.04 in apt)
-if ! "$PYTHON" -c "import PyQt6" >/dev/null 2>&1; then
-    DEBIAN_FRONTEND=noninteractive add-apt-repository -y universe >/dev/null 2>&1 || true
-    DEBIAN_FRONTEND=noninteractive apt-get update -qq              >/dev/null 2>&1 || true
-    DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pyqt6 >/dev/null 2>&1 || true
-fi
+# PyQt6 + Qt6-Wayland: System-Paket oder pip als Fallback
+DEBIAN_FRONTEND=noninteractive add-apt-repository -y universe >/dev/null 2>&1 || true
+DEBIAN_FRONTEND=noninteractive apt-get update -qq              >/dev/null 2>&1 || true
+DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pyqt6 qt6-wayland >/dev/null 2>&1 || true
 
 # --break-system-packages erst ab pip 22.3 verfügbar
 PIP_VER=$("$PYTHON" -m pip --version 2>/dev/null | awk '{print $2}')
@@ -192,6 +194,7 @@ $PYTHON -m pip install --quiet --target "$LIBDIR" --no-deps $BSP \
 
 gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
 update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
 POSTINST
 chmod 0755 "$PKGDIR/DEBIAN/postinst"
 

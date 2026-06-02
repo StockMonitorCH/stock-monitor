@@ -60,6 +60,12 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.4.1" date="2026-06-02">
+      <description>
+        <p>Fix: Library setup no longer requires root – compatible with Discover installation on Fedora KDE.</p>
+        <p xml:lang="de">Fix: Bibliotheks-Installation ohne Root – kompatibel mit Discover-Installation auf Fedora KDE.</p>
+      </description>
+    </release>
     <release version="5.4.0" date="2026-05-25">
       <description>
         <p>Dark mode corrections, CSV import fix, RI factor left-click action.</p>

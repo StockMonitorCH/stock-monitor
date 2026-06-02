@@ -4,11 +4,12 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.4.0
+Version:        5.4.1
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
 URL:            https://github.com/StockMonitorCH/Stock-Monitor
+Vendor:         StockMonitorCH
 Source0:        stock-monitor-%{version}.tar.gz
 BuildArch:      x86_64
 
@@ -48,7 +49,8 @@ install -d %{buildroot}/usr/share/licenses/%{name}
 # ── App-Dateien ────────────────────────────────────────────────────────────────
 for f in stock_monitor.py portfolio_db.py config.py market_data.py \
           tax_module.py tax_translations.py translations.py help_texts.py \
-          world_map.py etf_holdings.py dividend_lists.json Demo.smpf; do
+          world_map.py etf_holdings.py dividend_lists.json Demo.smpf \
+          portfolio_analysis.py portfolio_analysis_extended.py portfolio_analysis_texts.py; do
     install -m 0644 app/$f %{buildroot}/opt/stock-monitor/app/$f
 done
 
@@ -111,13 +113,11 @@ fi
 
 echo "$PYTHON" > /opt/stock-monitor/python_bin
 
-# PyQt6: System-Paket (Fedora/openSUSE) oder pip als Fallback
-if ! "$PYTHON" -c "import PyQt6" >/dev/null 2>&1; then
-    if command -v dnf &>/dev/null; then
-        dnf install -y python3-pyqt6 >/dev/null 2>&1 || true
-    elif command -v zypper &>/dev/null; then
-        zypper install -y python3-PyQt6 >/dev/null 2>&1 || true
-    fi
+# PyQt6 + Qt6-Wayland: System-Paket (Fedora/openSUSE) oder pip als Fallback
+if command -v dnf &>/dev/null; then
+    dnf install -y python3-pyqt6 qt6-qtwayland >/dev/null 2>&1 || true
+elif command -v zypper &>/dev/null; then
+    zypper install -y python3-PyQt6 qt6-wayland >/dev/null 2>&1 || true
 fi
 if ! "$PYTHON" -c "import PyQt6" >/dev/null 2>&1; then
     "$PYTHON" -m pip install --quiet PyQt6 >/dev/null 2>&1 || true
@@ -148,8 +148,15 @@ done
 $PYTHON -m pip install --quiet --target "$LIBDIR" --no-deps \
     "$WHEELDIR/odfpy-1.4.1.tar.gz" >/dev/null 2>&1 || true
 
+# Version merken – nur wenn yfinance tatsächlich installiert wurde
+if PYTHONPATH="$LIBDIR" "$PYTHON" -c "import yfinance" >/dev/null 2>&1; then
+    echo "%{version}" > "$LIBDIR/.sm-version"
+fi
+
 gtk-update-icon-cache -f -t /usr/share/icons/hicolor >/dev/null 2>&1 || true
 update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+# KDE-Icon-Cache neu aufbauen (falls KDE installiert)
+kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
 
 
 %preun
@@ -179,6 +186,8 @@ update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %changelog
+* Tue Jun 02 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.4.1-1
+- Fix: Bibliotheks-Installation ohne Root – Discover-kompatibel auf Fedora KDE und openSUSE
 * Mon Apr 27 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.1.2-1
 - Fix: Dark-Mode-Kompatibilität auf Windows (Buttons, Ampel, Börsenzeiten, Demo-Banner)
 * Mon Apr 27 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.1.1-1

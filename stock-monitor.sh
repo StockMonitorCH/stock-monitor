@@ -1,6 +1,6 @@
 #!/bin/bash
 # Stock Monitor Launcher
-APP_VERSION="5.4.0"
+APP_VERSION="5.4.1"
 USER_LIB="${XDG_DATA_HOME:-$HOME/.local/share}/stock-monitor/lib"
 mkdir -p "$USER_LIB"
 export SM_LOG_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/stock-monitor"
@@ -167,48 +167,54 @@ oder kontaktieren Sie: https://www.stock-monitor.ch${LOG_HINT}"
 fi
 
 # ── Pip-Pakete einrichten falls noch nicht geschehen oder Version veraltet ────
-LIB_VERSION=$(cat /opt/stock-monitor/lib/.sm-version 2>/dev/null)
-if [ -z "$(ls -A /opt/stock-monitor/lib 2>/dev/null)" ] || [ "$LIB_VERSION" != "$APP_VERSION" ]; then
+# Priorität: 1) %post hat system-weit installiert  2) User-Lib (kein Root nötig)
+SYS_LIB_VERSION=$(cat /opt/stock-monitor/lib/.sm-version 2>/dev/null)
+USER_LIB_VERSION=$(cat "$USER_LIB/.sm-version" 2>/dev/null)
+if [ "$SYS_LIB_VERSION" != "$APP_VERSION" ] && [ "$USER_LIB_VERSION" != "$APP_VERSION" ]; then
     PYBIN="$PYTHON"
-    WHEEL_SETUP=$(mktemp /tmp/sm-wheels-XXXXXX.sh)
-    cat > "$WHEEL_SETUP" << SCRIPT
-#!/bin/bash
-LIBDIR=/opt/stock-monitor/lib
-WHEELDIR=/opt/stock-monitor/wheels
-rm -rf "\$LIBDIR"/*
-mkdir -p "\$LIBDIR"
-echo "$PYBIN" > /opt/stock-monitor/python_bin
-# --break-system-packages erst ab pip 22.3 verfügbar
-PIP_VER=\$($PYBIN -m pip --version 2>/dev/null | awk '{print \$2}')
-MAJOR=\$(echo "\$PIP_VER" | cut -d. -f1)
-MINOR=\$(echo "\$PIP_VER" | cut -d. -f2)
-if [ "\${MAJOR:-0}" -gt 22 ] || { [ "\${MAJOR:-0}" -eq 22 ] && [ "\${MINOR:-0}" -ge 3 ]; }; then
-    BSP="--break-system-packages"
-else
-    BSP=""
-fi
-PIP="$PYBIN -m pip install --quiet --target \$LIBDIR --no-index --find-links \$WHEELDIR --no-deps \$BSP"
-\$PIP beautifulsoup4 certifi cryptography curl-cffi cycler defusedxml \
-    et-xmlfile frozendict idna markdown-it-py mdurl multitasking \
-    openpyxl packaging peewee platformdirs protobuf pycparser pygments \
-    pyparsing pyqtgraph python-dateutil pytz reportlab requests rich \
-    six soupsieve typing-extensions tzdata urllib3 yfinance >/dev/null 2>&1 || true
-PYVER=\$($PYBIN -c "import sys; print('cp%d%d' % sys.version_info[:2])" 2>/dev/null)
-NUMPY_WHL=\$(ls "\$WHEELDIR"/numpy-*-\${PYVER}-*.whl 2>/dev/null | head -1)
-if [ -n "\$NUMPY_WHL" ]; then
-    $PYBIN -m pip install --quiet --target \$LIBDIR --no-deps \$BSP "\$NUMPY_WHL" >/dev/null 2>&1 || true
-else
-    \$PIP numpy >/dev/null 2>&1 || true
-fi
-for pkg in pandas matplotlib Pillow websockets contourpy fonttools kiwisolver charset-normalizer cffi; do
-    \$PIP \$pkg >/dev/null 2>&1 || true
-done
-$PYBIN -m pip install --quiet --target \$LIBDIR --no-deps \$BSP \
-    \$WHEELDIR/odfpy-1.4.1.tar.gz >/dev/null 2>&1 || true
-echo "$APP_VERSION" > /opt/stock-monitor/lib/.sm-version
-SCRIPT
-    run_as_root "Bibliotheken werden eingerichtet…" "$WHEEL_SETUP"
-    rm -f "$WHEEL_SETUP"
+    WHEELDIR="/opt/stock-monitor/wheels"
+    rm -rf "$USER_LIB"
+    mkdir -p "$USER_LIB"
+
+    # Fortschrittsanzeige (optional, kein Blockieren)
+    if command -v zenity &>/dev/null; then
+        zenity --progress --title="Stock Monitor" \
+               --text="Einmalige Einrichtung läuft…" \
+               --pulsate --no-cancel 2>/dev/null &
+        PROGRESS_PID=$!
+    fi
+
+    PIP="$PYBIN -m pip install --quiet --target $USER_LIB --no-index --find-links $WHEELDIR --no-deps"
+    $PIP beautifulsoup4 certifi cryptography curl-cffi cycler defusedxml \
+        et-xmlfile frozendict idna markdown-it-py mdurl multitasking \
+        openpyxl packaging peewee platformdirs protobuf pycparser pygments \
+        pyparsing pyqtgraph python-dateutil pytz reportlab requests rich \
+        six soupsieve typing-extensions tzdata urllib3 yfinance 2>/dev/null || true
+
+    PYVER=$("$PYBIN" -c "import sys; print('cp%d%d' % sys.version_info[:2])" 2>/dev/null)
+    NUMPY_WHL=$(ls "$WHEELDIR"/numpy-*-${PYVER}-*.whl 2>/dev/null | head -1)
+    if [ -n "$NUMPY_WHL" ]; then
+        "$PYBIN" -m pip install --quiet --target "$USER_LIB" --no-deps "$NUMPY_WHL" 2>/dev/null || true
+    else
+        $PIP numpy 2>/dev/null || true
+    fi
+    for pkg in pandas matplotlib Pillow websockets contourpy fonttools kiwisolver charset-normalizer cffi; do
+        $PIP "$pkg" 2>/dev/null || true
+    done
+    "$PYBIN" -m pip install --quiet --target "$USER_LIB" --no-deps \
+        "$WHEELDIR/odfpy-1.4.1.tar.gz" 2>/dev/null || true
+
+    [ -n "${PROGRESS_PID:-}" ] && { kill "$PROGRESS_PID" 2>/dev/null; wait "$PROGRESS_PID" 2>/dev/null; }
+
+    if PYTHONPATH="$USER_LIB" "$PYBIN" -c "import yfinance" 2>/dev/null; then
+        echo "$APP_VERSION" > "$USER_LIB/.sm-version"
+    else
+        show_dialog error "Stock Monitor – Einrichtung fehlgeschlagen" \
+"Die Bibliotheken konnten nicht eingerichtet werden.
+
+Bitte kontaktieren Sie: https://www.stock-monitor.ch"
+        exit 1
+    fi
 fi
 
 echo "$PYTHON" > /opt/stock-monitor/python_bin 2>/dev/null || true
