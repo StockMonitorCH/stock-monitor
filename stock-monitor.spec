@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.4.1
+Version:        5.4.2
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
@@ -186,6 +186,8 @@ update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %changelog
+* Tue Jun 16 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.4.2-1
+- Fix: Firmenname im Portfolio-Übersicht-Tooltip erscheint jetzt auch auf Full-HD-Systemen
 * Tue Jun 02 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.4.1-1
 - Fix: Bibliotheks-Installation ohne Root – Discover-kompatibel auf Fedora KDE und openSUSE
 * Mon Apr 27 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.1.2-1

@@ -8,7 +8,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="5.4.1"
+VERSION="5.4.2"
 PKG="stock-monitor"
 PKGDIR="$(mktemp -d)/stock-monitor_${VERSION}_amd64"
 

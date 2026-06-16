@@ -60,6 +60,12 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.4.2" date="2026-06-16">
+      <description>
+        <p>Fix: Company name now appears in portfolio overview tooltip on Full HD displays.</p>
+        <p xml:lang="de">Fix: Firmenname im Portfolio-Übersicht-Tooltip erscheint jetzt auch auf Full-HD-Systemen.</p>
+      </description>
+    </release>
     <release version="5.4.1" date="2026-06-02">
       <description>
         <p>Fix: Library setup no longer requires root – compatible with Discover installation on Fedora KDE.</p>

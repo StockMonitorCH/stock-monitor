@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.4.1"                            # beim Release anpassen
+APP_VERSION  = "5.4.2"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -8519,7 +8519,8 @@ class PortfolioDialog(QMainWindow):
 
                 # ── SCHRITT 2: Branchen (nur fehlende, parallel mit hartem Timeout) ──
                 missing_sectors = [s for s in real_syms
-                                   if (s not in self._scache or s not in self._icache)
+                                   if (s not in self._scache or s not in self._icache
+                                       or s not in self._company_cache)
                                    and not _is_commodity(s)]
                 new_sectors    = {}
                 new_industries = {}

@@ -40,6 +40,11 @@ if exist "%SRC%\_internal\.stock_monitor_portfolios" (
 
 if exist "%SRC%\stock_monitor.log"                         del /q "%SRC%\stock_monitor.log"
 
+:: Portfolios-Ordner leeren (Ordner selbst bleibt für Vorinstallation)
+if exist "%SRC%\Portfolios" (
+    for %%f in ("%SRC%\Portfolios\*") do del /q "%%f"
+)
+
 echo [OK]  Benutzerdaten entfernt
 
 :: Altes ZIP löschen
