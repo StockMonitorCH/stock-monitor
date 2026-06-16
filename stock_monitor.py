@@ -29144,10 +29144,12 @@ class StockMonitorApp(QMainWindow):
         hdr.setStyleSheet("font-size:13px; color:#1a1a1a;")
         lay.addWidget(hdr)
 
-        _in_flatpak = os.path.exists('/.flatpak-info')
-        _is_exe     = getattr(sys, 'frozen', False) and sys.platform == "win32"
+        _in_flatpak  = os.path.exists('/.flatpak-info')
+        _is_exe      = getattr(sys, 'frozen', False) and sys.platform == "win32"
+        _is_opt      = (not getattr(sys, 'frozen', False)
+                        and os.path.abspath(__file__).startswith('/opt/stock-monitor/'))
 
-        if _is_exe and wheel_url:
+        if (_is_exe or _is_opt) and wheel_url:
             msg_text = TR("lbl_yf_toast_msg_exe", latest=latest, installed=installed)
         elif _in_flatpak:
             msg_text = TR("lbl_yf_toast_msg_flatpak", latest=latest, installed=installed)
@@ -29161,7 +29163,7 @@ class StockMonitorApp(QMainWindow):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        if not _in_flatpak and not _is_exe:
+        if not _in_flatpak and not _is_exe and not _is_opt:
             # Script-Modus: pip install möglich
             pip_btn = QPushButton(TR("btn_install_yfinance"))
             pip_btn.setToolTip(TR("tip_install_yfinance"))
@@ -29241,8 +29243,8 @@ class StockMonitorApp(QMainWindow):
                 threading.Thread(target=_do, daemon=True).start()
             pip_btn.clicked.connect(_run_pip)
             btn_row.addWidget(pip_btn)
-        elif _is_exe and wheel_url:
-            # EXE-Modus: yfinance direkt aktualisieren
+        elif (_is_exe or _is_opt) and wheel_url:
+            # EXE/RPM/DEB-Modus: yfinance direkt via Wheel aktualisieren
             upd_btn = QPushButton(TR("btn_yf_auto_update"))
             upd_btn.setStyleSheet(
                 "QPushButton{background:#27ae60;color:white;font-weight:bold;"
