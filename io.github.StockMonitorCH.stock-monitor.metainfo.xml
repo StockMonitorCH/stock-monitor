@@ -60,6 +60,18 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.4.2" date="2026-06-16">
+      <description>
+        <p>Flatpak update: real download progress bar, fixed sandbox path issue. RPM update: no longer hangs at 96%. yfinance 1.4.1 bundled.</p>
+        <p xml:lang="de">Flatpak-Update: echter Fortschrittsbalken, Sandbox-Pfad-Fix. RPM-Update: hängt nicht mehr bei 96 %. yfinance 1.4.1 enthalten.</p>
+      </description>
+    </release>
+    <release version="5.4.1" date="2026-06-02">
+      <description>
+        <p>Portfolio overview tooltip fix, minor improvements.</p>
+        <p xml:lang="de">Portfolio-Übersicht Tooltip-Fix, kleinere Verbesserungen.</p>
+      </description>
+    </release>
     <release version="5.4.0" date="2026-05-25">
       <description>
         <p>Dark mode corrections, CSV import fix, RI factor left-click action.</p>
