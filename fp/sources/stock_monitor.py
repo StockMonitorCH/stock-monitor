@@ -8340,11 +8340,12 @@ class PortfolioDialog(QMainWindow):
                 'SEK':('SEKUSD=X',False),'SGD':('SGDUSD=X',False),'TWD':('TWD=X',True),
             }
 
-            def __init__(self, portfolio_data, sector_cache, industry_cache=None, parent=None):
+            def __init__(self, portfolio_data, sector_cache, industry_cache=None, company_cache=None, parent=None):
                 super().__init__(parent)
                 self._pdata  = portfolio_data
                 self._scache = dict(sector_cache)   # Kopie
                 self._icache = dict(industry_cache or {})
+                self._ccache = dict(company_cache or {})
 
             def _get_fx(self, cur, cache_usd, cache_chf):
                 """Gibt (fx_to_usd, fx_to_chf) zurück – gecacht."""
@@ -8520,7 +8521,7 @@ class PortfolioDialog(QMainWindow):
                 # ── SCHRITT 2: Branchen (nur fehlende, parallel mit hartem Timeout) ──
                 missing_sectors = [s for s in real_syms
                                    if (s not in self._scache or s not in self._icache
-                                       or s not in self._company_cache)
+                                       or s not in self._ccache)
                                    and not _is_commodity(s)]
                 new_sectors    = {}
                 new_industries = {}
@@ -8672,7 +8673,7 @@ class PortfolioDialog(QMainWindow):
                 self.done.emit(price_result, overview_result, sector_result, industry_result)
 
         worker = MasterWorker(self.portfolio_data, self._sector_cache,
-                              self._industry_cache, parent=self)
+                              self._industry_cache, self._company_cache, parent=self)
         self._master_worker = worker
         worker.finished.connect(
             lambda mw=worker: setattr(self, '_master_worker', None)
