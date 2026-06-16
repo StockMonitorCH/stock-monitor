@@ -28673,7 +28673,10 @@ class StockMonitorApp(QMainWindow):
             from PyQt6.QtWidgets import QMessageBox
             mb = QMessageBox(self)
             mb.setWindowTitle(TR("title_flatpak_install"))
-            mb.setText(TR("lbl_flatpak_install_error") + f"\n\n{err}")
+            text = TR("lbl_flatpak_install_error")
+            if err:
+                text += f"\n\n{err}"
+            mb.setText(text)
             mb.setIcon(QMessageBox.Icon.Warning)
             mb.exec()
 
@@ -28763,16 +28766,24 @@ class StockMonitorApp(QMainWindow):
                 sigs.progress.emit(85, "")
                 QTimer.singleShot(0, _start_install_animation)
 
-                result = subprocess.run(
+                proc = subprocess.Popen(
                     ['flatpak-spawn', '--host', 'flatpak', 'install',
                      '--user', '--bundle', '--assumeyes', '--noninteractive', fpath],
-                    capture_output=True, text=True, timeout=300
+                    stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True
                 )
-                if result.returncode == 0:
-                    QTimer.singleShot(0, _on_success)
-                else:
-                    err = (result.stderr or result.stdout or "").strip()
-                    QTimer.singleShot(0, lambda e=err: _on_error(e))
+                try:
+                    _, stderr = proc.communicate(timeout=300)
+                    if proc.returncode == 0:
+                        QTimer.singleShot(0, _on_success)
+                    else:
+                        QTimer.singleShot(0, lambda e=(stderr or "").strip(): _on_error(e))
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    try:
+                        proc.communicate(timeout=5)
+                    except Exception:
+                        pass
+                    QTimer.singleShot(0, lambda: _on_error("Timeout: Installation hat zu lange gedauert."))
             except Exception as e:
                 QTimer.singleShot(0, lambda e=str(e): _on_error(e))
 

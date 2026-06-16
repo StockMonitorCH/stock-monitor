@@ -1705,7 +1705,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_flatpak_downloading":     "Version {version} wird heruntergeladen…",
         "lbl_flatpak_installing":      "Wird installiert…",
         "lbl_flatpak_install_done":    "✅ Stock Monitor v{version} wurde installiert!\n\nBitte starte die App neu, damit die neue Version aktiv wird.",
-        "lbl_flatpak_install_error":   "❌ Installation fehlgeschlagen:",
+        "lbl_flatpak_install_error":   "❌ Installation fehlgeschlagen.\n\n💡 Bitte lade das Paket manuell herunter und installiere es:\nhttps://github.com/StockMonitorCH/stock-monitor/releases",
 
         # ── Börsenzeiten-Dialog ───────────────────────────────────────────────
         "title_market_hours":          "Börsenzeiten – {exchange}",
@@ -3373,7 +3373,7 @@ more than enough for personal use.</p>
         "lbl_flatpak_downloading":     "Downloading version {version}…",
         "lbl_flatpak_installing":      "Installing…",
         "lbl_flatpak_install_done":    "✅ Stock Monitor v{version} has been installed!\n\nPlease restart the app for the new version to take effect.",
-        "lbl_flatpak_install_error":   "❌ Installation failed:",
+        "lbl_flatpak_install_error":   "❌ Installation failed.\n\n💡 Please download and install the package manually:\nhttps://github.com/StockMonitorCH/stock-monitor/releases",
 
         # ── Market Hours Dialog ───────────────────────────────────────────────
         "title_market_hours":          "Market Hours – {exchange}",
