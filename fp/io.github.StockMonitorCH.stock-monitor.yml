@@ -41,5 +41,5 @@ modules:
     sources:
       - type: git
         url: https://github.com/StockMonitorCH/stock-monitor.git
-        tag: v5.4.1
-        commit: cf26df0b68543d392762f69591d1c6bc4dcdffbe
+        tag: v5.4.2
+        commit: d6ae2f648320a229c788aad35b33aa2e4c78dd2f
