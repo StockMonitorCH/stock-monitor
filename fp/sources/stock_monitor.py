@@ -28679,6 +28679,7 @@ class StockMonitorApp(QMainWindow):
 
         def _run():
             try:
+                import time as _time
                 tmpdir = os.path.join(os.path.expanduser("~"), ".cache", "stockmonitor-update")
                 os.makedirs(tmpdir, exist_ok=True)
                 fpath = os.path.join(tmpdir, f"StockMonitor-{version}.flatpak")
@@ -28709,21 +28710,52 @@ class StockMonitorApp(QMainWindow):
                                         pct,
                                         f"{done/1_048_576:.0f} / {total/1_048_576:.0f} MB"
                                     )
+                                else:
+                                    sigs.progress.emit(
+                                        0,
+                                        f"{done/1_048_576:.1f} MB …"
+                                    )
                     downloaded = True
                 except Exception:
                     pass   # Fallback: curl via Host
 
                 if not downloaded:
                     # SSL-Fallback innerhalb Flatpak-Sandbox: curl auf dem Host
+                    # Zuerst Dateigrösse via HEAD ermitteln für echten Fortschritt
+                    curl_total = 0
+                    try:
+                        head = subprocess.run(
+                            ['flatpak-spawn', '--host', 'curl', '-sI', '-L',
+                             '--fail', '-A', 'StockMonitor', flatpak_url],
+                            capture_output=True, text=True, timeout=30
+                        )
+                        for line in head.stdout.splitlines():
+                            if line.lower().startswith('content-length:'):
+                                curl_total = int(line.split(':', 1)[1].strip())
+                                break
+                    except Exception:
+                        pass
+
                     sigs.progress.emit(0, "")
-                    dl = subprocess.run(
+                    proc = subprocess.Popen(
                         ['flatpak-spawn', '--host', 'curl', '-L', '--fail',
-                         '-o', fpath, flatpak_url],
-                        capture_output=True, text=True, timeout=600
+                         '-A', 'StockMonitor', '-o', fpath, flatpak_url],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                     )
-                    if dl.returncode != 0:
-                        err = (dl.stderr or dl.stdout or "curl error").strip()
-                        QTimer.singleShot(0, lambda e=err: _on_error(e))
+                    while proc.poll() is None:
+                        if curl_total > 0 and os.path.exists(fpath):
+                            done = os.path.getsize(fpath)
+                            pct  = int(done / curl_total * 85)
+                            sigs.progress.emit(
+                                pct,
+                                f"{done/1_048_576:.0f} / {curl_total/1_048_576:.0f} MB"
+                            )
+                        elif os.path.exists(fpath):
+                            done = os.path.getsize(fpath)
+                            sigs.progress.emit(0, f"{done/1_048_576:.1f} MB …")
+                        _time.sleep(0.3)
+                    if proc.returncode != 0:
+                        QTimer.singleShot(0, lambda: _on_error("curl error"))
                         return
                     sigs.progress.emit(85, "")
 
@@ -28918,17 +28950,24 @@ class StockMonitorApp(QMainWindow):
 
                 sigs.progress_update.emit(96, "Wird installiert…")
 
-                # dnf bevorzugen (Fedora), Fallback auf rpm
-                if subprocess.run(["which", "dnf"], capture_output=True).returncode == 0:
-                    cmd = ["pkexec", "dnf", "install", "-y", fpath]
-                else:
-                    cmd = ["pkexec", "rpm", "-Uvh", "--force", fpath]
+                # rpm -Uvh direkt: kein Netzwerkzugriff, kein dnf-Metadata-Download
+                # → Install dauert Sekunden statt Minuten
+                cmd = ["pkexec", "rpm", "-Uvh", "--force", fpath]
 
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-                if result.returncode == 0:
-                    sigs.finished.emit("ok", "")
-                else:
-                    sigs.finished.emit("error", (result.stderr or result.stdout or "").strip())
+                proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                try:
+                    _, stderr = proc.communicate(timeout=120)
+                    if proc.returncode == 0:
+                        sigs.finished.emit("ok", "")
+                    else:
+                        sigs.finished.emit("error", stderr.strip())
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    try:
+                        proc.communicate(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        pass
+                    sigs.finished.emit("error", "Timeout: Installation hat zu lange gedauert.")
             except Exception as e:
                 sigs.finished.emit("error", str(e))
 
