@@ -28683,9 +28683,16 @@ class StockMonitorApp(QMainWindow):
         def _run():
             try:
                 import time as _time
-                tmpdir = os.path.join(os.path.expanduser("~"), ".cache", "stockmonitor-update")
+                # XDG_CACHE_HOME zeigt auf den echten Dateisystempfad (nicht Sandbox-Overlay)
+                # ~/.cache/io.github.StockMonitorCH.stock-monitor/ ist vom Host aus erreichbar
+                xdg_cache = os.environ.get(
+                    "XDG_CACHE_HOME",
+                    os.path.join(os.path.expanduser("~"), ".cache",
+                                 "io.github.StockMonitorCH.stock-monitor"))
+                tmpdir = os.path.join(xdg_cache, "stockmonitor-update")
                 os.makedirs(tmpdir, exist_ok=True)
                 fpath = os.path.join(tmpdir, f"StockMonitor-{version}.flatpak")
+                sigs.progress.emit(0, "Verbindung wird hergestellt…")
 
                 # ── Phase 1: Download (0–85 %) ────────────────────────────
                 downloaded = False
