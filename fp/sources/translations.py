@@ -1212,7 +1212,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_total_portfolio":                     "Gesamtportfolio",
         # Perf contrib tooltip
         "tip_perf_contrib_label":                  "Beitrag zur Gesamt-Performance",
-        "tip_ri_factor":                           "RI-Faktor (Return / Investment-Anteil)\nKapitalanteil: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI-Faktor: {ri:.2f} {icon}\n(>1 = überdurchschnittlich, <1 = unterdurchschnittlich)\n❓ Rechtsklick → Hilfe",
+        "tip_ri_factor":                           "RI-Faktor (Return / Investment-Anteil)\nKapitalanteil: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI-Faktor: {ri:.2f} {icon}\n(>1 = überdurchschnittlich, <1 = unterdurchschnittlich)\n❓ Linksklick → Hilfe",
         # N/A label
         "lbl_na_negative_earnings":                "<span style='color:gray'><i>N/A (neg. Gewinn oder keine Daten)</i></span>",
         # Currency converter
@@ -1705,7 +1705,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_flatpak_downloading":     "Version {version} wird heruntergeladen…",
         "lbl_flatpak_installing":      "Wird installiert…",
         "lbl_flatpak_install_done":    "✅ Stock Monitor v{version} wurde installiert!\n\nBitte starte die App neu, damit die neue Version aktiv wird.",
-        "lbl_flatpak_install_error":   "❌ Installation fehlgeschlagen:",
+        "lbl_flatpak_install_error":   "❌ Installation fehlgeschlagen.\n\n💡 Bitte lade das Paket manuell herunter und installiere es:\nhttps://github.com/StockMonitorCH/stock-monitor/releases",
 
         # ── Börsenzeiten-Dialog ───────────────────────────────────────────────
         "title_market_hours":          "Börsenzeiten – {exchange}",
@@ -2894,7 +2894,7 @@ more than enough for personal use.</p>
         "lbl_total_portfolio":                     "Total Portfolio",
         # Perf contrib tooltip
         "tip_perf_contrib_label":                  "Contribution to total performance",
-        "tip_ri_factor":                           "RI Factor (Return / Investment Share)\nCapital share: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI factor: {ri:.2f} {icon}\n(>1 = above average, <1 = below average)\n❓ Right-click → Help",
+        "tip_ri_factor":                           "RI Factor (Return / Investment Share)\nCapital share: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI factor: {ri:.2f} {icon}\n(>1 = above average, <1 = below average)\n❓ Left-click → Help",
         # N/A label
         "lbl_na_negative_earnings":                "<span style='color:gray'><i>N/A (neg. earnings or no data)</i></span>",
         # Currency converter
@@ -3373,7 +3373,7 @@ more than enough for personal use.</p>
         "lbl_flatpak_downloading":     "Downloading version {version}…",
         "lbl_flatpak_installing":      "Installing…",
         "lbl_flatpak_install_done":    "✅ Stock Monitor v{version} has been installed!\n\nPlease restart the app for the new version to take effect.",
-        "lbl_flatpak_install_error":   "❌ Installation failed:",
+        "lbl_flatpak_install_error":   "❌ Installation failed.\n\n💡 Please download and install the package manually:\nhttps://github.com/StockMonitorCH/stock-monitor/releases",
 
         # ── Market Hours Dialog ───────────────────────────────────────────────
         "title_market_hours":          "Market Hours – {exchange}",

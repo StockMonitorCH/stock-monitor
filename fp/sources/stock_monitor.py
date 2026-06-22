@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.4.2"                            # beim Release anpassen
+APP_VERSION  = "5.4.3"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -1436,23 +1436,27 @@ class AnalystInfoDialog(QDialog):
         layout.addSpacing(10)
         
         # AI-Einschätzung (Claude's Meinung)
+        from PyQt6.QtGui import QPalette as _QPalette_ai
+        _dm_ai = QApplication.palette().color(_QPalette_ai.ColorRole.Window).lightness() < 128
         ai_box = QFrame()
         ai_box.setFrameStyle(QFrame.Shape.Box)
-        ai_box.setStyleSheet("background-color: #f0f0f0; padding: 10px;")
+        _ai_bg = "#2a2a2a" if _dm_ai else "#f0f0f0"
+        ai_box.setStyleSheet(f"background-color: {_ai_bg}; padding: 10px;")
         ai_layout = QVBoxLayout()
-        
+
         ai_title = QLabel(f"<b>🤖 {TR('lbl_claude_assessment')}</b>")
         ai_title.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         ai_layout.addWidget(ai_title)
-        
+
         ai_text = QLabel(self.get_ai_assessment())
         ai_text.setWordWrap(True)
         ai_text.setFont(QFont("Arial", 10))
         ai_layout.addWidget(ai_text)
-        
+
         ai_disclaimer = QLabel(f"<i>{TR('lbl_disclaimer')}</i>")
         ai_disclaimer.setFont(QFont("Arial", 8))
-        ai_disclaimer.setStyleSheet("color: #666666;")
+        _disclaimer_color = "#aaaaaa" if _dm_ai else "#666666"
+        ai_disclaimer.setStyleSheet(f"color: {_disclaimer_color};")
         ai_layout.addWidget(ai_disclaimer)
         
         ai_box.setLayout(ai_layout)
@@ -2102,9 +2106,13 @@ class CompanyInfoDialog(QDialog):
             layout.addSpacing(15)
             
             # Firmen-Basisdaten Box
+            from PyQt6.QtGui import QPalette as _QPalette_ci
+            _dm_ci = QApplication.palette().color(_QPalette_ci.ColorRole.Window).lightness() < 128
             basics_box = QFrame()
             basics_box.setFrameStyle(QFrame.Shape.Box)
-            basics_box.setStyleSheet("background-color: #f5f5f5; border: 1px solid #cccccc;")
+            _ci_bg = "#2a2a2a" if _dm_ci else "#f5f5f5"
+            _ci_border = "#555555" if _dm_ci else "#cccccc"
+            basics_box.setStyleSheet(f"background-color: {_ci_bg}; border: 1px solid {_ci_border};")
             basics_layout = QVBoxLayout()
             basics_layout.setContentsMargins(15, 15, 15, 15)
             basics_layout.setSpacing(8)
@@ -2211,7 +2219,8 @@ class CompanyInfoDialog(QDialog):
             if description:
                 desc_box = QFrame()
                 desc_box.setFrameStyle(QFrame.Shape.Box)
-                desc_box.setStyleSheet("background-color: #f9f9f9; border: 1px solid #cccccc;")
+                _desc_bg = "#2a2a2a" if _dm_ci else "#f9f9f9"
+                desc_box.setStyleSheet(f"background-color: {_desc_bg}; border: 1px solid {_ci_border};")
                 desc_layout = QVBoxLayout()
                 desc_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -28966,7 +28975,22 @@ class StockMonitorApp(QMainWindow):
                                 mb_d = downloaded / 1_048_576
                                 sigs.progress_update.emit(30, f"Download: {mb_d:.1f} MB…")
 
-                sigs.progress_update.emit(96, "Wird installiert…")
+                sigs.progress_update.emit(96, "Wird installiert… (kann einige Minuten dauern)")
+
+                _anim = {'pct': 96}
+
+                def _start_install_anim():
+                    t = QTimer(prog_dlg)
+                    def _tick():
+                        if _anim['pct'] < 98:
+                            _anim['pct'] += 1
+                            prog.setValue(_anim['pct'])
+                        else:
+                            t.stop()
+                    t.timeout.connect(_tick)
+                    t.start(2000)
+
+                QTimer.singleShot(0, _start_install_anim)
 
                 # rpm -Uvh direkt: kein Netzwerkzugriff, kein dnf-Metadata-Download
                 # → Install dauert Sekunden statt Minuten

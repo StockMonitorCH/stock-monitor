@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.4.2
+Version:        5.4.3
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
@@ -186,6 +186,9 @@ update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %changelog
+* Mon Jun 22 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.4.3-1
+- Fix: Dark Mode – Firmeninfo und AI-Einschätzung jetzt lesbar (harter Hintergrund entfernt)
+- Fix: RI-Faktor Tooltip: Rechtsklick → Linksklick korrigiert
 * Tue Jun 16 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.4.2-1
 - Fix: Firmenname im Portfolio-Übersicht-Tooltip erscheint jetzt auch auf Full-HD-Systemen
 * Tue Jun 02 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.4.1-1

@@ -1212,7 +1212,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_total_portfolio":                     "Gesamtportfolio",
         # Perf contrib tooltip
         "tip_perf_contrib_label":                  "Beitrag zur Gesamt-Performance",
-        "tip_ri_factor":                           "RI-Faktor (Return / Investment-Anteil)\nKapitalanteil: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI-Faktor: {ri:.2f} {icon}\n(>1 = überdurchschnittlich, <1 = unterdurchschnittlich)\n❓ Rechtsklick → Hilfe",
+        "tip_ri_factor":                           "RI-Faktor (Return / Investment-Anteil)\nKapitalanteil: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI-Faktor: {ri:.2f} {icon}\n(>1 = überdurchschnittlich, <1 = unterdurchschnittlich)\n❓ Linksklick → Hilfe",
         # N/A label
         "lbl_na_negative_earnings":                "<span style='color:gray'><i>N/A (neg. Gewinn oder keine Daten)</i></span>",
         # Currency converter
@@ -2894,7 +2894,7 @@ more than enough for personal use.</p>
         "lbl_total_portfolio":                     "Total Portfolio",
         # Perf contrib tooltip
         "tip_perf_contrib_label":                  "Contribution to total performance",
-        "tip_ri_factor":                           "RI Factor (Return / Investment Share)\nCapital share: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI factor: {ri:.2f} {icon}\n(>1 = above average, <1 = below average)\n❓ Right-click → Help",
+        "tip_ri_factor":                           "RI Factor (Return / Investment Share)\nCapital share: {share:.2f}%\nPerformance: {pnl_pct:+.2f}%\nRI factor: {ri:.2f} {icon}\n(>1 = above average, <1 = below average)\n❓ Left-click → Help",
         # N/A label
         "lbl_na_negative_earnings":                "<span style='color:gray'><i>N/A (neg. earnings or no data)</i></span>",
         # Currency converter

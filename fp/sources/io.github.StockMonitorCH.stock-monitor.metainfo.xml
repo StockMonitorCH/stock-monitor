@@ -60,16 +60,22 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.4.3" date="2026-06-22">
+      <description>
+        <p>Dark mode fix: Company info and AI assessment boxes now readable. RI factor tooltip text corrected (left-click instead of right-click).</p>
+        <p xml:lang="de">Dark-Mode-Fix: Firmeninfo und AI-Einschätzung jetzt lesbar. RI-Faktor Tooltip korrigiert (Linksklick statt Rechtsklick).</p>
+      </description>
+    </release>
     <release version="5.4.2" date="2026-06-16">
       <description>
-        <p>Fix: Company name now appears in portfolio overview tooltip on Full HD displays.</p>
-        <p xml:lang="de">Fix: Firmenname im Portfolio-Übersicht-Tooltip erscheint jetzt auch auf Full-HD-Systemen.</p>
+        <p>Flatpak update: real download progress bar, fixed sandbox path issue. RPM update: no longer hangs at 96%. yfinance 1.4.1 bundled.</p>
+        <p xml:lang="de">Flatpak-Update: echter Fortschrittsbalken, Sandbox-Pfad-Fix. RPM-Update: hängt nicht mehr bei 96 %. yfinance 1.4.1 enthalten.</p>
       </description>
     </release>
     <release version="5.4.1" date="2026-06-02">
       <description>
-        <p>Fix: Library setup no longer requires root – compatible with Discover installation on Fedora KDE.</p>
-        <p xml:lang="de">Fix: Bibliotheks-Installation ohne Root – kompatibel mit Discover-Installation auf Fedora KDE.</p>
+        <p>Portfolio overview tooltip fix, minor improvements.</p>
+        <p xml:lang="de">Portfolio-Übersicht Tooltip-Fix, kleinere Verbesserungen.</p>
       </description>
     </release>
     <release version="5.4.0" date="2026-05-25">
@@ -126,16 +132,22 @@
         <p xml:lang="de">Dark-Mode-Fixes für Windows.</p>
       </description>
     </release>
+    <release version="5.0.7" date="2026-04-25">
+      <description>
+        <p>Demo portfolio with legal disclaimer, live data, watermark. Flatpak fixes: persistent settings, world map, tax module stability, Finment opens in system browser.</p>
+        <p xml:lang="de">Demo-Portfolio mit Haftungsausschluss, Live-Daten und Wasserzeichen. Flatpak-Korrekturen: persistente Einstellungen, Weltkarte, Steuermodul-Stabilität, Finment öffnet im System-Browser.</p>
+      </description>
+    </release>
     <release version="5.0.1" date="2026-04-19">
       <description>
-        <p>Flatpak-aware update notifications, improved help (update section, demo portfolio without password).</p>
-        <p xml:lang="de">Flatpak-spezifische Update-Hinweise, verbesserte Hilfe (Update-Abschnitt, Demo-Portfolio ohne Passwort).</p>
+        <p>Version 5.0.1: Flatpak-aware update notifications, improved help (update section, demo portfolio without password).</p>
+        <p xml:lang="de">Version 5.0.1: Flatpak-spezifische Update-Hinweise, verbesserte Hilfe (Update-Abschnitt, Demo-Portfolio ohne Passwort).</p>
       </description>
     </release>
     <release version="5.0.0" date="2026-04-13">
       <description>
-        <p>AI Balance with portfolio currency, update checker, yfinance notification.</p>
-        <p xml:lang="de">AI-Balance mit Portfolio-Währung, Update-Prüfung, yfinance-Benachrichtigung.</p>
+        <p>Version 5.0: AI-Balance with portfolio currency, update checker, yfinance notification.</p>
+        <p xml:lang="de">Version 5.0: AI-Balance mit Portfolio-Währung, Update-Prüfung, yfinance-Benachrichtigung.</p>
       </description>
     </release>
     <release version="4.0.0" date="2025-04-01">
@@ -146,6 +158,9 @@
   </releases>
 
   <screenshots>
+    <screenshot type="default">
+      <video>https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.0.7/stock-monitor-demo-final.mp4</video>
+    </screenshot>
     <screenshot type="default">
       <caption>Main dashboard with 16 simultaneous live charts</caption>
       <caption xml:lang="de">Hauptansicht mit 16 gleichzeitigen Live-Charts</caption>

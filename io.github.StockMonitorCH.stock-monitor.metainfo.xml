@@ -60,6 +60,12 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.4.3" date="2026-06-22">
+      <description>
+        <p>Dark mode fix: Company info and AI assessment boxes now readable. RI factor tooltip text corrected (left-click instead of right-click).</p>
+        <p xml:lang="de">Dark-Mode-Fix: Firmeninfo und AI-Einschätzung jetzt lesbar. RI-Faktor Tooltip korrigiert (Linksklick statt Rechtsklick).</p>
+      </description>
+    </release>
     <release version="5.4.2" date="2026-06-16">
       <description>
         <p>Flatpak update: real download progress bar, fixed sandbox path issue. RPM update: no longer hangs at 96%. yfinance 1.4.1 bundled.</p>
