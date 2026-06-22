@@ -28611,7 +28611,8 @@ class StockMonitorApp(QMainWindow):
         from PyQt6.QtCore import pyqtSignal, QObject
 
         class _Sigs(QObject):
-            progress = pyqtSignal(int, str)   # Prozent, Statustext
+            progress    = pyqtSignal(int, str)   # Prozent, Statustext
+            start_anim  = pyqtSignal()           # Installation gestartet → Animation im GUI-Thread
 
         sigs = _Sigs(self)
 
@@ -28660,6 +28661,8 @@ class StockMonitorApp(QMainWindow):
             timer.timeout.connect(_tick)
             timer.start()
             _state['timer'] = timer
+
+        sigs.start_anim.connect(_start_install_animation, Qt.ConnectionType.QueuedConnection)
 
         def _on_success():
             _state['done'] = True
@@ -28780,7 +28783,7 @@ class StockMonitorApp(QMainWindow):
 
                 # ── Phase 2: Install (85–100 %, animiert) ─────────────────
                 sigs.progress.emit(85, "")
-                QTimer.singleShot(0, _start_install_animation)
+                sigs.start_anim.emit()
 
                 proc = subprocess.Popen(
                     ['flatpak-spawn', '--host', 'flatpak', 'install',
