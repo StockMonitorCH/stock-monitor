@@ -186,7 +186,7 @@ update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %changelog
-* Wed Jul 09 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.4.4-1
+* Thu Jul 09 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.4.4-1
 - Zoom-Chart: eigene Indikator-Einstellungen (MA, Trend, Beta) werden sitzungsübergreifend gespeichert
 - Global-Einstellungen gelten jetzt auch für den offenen Zoom-Chart
 - Windows-Fix: Laden mit maximalem Zeitraum (z.B. McDonald's, Coca-Cola) schlägt nicht mehr mit Errno 22 fehl
