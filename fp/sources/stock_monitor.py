@@ -28761,7 +28761,7 @@ class StockMonitorApp(QMainWindow):
 
         prog_dlg.show()
 
-        _state = {'timer': None, 'done': False}
+        _state = {'done': False}
 
         sigs.progress.connect(
             lambda v, t: (prog.setValue(v), status_lbl.setText(t)),
@@ -28772,24 +28772,15 @@ class StockMonitorApp(QMainWindow):
             if _state['done']:
                 return
             title_lbl.setText(TR("lbl_flatpak_installing"))
-            _val = [85]
-            def _tick():
-                if _state['done'] or _val[0] >= 98:
-                    return
-                _val[0] += 1
-                sigs.progress.emit(_val[0], "")
-            timer = QTimer(prog_dlg)
-            timer.setInterval(800)
-            timer.timeout.connect(_tick)
-            timer.start()
-            _state['timer'] = timer
+            # Qt-eigener pulsender Balken – zuverlässiger als Timer-Simulation
+            prog.setRange(0, 0)
+            status_lbl.setText("")
 
         sigs.start_anim.connect(_start_install_animation, Qt.ConnectionType.QueuedConnection)
 
         def _on_success():
             _state['done'] = True
-            if _state['timer']:
-                _state['timer'].stop()
+            prog.setRange(0, 100)
             prog.setValue(100)
             prog_dlg.close()
             from PyQt6.QtWidgets import QMessageBox
@@ -28801,8 +28792,7 @@ class StockMonitorApp(QMainWindow):
 
         def _on_error(err):
             _state['done'] = True
-            if _state['timer']:
-                _state['timer'].stop()
+            prog.setRange(0, 100)
             prog_dlg.close()
             from PyQt6.QtWidgets import QMessageBox
             mb = QMessageBox(self)
@@ -28841,6 +28831,7 @@ class StockMonitorApp(QMainWindow):
                     with urllib.request.urlopen(req, timeout=600, context=ctx) as resp:
                         total = int(resp.headers.get("Content-Length", 0))
                         done  = 0
+                        t0 = _time.monotonic()
                         with open(fpath, "wb") as f:
                             while True:
                                 buf = resp.read(65536)
@@ -28848,16 +28839,19 @@ class StockMonitorApp(QMainWindow):
                                     break
                                 f.write(buf)
                                 done += len(buf)
+                                elapsed = _time.monotonic() - t0
+                                speed = done / elapsed if elapsed > 0 else 0
+                                speed_str = f"  {speed/1_048_576:.1f} MB/s" if speed > 0 else ""
                                 if total > 0:
                                     pct = int(done / total * 85)
                                     sigs.progress.emit(
                                         pct,
-                                        f"{done/1_048_576:.0f} / {total/1_048_576:.0f} MB"
+                                        f"{done/1_048_576:.0f} / {total/1_048_576:.0f} MB{speed_str}"
                                     )
                                 else:
                                     sigs.progress.emit(
                                         0,
-                                        f"{done/1_048_576:.1f} MB …"
+                                        f"{done/1_048_576:.1f} MB …{speed_str}"
                                     )
                     downloaded = True
                 except Exception:
