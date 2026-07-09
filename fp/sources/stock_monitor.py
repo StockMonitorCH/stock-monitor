@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.4.3"                            # beim Release anpassen
+APP_VERSION  = "5.4.4"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -5384,7 +5384,7 @@ class StockChartWidget(QFrame):
             self._sector_workers = []
         self._sector_workers.append(w)
         w.done.connect(_apply)
-        w.finished.connect(w.deleteLater)
+        w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
         w.finished.connect(lambda: self._sector_workers.remove(w)
                            if w in self._sector_workers else None)
         w.start()
@@ -5420,7 +5420,7 @@ class StockChartWidget(QFrame):
             self._type_workers = []
         self._type_workers.append(w)
         w.done.connect(_apply)
-        w.finished.connect(w.deleteLater)
+        w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
         w.finished.connect(lambda: self._type_workers.remove(w)
                            if w in self._type_workers else None)
         w.start()
@@ -5669,6 +5669,15 @@ class StockChartWidget(QFrame):
             'bb':  _zoom_val('bb_checkbox',  'zoom_bb'),
             'dd':  _zoom_val('dd_checkbox',  'zoom_dd'),
             'candle': _zoom_val('candle_checkbox', 'zoom_candle'),
+            # Zoom-eigene MA/Trend-Zustände – None bedeutet "noch nie im Zoom gesetzt"
+            'zoom_ma20':   getattr(self, 'zoom_ma20',   None),
+            'zoom_ma50':   getattr(self, 'zoom_ma50',   None),
+            'zoom_ma200':  getattr(self, 'zoom_ma200',  None),
+            'zoom_trend':  getattr(self, 'zoom_trend',  None),
+            'zoom_beta':   getattr(self, 'zoom_beta',   None),
+            'zoom_alpha':  getattr(self, 'zoom_alpha',  None),
+            'zoom_sharpe': getattr(self, 'zoom_sharpe', None),
+            'zoom_target': getattr(self, 'zoom_target', None),
         }
         # Custom-Zeitraum Daten mitschreiben
         if self.custom_start:
@@ -5743,6 +5752,15 @@ class StockChartWidget(QFrame):
         self.zoom_bb     = state.get('bb',     False)
         self.zoom_dd     = state.get('dd',     False)
         self.zoom_candle = state.get('candle', False)
+        # Zoom-eigene MA/Trend-Zustände wiederherstellen (None = noch nie im Zoom gesetzt)
+        self.zoom_ma20   = state.get('zoom_ma20',   None)
+        self.zoom_ma50   = state.get('zoom_ma50',   None)
+        self.zoom_ma200  = state.get('zoom_ma200',  None)
+        self.zoom_trend  = state.get('zoom_trend',  None)
+        self.zoom_beta   = state.get('zoom_beta',   None)
+        self.zoom_alpha  = state.get('zoom_alpha',  None)
+        self.zoom_sharpe = state.get('zoom_sharpe', None)
+        self.zoom_target = state.get('zoom_target', None)
         if self.zoom_mode:
             for cb_attr, key in [
                 ('rsi_checkbox',    'rsi'),
@@ -5817,6 +5835,15 @@ class StockChartWidget(QFrame):
         self.zoom_bb     = state.get('bb',     False)
         self.zoom_dd     = state.get('dd',     False)
         self.zoom_candle = state.get('candle', False)
+        # Zoom-eigene MA/Trend-Zustände wiederherstellen (None = noch nie im Zoom gesetzt)
+        self.zoom_ma20   = state.get('zoom_ma20',   None)
+        self.zoom_ma50   = state.get('zoom_ma50',   None)
+        self.zoom_ma200  = state.get('zoom_ma200',  None)
+        self.zoom_trend  = state.get('zoom_trend',  None)
+        self.zoom_beta   = state.get('zoom_beta',   None)
+        self.zoom_alpha  = state.get('zoom_alpha',  None)
+        self.zoom_sharpe = state.get('zoom_sharpe', None)
+        self.zoom_target = state.get('zoom_target', None)
         # Zoom-Only-Checkboxen: nur im zoom_mode setzen, sonst False
         if self.zoom_mode:
             for cb_attr, key in [
@@ -6019,7 +6046,19 @@ class StockChartWidget(QFrame):
                 self._on_fetch_error(msg)
 
         def on_finished():
-            # Aus Registry entfernen wenn Thread wirklich beendet ist
+            # wait() sicherstellt dass OS-Thread wirklich beendet ist bevor
+            # die Python-Referenz freigegeben wird (verhindert sipQThreadD0Ev
+            # auf noch-laufendem Thread → Qt fatal / ABRT)
+            try:
+                worker.wait()
+            except Exception:
+                pass
+            # deleteLater() übergibt Ownership an Qt – Python-GC ruft dann
+            # NICHT den C++-Destruktor auf
+            try:
+                worker.deleteLater()
+            except RuntimeError:
+                pass
             try:
                 StockChartWidget._worker_registry.remove(worker)
             except ValueError:
@@ -6141,7 +6180,7 @@ class StockChartWidget(QFrame):
                         self._fx_workers = []
                     self._fx_workers.append(_fw)
                     _fw.done.connect(lambda usd: setattr(_self_ref, '_last_price_usd', usd))
-                    _fw.finished.connect(_fw.deleteLater)
+                    _fw.finished.connect(lambda _t=_fw: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
                     _fw.finished.connect(lambda: self._fx_workers.remove(_fw)
                                          if _fw in self._fx_workers else None)
                     _fw.start()
@@ -6808,6 +6847,14 @@ class StockChartWidget(QFrame):
             self.plot_widget.clear()
 
         def on_suffix_finished():
+            try:
+                worker.wait()
+            except Exception:
+                pass
+            try:
+                worker.deleteLater()
+            except RuntimeError:
+                pass
             try:
                 StockChartWidget._worker_registry.remove(worker)
             except ValueError:
@@ -7517,7 +7564,7 @@ class StockChartWidget(QFrame):
                 pass
 
         worker.done.connect(_on_color_done, Qt.ConnectionType.QueuedConnection)
-        worker.finished.connect(worker.deleteLater)
+        worker.finished.connect(lambda _t=worker: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
         worker.start()
 
     def show_news(self):
@@ -7600,7 +7647,7 @@ class StockChartWidget(QFrame):
 
         worker.done.connect(_on_done,  Qt.ConnectionType.QueuedConnection)
         worker.error.connect(_on_error, Qt.ConnectionType.QueuedConnection)
-        worker.finished.connect(worker.deleteLater)
+        worker.finished.connect(lambda _t=worker: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
         worker.start()
 
     def _restore_news_btn(self, symbol, articles):
@@ -8688,7 +8735,7 @@ class PortfolioDialog(QMainWindow):
             lambda mw=worker: setattr(self, '_master_worker', None)
             if self._master_worker is mw else None
         )
-        worker.finished.connect(worker.deleteLater)
+        worker.finished.connect(lambda _t=worker: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
 
         def on_master_done(price_result, overview_result, sector_result, industry_result):
             now = self._time.time()
@@ -13380,7 +13427,7 @@ class PortfolioDialog(QMainWindow):
             lambda ow=worker: setattr(self, '_overview_worker', None)
             if self._overview_worker is ow else None
         )
-        worker.finished.connect(worker.deleteLater)
+        worker.finished.connect(lambda _t=worker: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
 
         def on_progress(cur, tot, sym):
             try:
@@ -14027,7 +14074,7 @@ class PortfolioDialog(QMainWindow):
 
             w = PerfWorker(syms_pos, period, bm_sym, use_mwr, parent=dialog)
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # GC-safe thread cleanup
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
 
             def _upd_pf(title, sub):
                 try:
@@ -14565,7 +14612,7 @@ class PortfolioDialog(QMainWindow):
                          inc_crypto, inc_commod,
                          self._price_cache, parent=dialog)
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # GC-safe thread cleanup
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             w.done.connect(on_mc_done, Qt.ConnectionType.QueuedConnection)
             w.start()
 
@@ -15392,7 +15439,7 @@ class PortfolioDialog(QMainWindow):
         w = _EcyWorker(parent=dialog)
         _ecy_ref[0] = w
         w.done.connect(_on_done, Qt.ConnectionType.QueuedConnection)
-        w.finished.connect(w.deleteLater)
+        w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
         w.start()
         dialog.exec()
 
@@ -15645,7 +15692,7 @@ class PortfolioDialog(QMainWindow):
 
             w = KIWorker(system_prompt, user_prompt, api_key)
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # GC-safe thread cleanup
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             w.done.connect(on_done, Qt.ConnectionType.QueuedConnection)
             w.start()
 
@@ -15874,7 +15921,7 @@ class PortfolioDialog(QMainWindow):
                 ext_btn.setEnabled(True)
 
             worker.done.connect(_on_done)
-            worker.finished.connect(worker.deleteLater)
+            worker.finished.connect(lambda _t=worker: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             worker.finished.connect(lambda: _ext_workers.remove(worker)
                                     if worker in _ext_workers else None)
             worker.start()
@@ -16970,7 +17017,7 @@ class PortfolioDialog(QMainWindow):
                     self._cal_workers.append(_cal_worker)
                     _cal_worker.progress.connect(on_cal_progress, Qt.ConnectionType.QueuedConnection)
                     _cal_worker.done.connect(on_cal_done, Qt.ConnectionType.QueuedConnection)
-                    _cal_worker.finished.connect(_cal_worker.deleteLater)
+                    _cal_worker.finished.connect(lambda _t=_cal_worker: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
                     _cal_worker.finished.connect(
                         lambda w=_cal_worker: self._cal_workers.remove(w)
                         if w in self._cal_workers else None
@@ -16995,7 +17042,7 @@ class PortfolioDialog(QMainWindow):
 
             w = DivWorker(syms_data, period_key)
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # GC-safe thread cleanup
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             w.progress.connect(on_progress, Qt.ConnectionType.QueuedConnection)
             w.done.connect(on_done, Qt.ConnectionType.QueuedConnection)
             w.start()
@@ -17915,7 +17962,7 @@ class PortfolioDialog(QMainWindow):
                     _draw_bar_chart(result, _cur_snap, _fr_snap)
 
                 _cmp_worker[0].done.connect(_on_cmp_done)
-                _cmp_worker[0].finished.connect(_cmp_worker[0].deleteLater)
+                _cmp_worker[0].finished.connect(lambda _t=_cmp_worker[0]: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
                 _cmp_worker[0].start()
                 return   # UI bleibt responsiv; _on_cmp_done → _draw_bar_chart
 
@@ -19591,7 +19638,7 @@ class PortfolioDialog(QMainWindow):
 
             w = AIBalanceWorker(syms_to_calc, period_key, perf_weight, ai_weight)
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # Qt-sicheres Cleanup im richtigen Thread
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
 
             def _upd_overlay(title, sub):
                 try:
@@ -20388,7 +20435,7 @@ class PortfolioDialog(QMainWindow):
 
             w = BarWorker(syms, period_key)
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # GC-safe thread cleanup
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             w.progress.connect(on_progress, Qt.ConnectionType.QueuedConnection)
             w.done.connect(on_done,     Qt.ConnectionType.QueuedConnection)
             w.start()
@@ -20819,7 +20866,7 @@ class PortfolioDialog(QMainWindow):
 
             w = IdxWorker(period_key, _pf_syms if _has_portfolio else [])
             _worker_ref2[0] = w
-            w.finished.connect(w.deleteLater)
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             w.progress.connect(on_progress, Qt.ConnectionType.QueuedConnection)
             w.done.connect(on_done,     Qt.ConnectionType.QueuedConnection)
             w.start()
@@ -21713,7 +21760,7 @@ class PortfolioDialog(QMainWindow):
 
             w = BalanceWorker(syms_to_calc, period_key)
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # GC-safe thread cleanup
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             w.done.connect(on_done, Qt.ConnectionType.QueuedConnection)
             w.start()
 
@@ -22082,7 +22129,7 @@ class PortfolioDialog(QMainWindow):
 
             w = AlphaWorker(all_sv, stock_sv, crypto_sv, commodity_sv, period_key, _calc_weighted_alpha)
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # GC-safe thread cleanup
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             w.done.connect(on_done, Qt.ConnectionType.QueuedConnection)
             w.start()
 
@@ -22266,7 +22313,7 @@ class PortfolioDialog(QMainWindow):
 
             w = SharpeWorker(all_sv, stock_sv, crypto_sv, commodity_sv, period_key, _calc_weighted_sharpe)
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # GC-safe thread cleanup
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             w.done.connect(on_done, Qt.ConnectionType.QueuedConnection)
             w.start()
 
@@ -22638,7 +22685,7 @@ class PortfolioDialog(QMainWindow):
 
             w = BetaWorker(all_sv, stock_sv, crypto_sv, commodity_sv, period_key, _calc_weighted_beta)
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # GC-safe thread cleanup
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             w.done.connect(on_done, Qt.ConnectionType.QueuedConnection)
             w.start()
 
@@ -24238,7 +24285,7 @@ class PortfolioDialog(QMainWindow):
 
             w = SectorPerfWorker(sym_val, self._sector_cache, period_key)
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # GC-safe thread cleanup
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             w.progress.connect(on_sprogress, Qt.ConnectionType.QueuedConnection)
             w.done.connect(on_sdone, Qt.ConnectionType.QueuedConnection)
             w.start()
@@ -25059,7 +25106,7 @@ class PortfolioDialog(QMainWindow):
         self._worker.finished.connect(
             lambda w=_pw: setattr(self, '_worker', None) if self._worker is w else None
         )
-        self._worker.finished.connect(self._worker.deleteLater)
+        self._worker.finished.connect(lambda _t=self._worker: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
         self._worker.start()
 
     def _start_bg_price_fetch(self):
@@ -25079,7 +25126,7 @@ class PortfolioDialog(QMainWindow):
         self._worker.finished.connect(
             lambda w=_bw: setattr(self, '_worker', None) if self._worker is w else None
         )
-        self._worker.finished.connect(self._worker.deleteLater)
+        self._worker.finished.connect(lambda _t=self._worker: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
         self._worker.start()
 
     def _on_prices_ready(self, price_map):
@@ -25431,6 +25478,22 @@ class DataFetchWorker(QThread):
         self.custom_end   = custom_end
         self.demo_cutoff  = demo_cutoff
     
+    @staticmethod
+    def _history_safe(ticker, **kwargs):
+        """Wrapper um ticker.history() der den Windows-Errno-22-Bug abfängt.
+        Auf Windows schlägt os.utime() mit negativem Timestamp fehl wenn yfinance
+        Daten vor 1970 in den Cache schreiben will (z.B. bei period='max').
+        Fallback: explizites start='1970-01-02' statt period='max'.
+        """
+        try:
+            return ticker.history(**kwargs)
+        except OSError as e:
+            if getattr(e, 'errno', None) == 22 and kwargs.get('period') in ('max', '5y'):
+                kw = {k: v for k, v in kwargs.items() if k != 'period'}
+                kw['start'] = '1970-01-02' if kwargs.get('period') == 'max' else '2019-01-01'
+                return ticker.history(**kw)
+            raise
+
     def run(self):
         try:
             # Rohstoff-Auflösung: XAU/XAG → Spot-Feed, Fallback Futures
@@ -25450,7 +25513,8 @@ class DataFetchWorker(QThread):
             _end = self.demo_cutoff or (self.custom_end.strftime('%Y-%m-%d') if self.custom_end else None)
             _start = self.custom_start.strftime('%Y-%m-%d') if self.custom_start else None
             if _start and _end:
-                data = ticker.history(
+                data = self._history_safe(
+                    ticker,
                     start=_start,
                     end=_end,
                     interval=self.interval,
@@ -25463,10 +25527,11 @@ class DataFetchWorker(QThread):
                 _days = _period_days.get(self.period, 370)
                 _cutoff = _ddt.strptime(self.demo_cutoff, "%Y-%m-%d")
                 _s = (_cutoff - _dtd(days=_days)).strftime("%Y-%m-%d")
-                data = ticker.history(start=_s, end=self.demo_cutoff,
-                                      interval=self.interval, auto_adjust=True)
+                data = self._history_safe(ticker, start=_s, end=self.demo_cutoff,
+                                          interval=self.interval, auto_adjust=True)
             else:
-                data = ticker.history(
+                data = self._history_safe(
+                    ticker,
                     period=self.period,
                     interval=self.interval,
                     auto_adjust=True
@@ -25482,7 +25547,8 @@ class DataFetchWorker(QThread):
                     days_back = _period_days.get(self.period, 370)
                     _start = _dt.today() - _td(days=days_back)
                     _end   = _dt.today() + _td(days=1)
-                    data_fallback = ticker.history(
+                    data_fallback = self._history_safe(
+                        ticker,
                         start=_start.strftime('%Y-%m-%d'),
                         end=_end.strftime('%Y-%m-%d'),
                         interval=self.interval,
@@ -27138,28 +27204,44 @@ class StockMonitorApp(QMainWindow):
         alpha_checked  = self.global_alpha.isChecked()
         target_checked = self.global_target.isChecked()
 
+        def _apply_to_chart(chart):
+            chart.ma20_checkbox.setChecked(ma20_checked)
+            chart.ma50_checkbox.setChecked(ma50_checked)
+            chart.ma200_checkbox.setChecked(ma200_checked)
+            chart.trend_checkbox.setChecked(trend_checked)
+            chart.beta_checkbox.setChecked(beta_checked)
+            chart.alpha_checkbox.setChecked(alpha_checked)
+            if hasattr(chart, 'sharpe_checkbox'):
+                chart.sharpe_checkbox.setChecked(False)
+            if hasattr(chart, 'rsi_checkbox'):
+                chart.rsi_checkbox.setChecked(False)
+            if hasattr(chart, 'bb_checkbox'):
+                chart.bb_checkbox.setChecked(False)
+            if hasattr(chart, 'dd_checkbox'):
+                chart.dd_checkbox.setChecked(False)
+            chart.target_checkbox.setChecked(target_checked)
+            # Fix: Wenn Target aktiviert wird aber noch keine Daten gecacht sind,
+            # muss ein erneuter Datenabruf ausgelöst werden damit der Target-Kurs
+            # von Finment geladen wird (war bisher nur nach manuellem Aktivieren möglich)
+            if target_checked and chart._last_target_price is None:
+                chart.update_chart()
+
         def _do():
             for chart in self.charts:
-                chart.ma20_checkbox.setChecked(ma20_checked)
-                chart.ma50_checkbox.setChecked(ma50_checked)
-                chart.ma200_checkbox.setChecked(ma200_checked)
-                chart.trend_checkbox.setChecked(trend_checked)
-                chart.beta_checkbox.setChecked(beta_checked)
-                chart.alpha_checkbox.setChecked(alpha_checked)
-                if hasattr(chart, 'sharpe_checkbox'):
-                    chart.sharpe_checkbox.setChecked(False)
-                if hasattr(chart, 'rsi_checkbox'):
-                    chart.rsi_checkbox.setChecked(False)
-                if hasattr(chart, 'bb_checkbox'):
-                    chart.bb_checkbox.setChecked(False)
-                if hasattr(chart, 'dd_checkbox'):
-                    chart.dd_checkbox.setChecked(False)
-                chart.target_checkbox.setChecked(target_checked)
-                # Fix: Wenn Target aktiviert wird aber noch keine Daten gecacht sind,
-                # muss ein erneuter Datenabruf ausgelöst werden damit der Target-Kurs
-                # von Finment geladen wird (war bisher nur nach manuellem Aktivieren möglich)
-                if target_checked and chart._last_target_price is None:
-                    chart.update_chart()
+                _apply_to_chart(chart)
+                # zoom_ma*-State auf allen Grid-Charts mitsetzen, damit beim
+                # nächsten Öffnen des Zooms die globalen Einstellungen gelten
+                chart.zoom_ma20   = ma20_checked
+                chart.zoom_ma50   = ma50_checked
+                chart.zoom_ma200  = ma200_checked
+                chart.zoom_trend  = trend_checked
+                chart.zoom_beta   = beta_checked
+                chart.zoom_alpha  = alpha_checked
+                chart.zoom_target = target_checked
+            # Offenen Zoom-Chart ebenfalls aktualisieren
+            zoom = getattr(self, 'fullscreen_chart', None)
+            if zoom is not None:
+                _apply_to_chart(zoom)
 
         self.run_with_dollar(_do)
 
@@ -27201,15 +27283,28 @@ class StockMonitorApp(QMainWindow):
         fullscreen_chart.custom_start = chart_widget.custom_start
         fullscreen_chart.custom_end   = chart_widget.custom_end
         fullscreen_chart.set_timeframe(chart_widget.timeframe_combo.currentText())
-        # Übernehme MA/Trend/Beta/Ziel-Zustände vom Original
-        fullscreen_chart.ma20_checkbox.setChecked(chart_widget.ma20_checkbox.isChecked())
-        fullscreen_chart.ma50_checkbox.setChecked(chart_widget.ma50_checkbox.isChecked())
-        fullscreen_chart.ma200_checkbox.setChecked(chart_widget.ma200_checkbox.isChecked())
-        fullscreen_chart.trend_checkbox.setChecked(chart_widget.trend_checkbox.isChecked())
-        fullscreen_chart.beta_checkbox.setChecked(chart_widget.beta_checkbox.isChecked())
-        fullscreen_chart.alpha_checkbox.setChecked(chart_widget.alpha_checkbox.isChecked())
-        fullscreen_chart.sharpe_checkbox.setChecked(chart_widget.sharpe_checkbox.isChecked())
-        fullscreen_chart.target_checkbox.setChecked(chart_widget.target_checkbox.isChecked())
+        # Übernehme MA/Trend/Beta/Ziel-Zustände – bevorzuge zoom_*-Attribute
+        # (vom letzten Zoom-Aufenthalt), sonst Fallback auf Übersicht-Checkbox.
+        # None bedeutet "noch nie im Zoom gesetzt" → Übersicht-Wert als Initialwert.
+        def _zoom_or_overview(attr, cb):
+            v = getattr(chart_widget, attr, None)
+            return v if v is not None else cb.isChecked()
+        fullscreen_chart.ma20_checkbox.setChecked(
+            _zoom_or_overview('zoom_ma20',   chart_widget.ma20_checkbox))
+        fullscreen_chart.ma50_checkbox.setChecked(
+            _zoom_or_overview('zoom_ma50',   chart_widget.ma50_checkbox))
+        fullscreen_chart.ma200_checkbox.setChecked(
+            _zoom_or_overview('zoom_ma200',  chart_widget.ma200_checkbox))
+        fullscreen_chart.trend_checkbox.setChecked(
+            _zoom_or_overview('zoom_trend',  chart_widget.trend_checkbox))
+        fullscreen_chart.beta_checkbox.setChecked(
+            _zoom_or_overview('zoom_beta',   chart_widget.beta_checkbox))
+        fullscreen_chart.alpha_checkbox.setChecked(
+            _zoom_or_overview('zoom_alpha',  chart_widget.alpha_checkbox))
+        fullscreen_chart.sharpe_checkbox.setChecked(
+            _zoom_or_overview('zoom_sharpe', chart_widget.sharpe_checkbox))
+        fullscreen_chart.target_checkbox.setChecked(
+            _zoom_or_overview('zoom_target', chart_widget.target_checkbox))
         if hasattr(chart_widget, 'w52_checkbox') and hasattr(fullscreen_chart, 'w52_checkbox'):
             fullscreen_chart.w52_checkbox.setChecked(chart_widget.w52_checkbox.isChecked())
         if hasattr(chart_widget, 'bb_checkbox') and hasattr(fullscreen_chart, 'bb_checkbox'):
@@ -27248,7 +27343,8 @@ class StockMonitorApp(QMainWindow):
         # (candle, rsi, bb, dd, w52 existieren nur im zoom_mode, werden aber
         #  als versteckter State auf dem Grid-Widget gespeichert)
         def _sync_zoom_state_back():
-            """Überträgt alle Zoom-Only-Einstellungen zurück ins Grid-Chart-Widget."""
+            """Überträgt alle Zoom-Einstellungen zurück ins Grid-Chart-Widget."""
+            # Zoom-Only-Checkboxen (existieren nur im zoom_mode)
             _zoom_attrs = [
                 ('candle_checkbox', 'zoom_candle'),
                 ('rsi_checkbox',    'zoom_rsi'),
@@ -27259,6 +27355,23 @@ class StockMonitorApp(QMainWindow):
             for zoom_attr, store_attr in _zoom_attrs:
                 if hasattr(fullscreen_chart, zoom_attr):
                     val = getattr(fullscreen_chart, zoom_attr).isChecked()
+                    setattr(chart_widget, store_attr, val)
+            # Gemeinsame Checkboxen (MA, Trend etc.) als zoom_*-State merken,
+            # damit beim nächsten Öffnen des Zooms die eigenen Einstellungen
+            # erhalten bleiben und nicht durch die Übersicht überschrieben werden.
+            _shared_attrs = [
+                ('ma20_checkbox',   'zoom_ma20'),
+                ('ma50_checkbox',   'zoom_ma50'),
+                ('ma200_checkbox',  'zoom_ma200'),
+                ('trend_checkbox',  'zoom_trend'),
+                ('beta_checkbox',   'zoom_beta'),
+                ('alpha_checkbox',  'zoom_alpha'),
+                ('sharpe_checkbox', 'zoom_sharpe'),
+                ('target_checkbox', 'zoom_target'),
+            ]
+            for cb_attr, store_attr in _shared_attrs:
+                if hasattr(fullscreen_chart, cb_attr):
+                    val = getattr(fullscreen_chart, cb_attr).isChecked()
                     setattr(chart_widget, store_attr, val)
             # Auch Timeframe zurückschreiben falls im Zoom geändert
             try:
@@ -27280,13 +27393,15 @@ class StockMonitorApp(QMainWindow):
         
         self.main_layout.addWidget(fullscreen_container)
         self.fullscreen_widget = fullscreen_container
-    
+        self.fullscreen_chart  = fullscreen_chart  # Referenz für apply_global_ma
+
     def exit_fullscreen(self):
         """Vollbild beenden"""
         if self.fullscreen_widget:
             self.main_layout.removeWidget(self.fullscreen_widget)
             self.fullscreen_widget.deleteLater()
             self.fullscreen_widget = None
+            self.fullscreen_chart  = None
             self.grid_widget.show()
         
     def setup_timer(self):
@@ -27442,6 +27557,13 @@ class StockMonitorApp(QMainWindow):
                 
                 # Lösche alte Charts komplett
                 for chart in self.charts:
+                    if hasattr(chart, '_fetch_worker') and chart._fetch_worker is not None:
+                        try:
+                            chart._fetch_worker.data_ready.disconnect()
+                            chart._fetch_worker.error.disconnect()
+                        except Exception:
+                            pass
+                        chart._fetch_worker = None
                     self.grid_layout.removeWidget(chart)
                     chart.deleteLater()
                 self.charts.clear()
@@ -28356,7 +28478,7 @@ class StockMonitorApp(QMainWindow):
 
         worker = _W(self)
         worker.done.connect(fn_result, Qt.ConnectionType.QueuedConnection)
-        worker.finished.connect(worker.deleteLater)
+        worker.finished.connect(lambda _t=worker: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
         if not hasattr(self, '_update_workers'):
             self._update_workers = []
         self._update_workers.append(worker)
@@ -31201,7 +31323,7 @@ class StockMonitorApp(QMainWindow):
 
             w = WatchlistWorker(syms, period_key, dict(getattr(self, '_sector_cache', {})))
             _worker_ref[0] = w
-            w.finished.connect(w.deleteLater)  # GC-safe thread cleanup
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             w.progress.connect(on_progress, Qt.ConnectionType.QueuedConnection)
             w.done.connect(on_done,         Qt.ConnectionType.QueuedConnection)
             w.start()

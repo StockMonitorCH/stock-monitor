@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.4.3
+Version:        5.4.4
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
@@ -186,6 +186,10 @@ update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %changelog
+* Wed Jul 09 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.4.4-1
+- Zoom-Chart: eigene Indikator-Einstellungen (MA, Trend, Beta) werden sitzungsübergreifend gespeichert
+- Global-Einstellungen gelten jetzt auch für den offenen Zoom-Chart
+- Windows-Fix: Laden mit maximalem Zeitraum (z.B. McDonald's, Coca-Cola) schlägt nicht mehr mit Errno 22 fehl
 * Mon Jun 22 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.4.3-1
 - Fix: Dark Mode – Firmeninfo und AI-Einschätzung jetzt lesbar (harter Hintergrund entfernt)
 - Fix: RI-Faktor Tooltip: Rechtsklick → Linksklick korrigiert
