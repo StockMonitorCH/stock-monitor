@@ -122,7 +122,8 @@ def portfolio_exists(name: str) -> bool:
 # ── Haupt-API ─────────────────────────────────────────────────────────────────
 
 def save_portfolio(name: str, portfolio_data: dict, password: str,
-                   price_cache: dict = None, sector_cache: dict = None) -> str:
+                   price_cache: dict = None, sector_cache: dict = None,
+                   notes: list = None) -> str:
     """Speichert portfolio_data als verschlüsselte .smpf-Datei. Gibt Pfad zurück."""
     if not CRYPTO_AVAILABLE:
         raise CryptoNotAvailableError("cryptography nicht installiert.")
@@ -133,6 +134,7 @@ def save_portfolio(name: str, portfolio_data: dict, password: str,
         "positions":    portfolio_data,
         "price_cache":  price_cache  or {},
         "sector_cache": sector_cache or {},
+        "notes":        notes        or [],
     }
     blob = encrypt_data(payload, password)
     path = portfolio_path(name)
@@ -203,4 +205,5 @@ def change_password(name: str, old_password: str, new_password: str) -> None:
     data = load_portfolio(name, old_password)
     save_portfolio(name, data["positions"], new_password,
                    price_cache=data.get("price_cache", {}),
-                   sector_cache=data.get("sector_cache", {}))
+                   sector_cache=data.get("sector_cache", {}),
+                   notes=data.get("notes", []))

@@ -81,13 +81,16 @@ cp /pfad/zu/icon.png sources/stock-monitor-256.png
 ```bash
 flatpak-builder \
   --force-clean \
+  --disable-cache \
   --repo=repo \
   build-dir \
-  ch.stock-monitor.StockMonitor.yml
+  io.github.StockMonitorCH.stock-monitor.yml
 ```
 
-Erster Build: **15–30 Minuten** (lädt alle Wheels, kompiliert).
-Folge-Builds: **2–5 Minuten** (gecacht).
+Build-Dauer: **5–15 Minuten**.
+
+> **Hinweis:** `--disable-cache` verhindert, dass `.flatpak-builder/build` auf ~100 GB anwächst.
+> Ohne dieses Flag würde der Ordner nach jedem Build riesig und das Backup dauert Stunden.
 
 ---
 

@@ -6,9 +6,24 @@ Unabhängig von Portfolio-Daten (.smpf).
 """
 
 import os
+import sys
 import json
 
-CONFIG_PATH = os.path.expanduser("~/.stock_monitor_config.json")
+def _get_data_home() -> str:
+    if sys.platform == "win32":
+        try:
+            base = (os.path.dirname(os.path.abspath(sys.executable))
+                    if getattr(sys, 'frozen', False)
+                    else os.path.dirname(os.path.abspath(__file__)))
+            return os.path.join(base, "_internal")
+        except Exception:
+            pass
+    # Im Flatpak: XDG_DATA_HOME zeigt auf die erlaubte App-Sandbox
+    if os.path.exists('/.flatpak-info'):
+        return os.environ.get("XDG_DATA_HOME", os.path.expanduser("~"))
+    return os.path.expanduser("~")
+
+CONFIG_PATH = os.path.join(_get_data_home(), ".stock_monitor_config.json")
 
 _DEFAULTS = {
     "language":         "DE",    # "DE" | "EN"
@@ -115,6 +130,8 @@ def get_global_chart_settings() -> dict:
         "mc_horizon":        cfg.get("mc_horizon",        5),
         "mc_sims":           cfg.get("mc_sims",           1000),
         "portfolio_currency": cfg.get("portfolio_currency", "USD"),
+        "currency_from":      cfg.get("currency_from",      "USD"),
+        "currency_to":        cfg.get("currency_to",        "CHF"),
     }
 
 

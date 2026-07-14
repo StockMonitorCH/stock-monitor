@@ -45,7 +45,7 @@
   },
   "url": "https://www.stock-monitor.ch/",
   "downloadUrl": "https://github.com/StockMonitorCH/stock-monitor/releases",
-  "softwareVersion": "5.4.2",
+  "softwareVersion": "5.4.4",
   "screenshot": "https://www.stock-monitor.ch/screenshots/dashboard_DE.png"
 }
 </script>
@@ -251,6 +251,22 @@ body {
   gap: 8px;
 }
 .btn-secondary:hover { border-color: var(--green); color: var(--green); background: var(--card2); }
+.btn-soon {
+  padding: 13px 28px;
+  background: rgba(148,163,184,0.14);
+  color: var(--text2);
+  border: 1.5px dashed var(--border2);
+  border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: default;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.9;
+}
 
 /* STATS ROW */
 .stats-row {
@@ -836,7 +852,7 @@ footer a:hover { color: var(--green); }
 <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
 <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
 
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.2/stock_monitor.zip"><span style="font-size:1.4em; line-height:1;">🪟</span> Download for Windows</a>
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.4/stock_monitor.zip"><span style="font-size:1.4em; line-height:1;">🪟</span> Download for Windows</a>
 
 <div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">Extract ZIP → run .exe · No setup<br/>First launch ~20 sec.</div>
 </div>
@@ -845,6 +861,15 @@ footer a:hover { color: var(--green); }
 <a class="btn-primary" href="#download"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
 
 <div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.rpm · .flatpak<br>(Ubuntu, Debian, Fedora, Arch & more)</div>
+</div>
+<div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+
+<span style="position:relative; display:inline-flex;">
+<span class="btn-soon"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12.3 8.2c-2.9 0-5.3 2.5-5.3 6.4 0 3.4 2.1 6.6 4 6.6.9 0 1.3-.6 2.1-.6.8 0 1.2.6 2.2.6 1.6 0 3.9-3.1 3.9-6.9 0-3.6-2.5-6.1-5.1-6.1-.6 0-1.2.2-1.8 0zM12.7 7.3c-.4 0-.7-.1-.9-.2.1-1.1.6-2.1 1.3-2.8.7-.7 1.7-1.1 2.6-1.1.1 1-.2 2.1-.9 2.9-.6.7-1.4 1.2-2.1 1.2z"/></svg> Download for macOS</span>
+<span style="position:absolute; top:-9px; right:-8px; background:var(--gold); color:#000; font-size:0.62rem; font-weight:800; letter-spacing:0.02em; padding:2px 7px; border-radius:20px; line-height:1.4; box-shadow:0 2px 6px rgba(0,0,0,0.3);">SOON</span>
+</span>
+
+<div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">In development<br>Release planned for late August</div>
 </div>
 </div>
 
@@ -926,7 +951,7 @@ footer a:hover { color: var(--green); }
 </div>
 <div class="trust-item">
 <span class="ti">🔗</span>
-<div class="trust-item-title">Correlation Matrix <span style="font-size:0.72rem; font-weight:700; color:var(--green); background:var(--green-dim); border:1px solid rgba(34,197,94,0.3); border-radius:4px; padding:1px 6px; letter-spacing:0.05em; text-transform:uppercase; vertical-align:middle;">New</span></div>
+<div class="trust-item-title">Correlation Matrix</div>
 <div class="trust-item-desc">Pearson correlation of all positions — instantly see where real diversification lies and where concentration risks lurk.</div>
 </div>
 </div>
@@ -944,7 +969,7 @@ footer a:hover { color: var(--green); }
 <div class="placeholder" style="display:none; height:320px; align-items:center; justify-content:center; color:var(--text3); font-family:'DM Mono',monospace; font-size:0.85rem;">[ screenshot: 16-chart dashboard ]</div>
 </div>
 
-<div class="screenshot-caption-below">Stock Monitor v5.4.2 · 16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Correlation Matrix · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
+<div class="screenshot-caption-below">Stock Monitor v5.4.4 · 16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Correlation Matrix · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
 </section>
 <!-- FEATURES ALS HIGHLIGHT-SECTIONS -->
 <div id="features" style="padding-top:1px; margin-top:-1px;"></div>
@@ -1153,7 +1178,6 @@ footer a:hover { color: var(--green); }
 <img alt="Correlation Matrix" class="clickable-img" data-src-de="screenshots/correlation_DE.png" data-src-en="screenshots/correlation_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/correlation_EN.png"/>
 </div>
 <div class="highlight-text">
-<span class="tag tag-green">New in v5.4.2</span>
 <h3>🔗 Correlation Matrix</h3>
 <p>See at a glance how strongly your positions are correlated with each other — and where real diversification lies. The correlation matrix calculates the Pearson correlation of daily returns of all portfolio positions. Freely selectable time period.</p>
 <ul class="feature-list">
@@ -1326,12 +1350,12 @@ footer a:hover { color: var(--green); }
 <div class="coming-soon-card">
 <span class="cs-icon">⬇️</span>
 
-<h2>Download — v5.4.2</h2>
+<h2>Download — v5.4.4</h2>
 
 <p>Free, open source, no installation required.</p>
 <!-- WINDOWS -->
 <div style="width:100%; margin-bottom:28px;">
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.2/stock_monitor.zip" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.4/stock_monitor.zip" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
 <span style="font-size:1.5em; line-height:1;">🪟</span> <span>Download for Windows</span> <span style="font-size:1em; opacity:0.7;">→</span>
 </a>
 
@@ -1344,7 +1368,7 @@ footer a:hover { color: var(--green); }
 
 <div style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:left; margin-bottom:10px; padding:0 4px;">🐧 Linux</div>
 <!-- RPM -->
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.2/stock-monitor-5.4.2.x86_64.rpm" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.4/stock-monitor-5.4.4.x86_64.rpm" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
 <span style="font-size:1.3em; line-height:1;">🐧</span>
 <span>Download .rpm (Fedora, openSUSE, Nobara &amp; more)</span>
 <span style="font-size:1em; opacity:0.7;">→</span>
@@ -1352,7 +1376,7 @@ footer a:hover { color: var(--green); }
 <div style="font-size:0.88rem; color:var(--text3); line-height:1.5; text-align:center; padding:0 4px; margin-bottom:16px;">Fedora, openSUSE, Nobara, RHEL-based distributions</div>
 
 <!-- FLATPAK -->
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.2/StockMonitor-5.4.2.flatpak" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.4/StockMonitor-5.4.4.flatpak" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
 <span style="font-size:1.3em; line-height:1;">📦</span>
 <span>Download .flatpak (all Linux distributions)</span>
 <span style="font-size:1em; opacity:0.7;">→</span>
@@ -1389,18 +1413,18 @@ footer a:hover { color: var(--green); }
 
 <div style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:center; margin-bottom:10px;">📄 Documentation</div>
 <div id="doc-grid-de" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-<a class="btn-secondary" href="docs/StockMonitor_Features_v5.4.2_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Features_v5.4.4_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📋 Feature-Übersicht
           </a>
-<a class="btn-secondary" href="docs/StockMonitor_Anleitung_v5.4.2_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Anleitung_v5.4.4_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📖 Benutzeranleitung
           </a>
 </div>
 <div id="doc-grid-en" style="display:none; grid-template-columns:1fr 1fr; gap:8px;">
-<a class="btn-secondary" href="docs/StockMonitor_Features_v5.4.2_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Features_v5.4.4_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📋 Feature List
           </a>
-<a class="btn-secondary" href="docs/StockMonitor_Manual_v5.4.2_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Manual_v5.4.4_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📖 User Manual
           </a>
 </div>
