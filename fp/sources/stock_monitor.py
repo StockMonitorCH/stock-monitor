@@ -29045,6 +29045,7 @@ class StockMonitorApp(QMainWindow):
         class _Sigs(QObject):
             progress    = pyqtSignal(int, str)   # Prozent, Statustext
             start_anim  = pyqtSignal()           # Installation gestartet → Animation im GUI-Thread
+            finished    = pyqtSignal(bool, str)  # ok, stderr
 
         sigs = _Sigs(self)
 
@@ -29082,13 +29083,12 @@ class StockMonitorApp(QMainWindow):
             if _state['done']:
                 return
             title_lbl.setText(TR("lbl_flatpak_installing"))
-            # Qt-eigener pulsender Balken – zuverlässiger als Timer-Simulation
             prog.setRange(0, 0)
             status_lbl.setText("")
 
         sigs.start_anim.connect(_start_install_animation, Qt.ConnectionType.QueuedConnection)
 
-        def _on_success():
+        def _on_finished(ok, err):
             _state['done'] = True
             prog.setRange(0, 100)
             prog.setValue(100)
@@ -29096,29 +29096,22 @@ class StockMonitorApp(QMainWindow):
             from PyQt6.QtWidgets import QMessageBox
             mb = QMessageBox(self)
             mb.setWindowTitle(TR("title_flatpak_install"))
-            mb.setText(TR("lbl_flatpak_install_done", version=version))
-            mb.setIcon(QMessageBox.Icon.Information)
+            if ok:
+                mb.setText(TR("lbl_flatpak_install_done", version=version))
+                mb.setIcon(QMessageBox.Icon.Information)
+            else:
+                text = TR("lbl_flatpak_install_error")
+                if err:
+                    text += f"\n\n{err}"
+                mb.setText(text)
+                mb.setIcon(QMessageBox.Icon.Warning)
             mb.exec()
 
-        def _on_error(err):
-            _state['done'] = True
-            prog.setRange(0, 100)
-            prog_dlg.close()
-            from PyQt6.QtWidgets import QMessageBox
-            mb = QMessageBox(self)
-            mb.setWindowTitle(TR("title_flatpak_install"))
-            text = TR("lbl_flatpak_install_error")
-            if err:
-                text += f"\n\n{err}"
-            mb.setText(text)
-            mb.setIcon(QMessageBox.Icon.Warning)
-            mb.exec()
+        sigs.finished.connect(_on_finished, Qt.ConnectionType.QueuedConnection)
 
         def _run():
             try:
                 import time as _time
-                # XDG_CACHE_HOME zeigt auf den echten Dateisystempfad (nicht Sandbox-Overlay)
-                # ~/.cache/io.github.StockMonitorCH.stock-monitor/ ist vom Host aus erreichbar
                 xdg_cache = os.environ.get(
                     "XDG_CACHE_HOME",
                     os.path.join(os.path.expanduser("~"), ".cache",
@@ -29168,8 +29161,6 @@ class StockMonitorApp(QMainWindow):
                     pass   # Fallback: curl via Host
 
                 if not downloaded:
-                    # SSL-Fallback innerhalb Flatpak-Sandbox: curl auf dem Host
-                    # Zuerst Dateigrösse via HEAD ermitteln für echten Fortschritt
                     curl_total = 0
                     try:
                         head = subprocess.run(
@@ -29203,11 +29194,11 @@ class StockMonitorApp(QMainWindow):
                             sigs.progress.emit(0, f"{done/1_048_576:.1f} MB …")
                         _time.sleep(0.3)
                     if proc.returncode != 0:
-                        QTimer.singleShot(0, lambda: _on_error("curl error"))
+                        sigs.finished.emit(False, "curl error")
                         return
                     sigs.progress.emit(85, "")
 
-                # ── Phase 2: Install (85–100 %, animiert) ─────────────────
+                # ── Phase 2: Install (indeterminate, via Signal) ───────────
                 sigs.progress.emit(85, "")
                 sigs.start_anim.emit()
 
@@ -29217,20 +29208,20 @@ class StockMonitorApp(QMainWindow):
                     stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True
                 )
                 try:
-                    _, stderr = proc.communicate(timeout=300)
+                    _, stderr = proc.communicate(timeout=600)
                     if proc.returncode == 0:
-                        QTimer.singleShot(0, _on_success)
+                        sigs.finished.emit(True, "")
                     else:
-                        QTimer.singleShot(0, lambda e=(stderr or "").strip(): _on_error(e))
+                        sigs.finished.emit(False, (stderr or "").strip())
                 except subprocess.TimeoutExpired:
                     proc.kill()
                     try:
                         proc.communicate(timeout=5)
                     except Exception:
                         pass
-                    QTimer.singleShot(0, lambda: _on_error("Timeout: Installation hat zu lange gedauert."))
+                    sigs.finished.emit(False, "Timeout: Installation hat zu lange gedauert.")
             except Exception as e:
-                QTimer.singleShot(0, lambda e=str(e): _on_error(e))
+                sigs.finished.emit(False, str(e))
 
         threading.Thread(target=_run, daemon=True).start()
 
