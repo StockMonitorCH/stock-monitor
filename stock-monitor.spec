@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.4.4
+Version:        5.5.0
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
@@ -186,6 +186,13 @@ update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %changelog
+* Wed Jul 29 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.5.0-1
+- Feature: Sortino-Ratio im Zoom-Chart (neue Checkbox «So Sortino»)
+- Feature: Portfolio Sortino-Ratio Dialog (aufrufbar aus dem Sharpe-Dialog)
+- Fix: Watchlist – letzter Schlusskurs bei geschlossener Börse statt «keine Daten»
+- Fix: Favoriten – Klick im Chart fügt Aktie direkt hinzu wenn noch nicht in Favoriten
+- Update: yfinance 1.5.2
+- Hilfe: Sortino-Vertiefung, Favoriten- und Watchlist-Abschnitt erweitert
 * Thu Jul 09 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.4.4-1
 - Zoom-Chart: eigene Indikator-Einstellungen (MA, Trend, Beta) werden sitzungsübergreifend gespeichert
 - Global-Einstellungen gelten jetzt auch für den offenen Zoom-Chart

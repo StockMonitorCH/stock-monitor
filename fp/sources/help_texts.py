@@ -279,8 +279,22 @@ _HTML_DE = """
             <tr><td>&ge; 0,0</td><td style="color:#7f8c8d">&#9632; Grau</td><td>Schwach – kaum Mehrwert ggü. risikolosem Zins</td></tr>
             <tr><td>&lt; 0,0</td><td style="color:#e74c3c">&#9632; Rot</td><td>Negativ – Rendite unter risikolosem Zins</td></tr>
         </table>
-        <div class="tip">&#128270; <b>Vertiefung:</b> Formel, Grenzen der Sharpe-Ratio, Sortino-Ratio als Alternative &rarr;
+        <div class="tip">&#128270; <b>Vertiefung:</b> Formel, Grenzen der Sharpe-Ratio &rarr;
         <a href="#sharpe-vertiefung">Sharpe-Ratio – Analyse-Vertiefung</a></div>
+
+        <a name="sortino-zoom"></a><h3>So Sortino-Ratio (Zoom-Modus)</h3>
+        <p>Im <b>gezoomten Chart</b> erscheint zusätzlich die Checkbox <b>So Sortino</b>. Sie misst das Rendite-Risiko-Verhältnis wie die Sharpe-Ratio, bestraft aber <b>nur negative</b> Schwankungen – positive Ausreisser zählen nicht als Risiko.</p>
+        <p><b>Formel:</b> Sortino = (Rendite &minus; risikofreier Zins) &divide; Abwärtsvolatilität &times; &#8730;252<br>
+        Risikofreier Zins: 5 % p.a. (0,05/252 pro Tag)</p>
+        <table>
+            <tr><th>Wert</th><th>Farbe</th><th>Einschätzung</th></tr>
+            <tr><td>&ge; 2,0</td><td style="color:#27ae60">&#9632; Dunkelgrün</td><td>Ausgezeichnet</td></tr>
+            <tr><td>&ge; 1,0</td><td style="color:#2ecc71">&#9632; Grün</td><td>Gut</td></tr>
+            <tr><td>&ge; 0,5</td><td style="color:#f39c12">&#9632; Gelb</td><td>Akzeptabel</td></tr>
+            <tr><td>&ge; 0,0</td><td style="color:#e67e22">&#9632; Orange</td><td>Schwach</td></tr>
+            <tr><td>&lt; 0,0</td><td style="color:#e74c3c">&#9632; Rot</td><td>Negativ – unter risikolosem Zins</td></tr>
+        </table>
+        <div class="tip">&#128270; <b>Vertiefung:</b> &rarr; <a href="#sortino-vertiefung">Sortino-Ratio – Analyse-Vertiefung</a></div>
 
         <h3>&#127869; Candlestick-Darstellung (Zoom-Modus)</h3>
         <p>Im <b>gezoomten Chart</b> erscheint die Checkbox <b>&#127869; Candles</b>.</p>
@@ -410,8 +424,13 @@ _HTML_DE = """
         <div class="tip"><b>Tipp:</b> Wenn Charts plötzlich keine Daten mehr laden, lohnt sich zuerst ein Blick auf das yfinance-Update – oft liegt es an einer veralteten Version.</div>
 
         <a name="favoriten"><h2>&#11088; Favoriten</h2></a>
-        <p><b>Hinzufügen:</b> Favoriten hinzufügen im Header &bull;
-        <b>Nutzen:</b> Stern-Button direkt im Chart für schnellen Symbolwechsel.</p>
+        <p><b>Hinzufügen über Header:</b> &#11088; Favoriten-Button in der Toolbar &rarr; Dialog zum Verwalten der Favoritenliste.</p>
+        <p><b>Direkt im Chart (&#9733; Dropdown):</b> Das Stern-Dropdown im Chart-Fenster verhält sich smart:</p>
+        <ul>
+            <li><b>Aktie noch nicht in Favoriten:</b> Klick fügt sie sofort hinzu – kein Dialog öffnet sich</li>
+            <li><b>Aktie bereits in Favoriten:</b> Klick öffnet das Dropdown zur Auswahl einer anderen Favoriten-Aktie</li>
+        </ul>
+        <div class="tip"><b>Tipp:</b> So kann man eine Aktie mit einem einzigen Klick zu den Favoriten hinzufügen, ohne den aktuellen Chart zu verlassen.</div>
 
         <a name="watchlist"><h2>&#128203; Watchlist</h2></a>
         <p>Die Watchlist ermöglicht das schnelle Vergleichen der Performance von bis zu <b>50 Symbolen</b> in einem einzigen Balkendiagramm.</p>
@@ -427,6 +446,7 @@ _HTML_DE = """
         <h3>Export</h3>
         <p><b>&#128228; Exportieren</b>: Ergebnisse als PDF, Excel (.xlsx) oder OpenDocument (.ods) speichern.</p>
         <div class="tip"><b>Tipp:</b> Die Watchlist wird automatisch gespeichert und beim nächsten Start wiederhergestellt.</div>
+        <div class="tip"><b>Tipp:</b> Wenn die Börse geschlossen ist, verwendet die Watchlist automatisch den letzten verfügbaren Schlusskurs – so erscheinen alle Symbole immer mit einem Wert statt «keine Daten».</div>
 
         <a name="währungsrechner"><h2>&#128178; Währungsrechner</h2></a>
         <ul>
@@ -583,11 +603,24 @@ _HTML_DE = """
 
         <a name="sharpe-ratio"><h2>&#963; Sharpe-Ratio</h2></a>
         <ul>
-            <li>Rendite pro Risikoeinheit (Standardabweichung), annualisiert</li>
+            <li>Rendite pro Risikoeinheit (Gesamtvolatilität), annualisiert</li>
             <li>Faustregel: &gt; 1.0 = gut &bull; &gt; 2.0 = sehr gut &bull; &lt; 0 = schlechter als risikofreie Anlage</li>
+            <li>Zeitraum wählbar &bull; Aufteilung: Gesamt / Aktien &amp; ETFs / Krypto / Rohstoffe</li>
+            <li>Button <b>So Sortino-Ratio</b> im Dialog öffnet direkt die Sortino-Ansicht</li>
         </ul>
-        <div class="tip">&#128270; <b>Vertiefung:</b> Formel, Grenzen der Sharpe-Ratio, Sortino-Ratio als Alternative &rarr;
-        <a href="#sharpe-vertiefung">Sharpe-Ratio – Analyse-Vertiefung</a></div>
+        <div class="tip">&#128270; <b>Vertiefung:</b> &rarr; <a href="#sharpe-vertiefung">Sharpe-Ratio – Analyse-Vertiefung</a></div>
+        <div class="warning">Alle Kennzahlen basieren auf historischen Daten. Keine Anlageberatung!</div>
+
+        <a name="sortino-ratio"><h2>So Sortino-Ratio</h2></a>
+        <ul>
+            <li>Rendite pro Einheit des <b>Abwärtsrisikos</b> (nur negative Renditen), annualisiert</li>
+            <li>Unterschied zur Sharpe-Ratio: Positive Schwankungen werden <b>nicht</b> als Risiko gewertet</li>
+            <li>Faustregel: &gt; 1.0 = gut &bull; &gt; 2.0 = sehr gut &bull; &lt; 0 = schlechter als risikofreie Anlage</li>
+            <li>Zeitraum wählbar &bull; Aufteilung: Gesamt / Aktien &amp; ETFs / Krypto / Rohstoffe</li>
+            <li>Aufruf: Portfolio-Menü &rarr; Sharpe-Ratio-Dialog &rarr; Button <b>So Sortino-Ratio</b></li>
+            <li>Button <b>S Sharpe-Ratio</b> im Sortino-Dialog wechselt zurück zur Sharpe-Ansicht</li>
+        </ul>
+        <div class="tip">&#128270; <b>Vertiefung:</b> &rarr; <a href="#sortino-vertiefung">Sortino-Ratio – Analyse-Vertiefung</a></div>
         <div class="warning">Alle Kennzahlen basieren auf historischen Daten. Keine Anlageberatung!</div>
 
         <a name="ai-balance"><h2>&#9878; AI-Balance (Rebalancing)</h2></a>
@@ -756,13 +789,53 @@ _HTML_DE = """
 
         <a name="sharpe-vertiefung"><h2>&#963; Sharpe-Ratio – Analyse-Vertiefung</h2></a>
         <p><b>Formel:</b> <code>Sharpe = (Rp − Rf) / σp × √252</code></p>
+        <table>
+            <tr><th>Variable</th><th>Bedeutung</th></tr>
+            <tr><td><b>Rp</b></td><td>Portfoliorendite (tägliche Durchschnittsrendite)</td></tr>
+            <tr><td><b>Rf</b></td><td>Risikofreier Zins = 5% p.a. / 252 Handelstage</td></tr>
+            <tr><td><b>σp</b></td><td>Standardabweichung aller täglichen Renditen (Gesamt-Volatilität)</td></tr>
+            <tr><td><b>√252</b></td><td>Annualisierungsfaktor (252 Handelstage pro Jahr)</td></tr>
+        </table>
         <h3>Grenzen der Sharpe-Ratio</h3>
         <ul>
-            <li><b>Normalverteilungs-Annahme:</b> Aufwärts- und Abwärtsvolatilität werden gleich behandelt</li>
-            <li><b>Fat Tails:</b> Seltene extreme Verluste werden unterschätzt</li>
-            <li><b>Zeitraum-Abhängigkeit:</b> Im Bullenmarkt sehen fast alle Aktien gut aus</li>
+            <li><b>Symmetrie-Problem:</b> Aufwärts- und Abwärtsvolatilität werden gleich bestraft – ein Aktie, die stark nach oben springt, erscheint riskanter als sie ist</li>
+            <li><b>Fat Tails:</b> Seltene extreme Verluste werden durch die Normalverteilungs-Annahme unterschätzt</li>
+            <li><b>Zeitraum-Abhängigkeit:</b> Im Bullenmarkt sehen fast alle Portfolios gut aus</li>
         </ul>
-        <div class="tip"><b>Praxis-Tipp:</b> Vergleiche die Sharpe-Ratio immer innerhalb derselben Anlageklasse.</div>
+        <div class="tip"><b>Praxis-Tipp:</b> Vergleiche die Sharpe-Ratio immer innerhalb derselben Anlageklasse. Für Portfolios mit starkem Aufwärts-Momentum ist die Sortino-Ratio oft aussagekräftiger.</div>
+
+        <a name="sortino-vertiefung"><h2>So Sortino-Ratio – Analyse-Vertiefung</h2></a>
+        <p>Die Sortino-Ratio wurde von Frank Sortino als Verbesserung der Sharpe-Ratio entwickelt. Sie bestraft nur <b>negative</b> Schwankungen.</p>
+        <p><b>Formel:</b> <code>Sortino = (Rp − Rf) / σ⁻ × √252</code></p>
+        <table>
+            <tr><th>Variable</th><th>Bedeutung</th></tr>
+            <tr><td><b>Rp</b></td><td>Portfoliorendite (tägliche Durchschnittsrendite)</td></tr>
+            <tr><td><b>Rf</b></td><td>Risikofreier Zins = 5% p.a. / 252 Handelstage</td></tr>
+            <tr><td><b>σ⁻</b></td><td>Standardabweichung <b>nur der negativen</b> Überrenditen (Abwärtsrisiko)</td></tr>
+            <tr><td><b>√252</b></td><td>Annualisierungsfaktor</td></tr>
+        </table>
+        <h3>Was ist der Unterschied zur Sharpe-Ratio?</h3>
+        <table>
+            <tr><th></th><th>Sharpe-Ratio</th><th>Sortino-Ratio</th></tr>
+            <tr><td><b>Nenner</b></td><td>Alle Schwankungen (± )</td><td>Nur negative Schwankungen (↓)</td></tr>
+            <tr><td><b>Positive Ausreisser</b></td><td>Werden als Risiko gezählt</td><td>Werden ignoriert</td></tr>
+            <tr><td><b>Wann höher?</b></td><td>Bei symmetrischer Verteilung</td><td>Bei positivem Momentum</td></tr>
+            <tr><td><b>Typische Werte</b></td><td>0.5 – 2.0 für diversif. Portfolio</td><td>Oft etwas höher als Sharpe</td></tr>
+        </table>
+        <h3>Wann welche Kennzahl nutzen?</h3>
+        <ul>
+            <li><b>Sharpe:</b> Guter Allround-Vergleich, besonders wenn Volatilität in beide Richtungen relevant ist (z.B. Krypto)</li>
+            <li><b>Sortino:</b> Wenn man nur vor Verlusten schützen möchte – typisch für Aktienlangläufer und konservative Portfolios</li>
+            <li><b>Faustregel:</b> Ist die Sortino deutlich höher als die Sharpe, hat das Portfolio viele positive Ausreisser (gut!). Sind beide gleich tief, ist die Volatilität symmetrisch negativ (schlecht)</li>
+        </ul>
+        <h3>Grenzen der Sortino-Ratio</h3>
+        <ul>
+            <li>Braucht ausreichend negative Renditen für eine stabile Berechnung (mind. ~10 negative Tage)</li>
+            <li>Bei sehr kurzen Zeiträumen oder reinen Bull-Märkten kann die Abwärts-Standardabweichung null sein – dann ist das Ergebnis nicht aussagekräftig</li>
+            <li>Wie die Sharpe-Ratio: basiert auf Vergangenheitsdaten</li>
+        </ul>
+        <div class="tip"><b>Praxis-Tipp:</b> Nutze <b>beide</b> Kennzahlen im Vergleich. Das Verhältnis Sortino/Sharpe zeigt, ob die Volatilität eher nach oben (gut) oder nach unten (schlecht) geht.</div>
+        <div class="warning">&#9888; Keine Anlageberatung. Historische Kennzahlen garantieren keine zukünftige Entwicklung.</div>
 
         <a name="monte-carlo-vertiefung"><h2>&#127922; Monte Carlo – Vertiefung</h2></a>
         <h3>Was ist eine Monte Carlo Simulation?</h3>
@@ -1147,7 +1220,21 @@ _HTML_EN = """
             <tr><td>&lt; 0.0</td><td style="color:#e74c3c">&#9632; Red</td><td>Negative – return below risk-free rate</td></tr>
         </table>
         <div class="tip">&#128270; <b>Deep dive:</b> &rarr;
-        <a href="#sharpe-vertiefung">Sharpe Ratio – Analysis deep dive</a></div>
+        <a href="#sharpe-vertiefung">Sharpe Ratio – Analysis Deep Dive</a></div>
+
+        <a name="sortino-zoom"></a><h3>So Sortino Ratio (Zoom Mode)</h3>
+        <p>In <b>zoom mode</b>, the additional checkbox <b>So Sortino</b> appears. It measures the risk-return ratio like the Sharpe Ratio, but penalises <b>only negative</b> volatility – positive outliers are not counted as risk.</p>
+        <p><b>Formula:</b> Sortino = (Return &minus; Risk-free rate) &divide; Downside volatility &times; &#8730;252<br>
+        Risk-free rate: 5% p.a. (0.05/252 per day)</p>
+        <table>
+            <tr><th>Value</th><th>Colour</th><th>Assessment</th></tr>
+            <tr><td>&ge; 2.0</td><td style="color:#27ae60">&#9632; Dark Green</td><td>Excellent</td></tr>
+            <tr><td>&ge; 1.0</td><td style="color:#2ecc71">&#9632; Green</td><td>Good</td></tr>
+            <tr><td>&ge; 0.5</td><td style="color:#f39c12">&#9632; Yellow</td><td>Acceptable</td></tr>
+            <tr><td>&ge; 0.0</td><td style="color:#e67e22">&#9632; Orange</td><td>Weak</td></tr>
+            <tr><td>&lt; 0.0</td><td style="color:#e74c3c">&#9632; Red</td><td>Negative – below risk-free rate</td></tr>
+        </table>
+        <div class="tip">&#128270; <b>Deep dive:</b> &rarr; <a href="#sortino-vertiefung">Sortino Ratio – Analysis Deep Dive</a></div>
 
         <h3>&#127869; Candlestick View (Zoom Mode)</h3>
         <p>In zoom mode, checkbox <b>&#127869; Candles</b> switches from line to candlestick view.</p>
@@ -1277,8 +1364,13 @@ _HTML_EN = """
         <div class="tip"><b>Tip:</b> If charts suddenly stop loading data, check the yfinance update first – an outdated version is often the cause.</div>
 
         <a name="favoriten"><h2>&#11088; Favourites</h2></a>
-        <p><b>Add:</b> Add favourites in the header &bull;
-        <b>Use:</b> Star button directly in the chart for quick symbol switching.</p>
+        <p><b>Add via header:</b> &#11088; Favourites button in the toolbar &rarr; dialog to manage the favourites list.</p>
+        <p><b>Directly in the chart (&#9733; dropdown):</b> The star dropdown in the chart window behaves smart:</p>
+        <ul>
+            <li><b>Stock not yet in favourites:</b> A single click adds it immediately – no dialog opens</li>
+            <li><b>Stock already in favourites:</b> A click opens the dropdown to select a different favourite stock</li>
+        </ul>
+        <div class="tip"><b>Tip:</b> This lets you add a stock to your favourites with a single click without leaving the current chart.</div>
 
         <a name="watchlist"><h2>&#128203; Watchlist</h2></a>
         <p>The Watchlist allows quick comparison of performance for up to <b>50 symbols</b> in a single bar chart.</p>
@@ -1294,6 +1386,7 @@ _HTML_EN = """
         <h3>Export</h3>
         <p><b>&#128228; Export</b>: Save results as PDF, Excel (.xlsx), or OpenDocument (.ods).</p>
         <div class="tip"><b>Tip:</b> The Watchlist is automatically saved and restored on next launch.</div>
+        <div class="tip"><b>Tip:</b> When the market is closed, the Watchlist automatically uses the last available closing price – so all symbols always show a value instead of "no data".</div>
 
         <a name="währungsrechner"><h2>&#128178; Currency Converter</h2></a>
         <ul>
@@ -1450,11 +1543,24 @@ _HTML_EN = """
 
         <a name="sharpe-ratio"><h2>&#963; Sharpe Ratio</h2></a>
         <ul>
-            <li>Return per unit of risk (standard deviation), annualised</li>
+            <li>Return per unit of risk (total volatility), annualised</li>
             <li>Rule of thumb: &gt; 1.0 = good &bull; &gt; 2.0 = excellent &bull; &lt; 0 = worse than risk-free investment</li>
+            <li>Selectable time period &bull; Breakdown: Total / Stocks &amp; ETFs / Crypto / Commodities</li>
+            <li>Button <b>So Sortino Ratio</b> in the dialog opens the Sortino view directly</li>
         </ul>
-        <div class="tip">&#128270; <b>Deep dive:</b> Formula, limitations of the Sharpe Ratio, Sortino Ratio as alternative &rarr;
-        <a href="#sharpe-vertiefung">Sharpe Ratio – Analysis Deep Dive</a></div>
+        <div class="tip">&#128270; <b>Deep dive:</b> &rarr; <a href="#sharpe-vertiefung">Sharpe Ratio – Analysis Deep Dive</a></div>
+        <div class="warning">All metrics are based on historical data. Not investment advice!</div>
+
+        <a name="sortino-ratio"><h2>So Sortino Ratio</h2></a>
+        <ul>
+            <li>Return per unit of <b>downside risk</b> (negative returns only), annualised</li>
+            <li>Difference from Sharpe Ratio: Positive volatility is <b>not</b> counted as risk</li>
+            <li>Rule of thumb: &gt; 1.0 = good &bull; &gt; 2.0 = excellent &bull; &lt; 0 = worse than risk-free investment</li>
+            <li>Selectable time period &bull; Breakdown: Total / Stocks &amp; ETFs / Crypto / Commodities</li>
+            <li>Access: Portfolio menu &rarr; Sharpe Ratio dialog &rarr; button <b>So Sortino Ratio</b></li>
+            <li>Button <b>S Sharpe Ratio</b> in the Sortino dialog switches back to the Sharpe view</li>
+        </ul>
+        <div class="tip">&#128270; <b>Deep dive:</b> &rarr; <a href="#sortino-vertiefung">Sortino Ratio – Analysis Deep Dive</a></div>
         <div class="warning">All metrics are based on historical data. Not investment advice!</div>
 
         <a name="ai-balance"><h2>&#9878; AI Balance (Rebalancing)</h2></a>
@@ -1617,13 +1723,53 @@ _HTML_EN = """
 
         <a name="sharpe-vertiefung"><h2>&#963; Sharpe Ratio – Analysis Deep Dive</h2></a>
         <p><b>Formula:</b> <code>Sharpe = (Rp − Rf) / σp × √252</code></p>
+        <table>
+            <tr><th>Variable</th><th>Meaning</th></tr>
+            <tr><td><b>Rp</b></td><td>Portfolio return (average daily return)</td></tr>
+            <tr><td><b>Rf</b></td><td>Risk-free rate = 5% p.a. / 252 trading days</td></tr>
+            <tr><td><b>σp</b></td><td>Standard deviation of all daily returns (total volatility)</td></tr>
+            <tr><td><b>√252</b></td><td>Annualisation factor (252 trading days per year)</td></tr>
+        </table>
         <h3>Limitations of the Sharpe Ratio</h3>
         <ul>
-            <li><b>Normality assumption:</b> Upside and downside volatility are treated equally</li>
-            <li><b>Fat tails:</b> Rare extreme losses are underestimated</li>
-            <li><b>Time dependency:</b> In a bull market almost all stocks look good</li>
+            <li><b>Symmetry problem:</b> Upside and downside volatility are penalised equally – a stock that shoots up strongly appears riskier than it is</li>
+            <li><b>Fat tails:</b> Rare extreme losses are underestimated by the normality assumption</li>
+            <li><b>Time dependency:</b> In a bull market almost all portfolios look good</li>
         </ul>
-        <div class="tip"><b>Practical tip:</b> Always compare the Sharpe Ratio within the same asset class.</div>
+        <div class="tip"><b>Practical tip:</b> Always compare the Sharpe Ratio within the same asset class. For portfolios with strong upward momentum, the Sortino Ratio is often more meaningful.</div>
+
+        <a name="sortino-vertiefung"><h2>So Sortino Ratio – Analysis Deep Dive</h2></a>
+        <p>The Sortino Ratio was developed by Frank Sortino as an improvement on the Sharpe Ratio. It penalises only <b>negative</b> volatility.</p>
+        <p><b>Formula:</b> <code>Sortino = (Rp − Rf) / σ⁻ × √252</code></p>
+        <table>
+            <tr><th>Variable</th><th>Meaning</th></tr>
+            <tr><td><b>Rp</b></td><td>Portfolio return (average daily return)</td></tr>
+            <tr><td><b>Rf</b></td><td>Risk-free rate = 5% p.a. / 252 trading days</td></tr>
+            <tr><td><b>σ⁻</b></td><td>Standard deviation of <b>negative excess returns only</b> (downside risk)</td></tr>
+            <tr><td><b>√252</b></td><td>Annualisation factor</td></tr>
+        </table>
+        <h3>What is the difference from the Sharpe Ratio?</h3>
+        <table>
+            <tr><th></th><th>Sharpe Ratio</th><th>Sortino Ratio</th></tr>
+            <tr><td><b>Denominator</b></td><td>All volatility (± )</td><td>Downside volatility only (↓)</td></tr>
+            <tr><td><b>Positive outliers</b></td><td>Counted as risk</td><td>Ignored</td></tr>
+            <tr><td><b>When higher?</b></td><td>With symmetric distributions</td><td>With positive momentum</td></tr>
+            <tr><td><b>Typical values</b></td><td>0.5 – 2.0 for diversified portfolio</td><td>Often slightly higher than Sharpe</td></tr>
+        </table>
+        <h3>When to use which metric?</h3>
+        <ul>
+            <li><b>Sharpe:</b> Good all-round comparison, especially when volatility in both directions matters (e.g. crypto)</li>
+            <li><b>Sortino:</b> When the focus is on protecting against losses – typical for long-term equity portfolios and conservative investors</li>
+            <li><b>Rule of thumb:</b> If Sortino is clearly higher than Sharpe, the portfolio has many positive outliers (good!). If both are equally low, volatility is symmetrically negative (bad)</li>
+        </ul>
+        <h3>Limitations of the Sortino Ratio</h3>
+        <ul>
+            <li>Requires enough negative returns for a stable calculation (at least ~10 negative days)</li>
+            <li>In very short periods or pure bull markets the downside standard deviation can be zero – the result is then not meaningful</li>
+            <li>Like the Sharpe Ratio: based on historical data</li>
+        </ul>
+        <div class="tip"><b>Practical tip:</b> Use <b>both</b> metrics in combination. The Sortino/Sharpe ratio shows whether volatility is skewed upward (good) or downward (bad).</div>
+        <div class="warning">&#9888; Not investment advice. Historical metrics do not guarantee future performance.</div>
 
         <a name="monte-carlo-vertiefung"><h2>&#127922; Monte Carlo – Deep Dive</h2></a>
         <h3>What is a Monte Carlo Simulation?</h3>
@@ -1898,6 +2044,7 @@ _TOC_DE = [
     "Alpha-Wert (Chart)",
     "Beta-Wert (Chart)",
     "Sharpe-Ratio",
+    "Sortino-Ratio (Zoom)",
     "Vergleich",
     "Analysten-Info",
     "Firmeninfo",
@@ -1912,6 +2059,7 @@ _TOC_DE = [
     "Alpha – Vertiefung",
     "Beta – Vertiefung",
     "Sharpe-Ratio – Vertiefung",
+    "Sortino-Ratio – Vertiefung",
     "Monte Carlo – Vertiefung",
     "ECY – Vertiefung",
     "GICS – Vertiefung",
@@ -1927,6 +2075,8 @@ _TOC_DE = [
     "Excess CAPE Yield (ECY)",
     "Alpha-Analyse",
     "Beta-Analyse",
+    "Sharpe-Ratio (Portfolio)",
+    "Sortino-Ratio (Portfolio)",
     "AI-Balance",
     "Portfolio-Vergleich",
     "Dividenden",
@@ -1978,6 +2128,7 @@ _TOC_EN = [
     "Alpha (Chart)",
     "Beta (Chart)",
     "Sharpe Ratio",
+    "Sortino Ratio (Zoom)",
     "Comparison",
     "Analyst Info",
     "Company Info",
@@ -1992,6 +2143,7 @@ _TOC_EN = [
     "Alpha – Deep Dive",
     "Beta – Deep Dive",
     "Sharpe Ratio – Deep Dive",
+    "Sortino Ratio – Deep Dive",
     "Monte Carlo – Deep Dive",
     "GICS – Deep Dive",
     "ECY – Deep Dive",
@@ -2007,6 +2159,8 @@ _TOC_EN = [
     "Excess CAPE Yield (ECY)",
     "Alpha Analysis",
     "Beta Analysis",
+    "Sharpe Ratio (Portfolio)",
+    "Sortino Ratio (Portfolio)",
     "AI Balance",
     "Portfolio Comparison",
     "Dividends",
@@ -2073,6 +2227,8 @@ _ANCHOR_DE = {
     "alpha – vertiefung":         "alpha-vertiefung",
     "beta – vertiefung":          "beta-vertiefung",
     "sharpe-ratio – vertiefung":  "sharpe-vertiefung",
+    "sortino-ratio – vertiefung": "sortino-vertiefung",
+    "sortino-ratio (zoom)":       "sortino-zoom",
     "monte carlo – vertiefung":   "monte-carlo-vertiefung",
     "ecy – vertiefung":           "ecy-vertiefung",
     "excess cape yield (ecy)":    "ecy",
@@ -2092,6 +2248,9 @@ _ANCHOR_DE = {
     "ecy":                        "ecy",
     "alpha-analyse":              "alpha-analyse",
     "beta-analyse":               "beta-analyse",
+    "sharpe-ratio (portfolio)":   "sharpe-ratio",
+    "sortino-ratio":              "sortino-ratio",
+    "sortino-ratio (portfolio)":  "sortino-ratio",
     "ai-balance":                 "ai-balance",
     "zielgerichtetes-rebalancing": "zielgerichtetes-rebalancing",
     "targeted-rebalancing":        "zielgerichtetes-rebalancing",
@@ -2160,6 +2319,8 @@ _ANCHOR_EN = {
     "alpha – deep dive":          "alpha-vertiefung",
     "beta – deep dive":           "beta-vertiefung",
     "sharpe ratio – deep dive":   "sharpe-vertiefung",
+    "sortino ratio – deep dive":  "sortino-vertiefung",
+    "sortino ratio (zoom)":       "sortino-zoom",
     "monte carlo – deep dive":    "monte-carlo-vertiefung",
     "ecy – deep dive":            "ecy-vertiefung",
     "excess cape yield (ecy)":    "ecy",
@@ -2177,6 +2338,9 @@ _ANCHOR_EN = {
     "monte carlo – deep dive":    "monte-carlo-vertiefung",
     "alpha analysis":             "alpha-analyse",
     "beta analysis":              "beta-analyse",
+    "sharpe ratio (portfolio)":   "sharpe-ratio",
+    "sortino ratio":              "sortino-ratio",
+    "sortino ratio (portfolio)":  "sortino-ratio",
     "ai balance":                 "ai-balance",
     "portfolio comparison":       "portfolio-vergleich",
     "dividends":                  "dividenden",

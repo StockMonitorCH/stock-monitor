@@ -42,7 +42,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.4.4"                            # beim Release anpassen
+APP_VERSION  = "5.5.0"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -4998,6 +4998,7 @@ class StockChartWidget(QFrame):
         self.favorites_combo.setToolTip(TR("tip_favorites_quick"))
         self.favorites_combo.addItem(self._fav_placeholder)
         self.favorites_combo.currentTextChanged.connect(self.select_from_favorites)
+        self.favorites_combo.installEventFilter(self)
         header.addWidget(self.favorites_combo)
         
         # Im Kompakt-Modus: Nur essentials im Header
@@ -5078,6 +5079,14 @@ class StockChartWidget(QFrame):
                 controls_row.addWidget(self.sharpe_checkbox)
             else:
                 self.sharpe_checkbox.hide()
+
+            self.sortino_checkbox = QCheckBox(TR("chk_sortino"))
+            self.sortino_checkbox.setToolTip(TR("tip_sortino"))
+            self.sortino_checkbox.stateChanged.connect(self._redraw_chart)
+            if self.zoom_mode:
+                controls_row.addWidget(self.sortino_checkbox)
+            else:
+                self.sortino_checkbox.hide()
 
             # Candlestick-Checkbox – nur im Zoom-Modus sichtbar
             self.candle_checkbox = QCheckBox(TR("chk_candles"))
@@ -5207,7 +5216,11 @@ class StockChartWidget(QFrame):
             self.sharpe_checkbox = QCheckBox()
             self.sharpe_checkbox.stateChanged.connect(self._redraw_chart)
             self.sharpe_checkbox.hide()
-            
+
+            self.sortino_checkbox = QCheckBox()
+            self.sortino_checkbox.stateChanged.connect(self._redraw_chart)
+            self.sortino_checkbox.hide()
+
             self.candle_checkbox = QCheckBox()
             self.candle_checkbox.stateChanged.connect(self._redraw_chart)
             self.candle_checkbox.hide()
@@ -5638,7 +5651,29 @@ class StockChartWidget(QFrame):
             self.update_symbol()
             # Reset Dropdown
             self.favorites_combo.setCurrentIndex(0)
-    
+
+    def eventFilter(self, obj, event):
+        """Fängt Klick auf Favoriten-Dropdown ab: Aktie hinzufügen falls noch nicht vorhanden"""
+        from PyQt6.QtCore import QEvent
+        if obj is self.favorites_combo and event.type() == QEvent.Type.MouseButtonPress:
+            app_ref = getattr(self, '_app_ref', None)
+            if app_ref is not None:
+                sym = self.symbol
+                fav_upper = [f.upper() for f in getattr(app_ref, 'favorites', [])]
+                if sym and sym.upper() not in fav_upper:
+                    sym_up = sym.upper()
+                    app_ref.favorites.append(sym_up)
+                    app_ref.save_favorites()
+                    for c in getattr(app_ref, 'charts', []):
+                        c.update_favorites_list(app_ref.favorites)
+                    fs = getattr(app_ref, 'fullscreen_chart', None)
+                    if fs is not None:
+                        fs.update_favorites_list(app_ref.favorites)
+                    QMessageBox.information(self, TR("btn_favorites"),
+                                            TR("msg_fav_symbol_added", symbol=sym_up))
+                    return True  # Event konsumiert → Dropdown öffnet sich nicht
+        return super().eventFilter(obj, event)
+
     def get_state(self):
         """Aktuellen Zustand zurückgeben"""
         # Zoom-Only-Checkboxen: im normalen Grid-Modus als versteckter Attribut-State
@@ -5663,6 +5698,7 @@ class StockChartWidget(QFrame):
             'beta': self.beta_checkbox.isChecked(),
             'alpha': self.alpha_checkbox.isChecked(),
             'sharpe': self.sharpe_checkbox.isChecked(),
+            'sortino': self.sortino_checkbox.isChecked(),
             'target': self.target_checkbox.isChecked(),
             'rsi': _zoom_val('rsi_checkbox', 'zoom_rsi'),
             'w52': _zoom_val('w52_checkbox', 'zoom_w52'),
@@ -5677,6 +5713,7 @@ class StockChartWidget(QFrame):
             'zoom_beta':   getattr(self, 'zoom_beta',   None),
             'zoom_alpha':  getattr(self, 'zoom_alpha',  None),
             'zoom_sharpe': getattr(self, 'zoom_sharpe', None),
+            'zoom_sortino': getattr(self, 'zoom_sortino', None),
             'zoom_target': getattr(self, 'zoom_target', None),
         }
         # Custom-Zeitraum Daten mitschreiben
@@ -5760,6 +5797,7 @@ class StockChartWidget(QFrame):
         self.zoom_beta   = state.get('zoom_beta',   None)
         self.zoom_alpha  = state.get('zoom_alpha',  None)
         self.zoom_sharpe = state.get('zoom_sharpe', None)
+        self.zoom_sortino = state.get('zoom_sortino', None)
         self.zoom_target = state.get('zoom_target', None)
         if self.zoom_mode:
             for cb_attr, key in [
@@ -5822,7 +5860,8 @@ class StockChartWidget(QFrame):
             ('ma20_checkbox', 'ma20'), ('ma50_checkbox', 'ma50'),
             ('ma200_checkbox', 'ma200'), ('trend_checkbox', 'trend'),
             ('beta_checkbox', 'beta'), ('alpha_checkbox', 'alpha'),
-            ('sharpe_checkbox', 'sharpe'), ('target_checkbox', 'target'),
+            ('sharpe_checkbox', 'sharpe'), ('sortino_checkbox', 'sortino'),
+            ('target_checkbox', 'target'),
         ]:
             cb = getattr(self, attr, None)
             if cb is not None:
@@ -5843,6 +5882,7 @@ class StockChartWidget(QFrame):
         self.zoom_beta   = state.get('zoom_beta',   None)
         self.zoom_alpha  = state.get('zoom_alpha',  None)
         self.zoom_sharpe = state.get('zoom_sharpe', None)
+        self.zoom_sortino = state.get('zoom_sortino', None)
         self.zoom_target = state.get('zoom_target', None)
         # Zoom-Only-Checkboxen: nur im zoom_mode setzen, sonst False
         if self.zoom_mode:
@@ -6293,7 +6333,23 @@ class StockChartWidget(QFrame):
                     else:
                         sharpe_color, sharpe_interpretation = "red", TR("sharpe_negative")
                     sharpe_text = f" | <span style='color:{sharpe_color}'><b>S {sharpe_value:.2f}</b> ({sharpe_interpretation})</span>"
-                # kein N/A – einfach leer lassen wenn nicht verfügbar
+
+            # Sortino-Text
+            sortino_text = ""
+            if self.sortino_checkbox.isChecked():
+                sortino_value = self.calculate_sortino(self.data)
+                if sortino_value is not None:
+                    if sortino_value >= 2.0:
+                        sortino_color, sortino_interpretation = "green", TR("sortino_excellent")
+                    elif sortino_value >= 1.0:
+                        sortino_color, sortino_interpretation = "green", TR("sortino_good")
+                    elif sortino_value >= 0.5:
+                        sortino_color, sortino_interpretation = "orange", TR("sortino_acceptable")
+                    elif sortino_value >= 0:
+                        sortino_color, sortino_interpretation = "gray", TR("sortino_weak")
+                    else:
+                        sortino_color, sortino_interpretation = "red", TR("sortino_negative")
+                    sortino_text = f" | <span style='color:{sortino_color}'><b>So {sortino_value:.2f}</b> ({sortino_interpretation})</span>"
 
             # Persönlicher G&V (nur wenn Chart aus Portfolio geöffnet wurde)
             personal_gnv_text = ""
@@ -6329,6 +6385,7 @@ class StockChartWidget(QFrame):
                 f"{beta_text}"
                 f"{alpha_text}"
                 f"{sharpe_text}"
+                f"{sortino_text}"
             )
 
             # Chart plotten – Candlestick oder Linie
@@ -6505,9 +6562,17 @@ class StockChartWidget(QFrame):
 
             axis = self.plot_widget.getAxis('bottom')
             # Tick-Anzahl aus tatsächlicher Widget-Breite berechnen.
-            # MM.YYYY-Label braucht ~58px, YYYY-Label ~38px.
+            # MM.YYYY-Label braucht ~58px, YYYY-Label ~48px (grosszügiger
+            # bemessen als die reine Textbreite, damit bei langen Zeiträumen
+            # nicht zu viele Jahreszahlen dicht an dicht stehen - lieber
+            # z.B. jedes 5. statt jedes 3. Jahr beschriften).
             _days = (times_clean[-1] - times_clean[0]) / 86400 if len(times_clean) > 1 else 365
-            _lbl_px = 40 if _days > 365 else 60
+            if _days > 365 * 3:
+                _lbl_px = 48   # YYYY (z.B. 5J/Max)
+            elif _days > 60:
+                _lbl_px = 58   # MM.YYYY (z.B. 2J)
+            else:
+                _lbl_px = 40   # DD.MM / HH:MM
             _widget_px = self.plot_widget.width()
             if _widget_px < 100:  # Fallback wenn Widget noch nicht gerendert
                 _widget_px = 380 if self.compact_mode else 900
@@ -6970,6 +7035,28 @@ class StockChartWidget(QFrame):
             excess = daily_returns - rf_daily
             sharpe = (excess.mean() / excess.std()) * np.sqrt(252)
             return sharpe
+        except Exception:
+            return None
+
+    def calculate_sortino(self, data):
+        """Berechne annualisierte Sortino-Ratio (Abwärtsrisiko statt Gesamtvolatilität)"""
+        try:
+            if data is None or len(data) < 20:
+                return None
+            stock_prices = data['Close'].resample('1D').last().dropna()
+            if len(stock_prices) < 10:
+                return None
+            daily_returns = stock_prices.pct_change().dropna()
+            rf_daily = 0.05 / 252
+            excess = daily_returns - rf_daily
+            downside = excess[excess < 0]
+            if len(downside) < 3:
+                return None
+            downside_std = downside.std()
+            if downside_std == 0:
+                return None
+            sortino = (excess.mean() / downside_std) * np.sqrt(252)
+            return sortino
         except Exception:
             return None
 
@@ -7872,10 +7959,21 @@ class StockChartWidget(QFrame):
                     ticks.append((ts, current.strftime('%Y')))
                 current = _dt(current.year + 1, 1, 1)
 
-        # Maximal max_ticks anzeigen (gleichmässig ausdünnen wenn zu viele)
+        # Maximal max_ticks anzeigen (ausdünnen wenn zu viele).
+        # Ausdünnung nach Mindestabstand in der Zeit (nicht nach Index!): Die
+        # Rohkandidaten (z.B. Quartale, 91 Tage) liegen oft enger beieinander,
+        # als für max_ticks gleichmässig verteilte Labels nötig wäre. Würde man
+        # nur nach Index ausdünnen, blieben benachbarte Kandidaten übrig, die
+        # sich als Text überlappen. Daher: fortlaufend nur behalten, was min_gap
+        # Abstand zum zuletzt behaltenen Tick hat.
         if len(ticks) > max_ticks:
-            step = len(ticks) / max_ticks
-            ticks = [ticks[int(i * step)] for i in range(max_ticks)]
+            span = ticks[-1][0] - ticks[0][0]
+            min_gap = span / (max_ticks - 1) if max_ticks > 1 else span
+            thinned = [ticks[0]]
+            for ts, lbl in ticks[1:]:
+                if ts - thinned[-1][0] >= min_gap:
+                    thinned.append((ts, lbl))
+            ticks = thinned
 
         # Mindestens 3 Ticks (Fallback auf linspace wenn zu wenig)
         if len(ticks) < 3:
@@ -11791,7 +11889,14 @@ class PortfolioDialog(QMainWindow):
         _ov_emoji_font = None
         for _fc_ov in ['Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji']:
             if _fc_ov in _QFDB_ov.families():
-                _ov_emoji_font = QFont(_fc_ov, 11)
+                # Emoji-Font nur als Fallback für Emoji-Glyphen, nicht als
+                # Hauptschrift: viele Labels hier mischen Emoji mit normalem
+                # Text/Zahlen (Preise, Summenzeile). Wäre die Emoji-Schrift
+                # (z.B. "Apple Color Emoji") die einzige Familie, fehlen ihr
+                # brauchbare Ziffern-Glyphen und Qt weicht auf eine andere
+                # Fallback-Schrift aus - sichtbar als "Schreibmaschinenschrift".
+                _ov_emoji_font = QFont("Arial", 11)
+                _ov_emoji_font.setFamilies(["Arial", _fc_ov])
                 break
 
         def _make_ov_btn(label, tooltip, min_width=None):
@@ -12809,8 +12914,11 @@ class PortfolioDialog(QMainWindow):
                 _price_lbl = QLabel(f"{_fmt(_price_disp)}{_ind}")
                 _price_lbl.setMinimumWidth(105); _price_lbl.setMaximumWidth(105)
                 _price_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                if _ov_emoji_font:
-                    _price_lbl.setFont(_ov_emoji_font)
+                # Kein eigenes Font mehr setzen: ▼/▲ sind normale Unicode-
+                # Zeichen (U+25BC/U+25B2), keine Emojis - die App-Standard-
+                # schrift stellt sie problemlos dar. Die Emoji-Schrift war
+                # hier unnötig und liess die Zahlen kleiner/anders wirken
+                # als in den Nachbarspalten (Kaufwert, Akt. Wert, ...).
                 if _ind:
                     _price_lbl.setStyleSheet(f"color:{_ind_color};")
                 # Tooltip zeigt Stop/Ziel
@@ -18973,7 +19081,46 @@ class PortfolioDialog(QMainWindow):
         disclaimer.setStyleSheet("font-size:11px; font-style:italic; padding:4px 12px; border-top:1px solid #ddd;")
         outer.addWidget(disclaimer)
 
+        # ── Eigenes Hover-Popup statt nativem QToolTip ───────────────────────
+        # Workaround für ein Plattform-Problem (macOS 26 + Qt 6.11): native
+        # QToolTip-Fenster verlieren dort manchmal ihr "always on top" und
+        # werden hinter den Tabellenzeilen gerendert. Ein normales Kind-Widget
+        # (kein eigenes Fenster) unterliegt stattdessen Qts internem Z-Order
+        # innerhalb des Dialogs und bleibt zuverlässig sichtbar.
+        from PyQt6.QtCore import QPoint as _QPoint
+        _hover_popup = QLabel(dialog)
+        _hover_popup.setWordWrap(True)
+        _hover_popup.setStyleSheet(
+            "background:#fffbdd; color:#333; border:1px solid #999; "
+            "border-radius:4px; padding:5px 8px; font-size:11px;")
+        _hover_popup.setMaximumWidth(420)
+        _hover_popup.hide()
 
+        def _show_hover_popup(source_widget, text):
+            _hover_popup.setText(text)
+            _hover_popup.adjustSize()
+            pos = source_widget.mapTo(dialog, _QPoint(0, source_widget.height() + 2))
+            x = min(pos.x(), max(0, dialog.width()  - _hover_popup.width()  - 4))
+            y = min(pos.y(), max(0, dialog.height() - _hover_popup.height() - 4))
+            _hover_popup.move(max(0, x), max(0, y))
+            _hover_popup.show()
+            _hover_popup.raise_()
+
+        def _hide_hover_popup():
+            _hover_popup.hide()
+
+        class _HoverTipLabel(QLabel):
+            """QLabel mit eigenem Hover-Popup statt nativem QToolTip (s.o.)."""
+            def __init__(self, text, tip_text, parent=None):
+                super().__init__(text, parent)
+                self._tip_text = tip_text
+            def enterEvent(self, event):
+                if self._tip_text:
+                    _show_hover_popup(self, self._tip_text)
+                super().enterEvent(event)
+            def leaveEvent(self, event):
+                _hide_hover_popup()
+                super().leaveEvent(event)
 
         _worker_ref = [None]
         _calc_context = {'target_val_map': {}, 'total_capital': 0.0}  # Closure für do_calculate → _build_table
@@ -19142,19 +19289,18 @@ class PortfolioDialog(QMainWindow):
                 rl.addWidget(_sym_lbl)
                 rl.addWidget(mk(f"{'+' if r['pct']>=0 else ''}{r['pct']:.1f}%",       80, pc, True))
 
-                # Analyst-Label direkt erstellen und Tooltip sofort setzen (kein Closure-Problem)
-                a_lbl = QLabel(a_txt)
+                # Analyst-Label direkt erstellen, Hover-Text sofort binden (kein Closure-Problem).
+                # _HoverTipLabel statt setToolTip() - siehe Kommentar bei der Definition oben.
+                a_lbl = _HoverTipLabel(a_txt, str(a_raw))
                 a_lbl.setFixedWidth(85)
                 a_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 a_lbl.setStyleSheet(f"font-size:{FS}; background:transparent; border:none; color:{a_col}; font-weight:bold;")
-                a_lbl.setToolTip(str(a_raw))   # sofortige Bindung, kein Closure
                 rl.addWidget(a_lbl)
 
-                n_lbl = QLabel(n_txt)
+                n_lbl = _HoverTipLabel(n_txt, str(n_raw))
                 n_lbl.setFixedWidth(70)
                 n_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 n_lbl.setStyleSheet(f"font-size:{FS}; background:transparent; border:none; color:{n_col};")
-                n_lbl.setToolTip(str(n_raw))   # sofortige Bindung, kein Closure
                 rl.addWidget(n_lbl)
                 rl.addWidget(mk(f"{cs:.0f}",  65, sc_col, True))
                 rl.addWidget(mk(f"{_cur_sym}{_fmt(r['val'] * _disp_fx)}",                               120, right=True))
@@ -22149,6 +22295,18 @@ class PortfolioDialog(QMainWindow):
         dialog, outer, period_combo, periods, calc_btn, result_layout, status_label, dlg_w, dlg_h, _sharpe_export_data = \
             self._make_risk_dialog("Portfolio Sharpe-Ratio", "S")
 
+        # Sortino-Button in der Toolbar einfügen (nach Berechnen-Button)
+        _top_row_shp = outer.itemAt(0).layout()
+        _sortino_btn_shp = QPushButton("So  Sortino-Ratio")
+        _sortino_btn_shp.setMinimumHeight(30)
+        _sortino_btn_shp.setStyleSheet("padding: 2px 12px;")
+        _sortino_btn_shp.setToolTip(TR("tip_sortino"))
+        _top_row_shp.insertWidget(3, _sortino_btn_shp)
+        def _open_sortino_from_sharpe():
+            dialog.close()
+            self.show_portfolio_sortino()
+        _sortino_btn_shp.clicked.connect(_open_sortino_from_sharpe)
+
         from PyQt6.QtGui import QPalette as _QPalette_shp
         _dm_shp = QApplication.palette().color(_QPalette_shp.ColorRole.Window).lightness() < 128
 
@@ -22320,6 +22478,202 @@ class PortfolioDialog(QMainWindow):
         calc_btn.clicked.connect(do_calculate)
         import sys as _sys_shp
         if _sys_shp.platform == 'win32':
+            dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
+        dialog.exec()
+
+    @safe_slot
+    def show_portfolio_sortino(self):
+        """Portfolio-Sortino-Ratio Dialog"""
+        if not self.portfolio_data:
+            QMessageBox.information(self, TR("msg_title_info"), "Keine Portfolio-Daten vorhanden.")
+            return
+
+        dialog, outer, period_combo, periods, calc_btn, result_layout, status_label, dlg_w, dlg_h, _sortino_export_data = \
+            self._make_risk_dialog("Portfolio Sortino-Ratio", "So")
+
+        # Sharpe-Button in der Toolbar einfügen (nach Berechnen-Button)
+        _top_row_sor = outer.itemAt(0).layout()
+        _sharpe_btn_sor = QPushButton("S  Sharpe-Ratio")
+        _sharpe_btn_sor.setMinimumHeight(30)
+        _sharpe_btn_sor.setStyleSheet("padding: 2px 12px;")
+        _sharpe_btn_sor.setToolTip(TR("tip_sharpe"))
+        _top_row_sor.insertWidget(3, _sharpe_btn_sor)
+        def _open_sharpe_from_sortino():
+            dialog.close()
+            self.show_portfolio_sharpe()
+        _sharpe_btn_sor.clicked.connect(_open_sharpe_from_sortino)
+
+        from PyQt6.QtGui import QPalette as _QPalette_sor
+        _dm_sor = QApplication.palette().color(_QPalette_sor.ColorRole.Window).lightness() < 128
+
+        CRYPTO_SUFFIXES = ('-USD', '-EUR', '-CHF', '-BTC')
+        def is_crypto(sym): return any(sym.upper().endswith(s) for s in CRYPTO_SUFFIXES)
+
+        def _color(s):
+            if s is None:  return "#888888"
+            if s >= 2.0:   return "#27ae60"
+            if s >= 1.0:   return "#2ecc71"
+            if s >= 0.5:   return "#f39c12"
+            if s >= 0.0:   return "#e67e22"
+            return "#e74c3c"
+
+        def _fmt(s):
+            if s is None: return "n/a"
+            nfmt = globals().get('_NUMBER_FORMAT', 'CH')
+            txt = f"{s:.3f}"
+            if nfmt == 'DE': txt = txt.replace('.', ',')
+            return txt
+
+        def _interp(s):
+            if s is None:   return "—", "#888888"
+            if s >= 2.0:    return TR("sortino_excellent"), "#27ae60"
+            if s >= 1.0:    return TR("sortino_good"), "#2ecc71"
+            if s >= 0.5:    return TR("sortino_acceptable"), "#f39c12"
+            if s >= 0.0:    return TR("sortino_weak"), "#e67e22"
+            return TR("sortino_negative"), "#e74c3c"
+
+        def _explanation(s, scope):
+            if s is None:
+                return TR("msg_sortino_not_calculated")
+            if scope == "gesamt":   desc = TR("lbl_scope_total")
+            elif scope == "aktien": desc = TR("lbl_scope_stocks")
+            else:                   desc = TR("lbl_scope_crypto")
+            interp, color = _interp(s)
+            lines = [
+                TR("lbl_sortino_explanation", val=_fmt(s), desc=desc, units=s),
+                "",
+                TR("lbl_sortino_jensens_explanation"),
+                "",
+                f"<b>{TR('lbl_assessment')}:</b> <span style='color:{color}'><b>{interp}</b></span>",
+            ]
+            return "<br>".join(lines)
+
+        def _calc_weighted_sortino(symbols_values, period_key):
+            import yfinance as yf
+            import numpy as np
+            import pandas as pd
+            if not symbols_values: return None
+            total_val = sum(v for _, v in symbols_values if v > 0)
+            if total_val <= 0: return None
+            rf_daily = 0.05 / 252
+            all_returns = {}
+            for sym, val in symbols_values:
+                if val <= 0: continue
+                try:
+                    fetch_sym = _COMMODITY_YAHOO.get(sym.upper(), (None, None))[1] or sym
+                    if period_key.startswith("since:"):
+                        hist = yf.Ticker(fetch_sym).history(start=period_key[6:], interval='1d')
+                    else:
+                        hist = yf.Ticker(fetch_sym).history(period=period_key, interval='1d')
+                    if hist.empty or len(hist) < 10: continue
+                    hist.index = pd.to_datetime(hist.index).normalize().tz_localize(None)
+                    ret = hist['Close'].pct_change().dropna()
+                    all_returns[sym] = (ret, val)
+                except Exception: continue
+            if not all_returns: return None
+            ref_idx = None
+            for sym, (ret, _) in all_returns.items():
+                if not _is_commodity(sym) and not any(sym.upper().endswith(x) for x in ('-USD','-EUR','-CHF','-BTC')):
+                    ref_idx = ret.index; break
+            if ref_idx is None:
+                ref_idx = next(iter(all_returns.values()))[0].index
+            common_idx = ref_idx
+            for sym, (ret, _) in all_returns.items():
+                common_idx = common_idx.intersection(ret.index)
+                if len(common_idx) < 10:
+                    ret_r = ret.reindex(ref_idx, method='ffill').dropna()
+                    all_returns[sym] = (ret_r, all_returns[sym][1])
+                    common_idx = ref_idx.intersection(ret_r.index)
+            if common_idx is None or len(common_idx) < 10: return None
+            port_ret = pd.Series(0.0, index=common_idx)
+            for sym, (ret, val) in all_returns.items():
+                w = val / total_val
+                aligned = ret.reindex(common_idx, method='ffill').fillna(0)
+                port_ret += aligned * w
+            excess = port_ret - rf_daily
+            downside = excess[excess < 0]
+            if len(downside) < 3: return None
+            downside_std = downside.std()
+            if downside_std == 0: return None
+            import numpy as np
+            sortino = (excess.mean() / downside_std) * np.sqrt(252)
+            return sortino
+
+        _worker_ref = [None]
+
+        def do_calculate():
+            while result_layout.count():
+                item = result_layout.takeAt(0)
+                if item.widget(): item.widget().deleteLater()
+            idx = period_combo.currentIndex()
+            _, period_key = periods[idx]
+            try:
+                status_label.setText(TR("status_calc_sortino_values"))
+            except RuntimeError:
+                pass
+            calc_btn.setEnabled(False)
+            overlay = self._show_risk_loading(dialog, dlg_w, dlg_h, "So", "Sortino-Ratio", period_combo.currentText())
+            QApplication.processEvents()
+            all_sv = self._get_symbols_values_for_risk()
+            stock_sv     = [(s, v) for s, v in all_sv if not is_crypto(s) and not _is_commodity(s)]
+            crypto_sv    = [(s, v) for s, v in all_sv if     is_crypto(s)]
+            commodity_sv = [(s, v) for s, v in all_sv if     _is_commodity(s)]
+
+            class SortinoWorker(QThread):
+                done = pyqtSignal(object, object, object, object)
+                def __init__(self, a, s, c, m, pk, fn):
+                    super().__init__(); self._a=a; self._s=s; self._c=c; self._m=m; self._pk=pk; self._fn=fn
+                def run(self):
+                    self.done.emit(self._fn(self._a,self._pk), self._fn(self._s,self._pk),
+                                   self._fn(self._c,self._pk), self._fn(self._m,self._pk))
+
+            def on_done(s_all, s_stocks, s_crypto, s_commodity):
+                try: overlay.hide(); overlay.deleteLater()
+                except: pass
+                calc_btn.setEnabled(True)
+                status_label.setText(TR("status_calc_sortino", period=period_combo.currentText()))
+                while result_layout.count():
+                    item = result_layout.takeAt(0)
+                    if item.widget(): item.widget().deleteLater()
+                if _dm_sor:
+                    _bg1, _bg2, _bg3, _bg4 = "#0d2a3d", "#0d2a1a", "#2a0d25", "#2a2210"
+                else:
+                    _bg1, _bg2, _bg3, _bg4 = "#EBF5FB", "#EAFAF1", "#FDF2F8", "#FEF9E7"
+                sections = [
+                    (f"🌐  {TR('lbl_total_portfolio')}",  s_all,       "gesamt", _bg1),
+                    (f"📈  {TR('lbl_only_stocks_etf')}", s_stocks,    "aktien", _bg2),
+                    (f"🪙  {TR('lbl_only_crypto')}",     s_crypto,    "krypto", _bg3),
+                ]
+                if commodity_sv:
+                    sections.append((f"🥇  {TR('lbl_only_commodities')}", s_commodity, "aktien", _bg4))
+                for title, val, scope, bg in sections:
+                    result_layout.addWidget(self._make_risk_section(
+                        title, val, _color, _fmt,
+                        lambda v, s=scope: _explanation(v, s), bg))
+                result_layout.addStretch()
+                _sortino_rows = [(TR("lbl_total_portfolio"), _fmt(s_all)),
+                                 (TR("lbl_only_stocks_etf"), _fmt(s_stocks)),
+                                 (TR("lbl_only_crypto"), _fmt(s_crypto))]
+                if commodity_sv:
+                    _sortino_rows.append((TR("lbl_only_commodities"), _fmt(s_commodity)))
+                _sortino_export_data[0] = {
+                    'title': TR("export_title_sortino", period=period_combo.currentText()),
+                    'headers': [TR("lbl_scope_header"), TR("col_sortino_ratio")],
+                    'rows': _sortino_rows,
+                    'fig': self._auto_export_fig(
+                        TR("export_title_sortino", period=period_combo.currentText()),
+                        [TR("lbl_scope_header"), TR("col_sortino_ratio")], _sortino_rows),
+                }
+
+            w = SortinoWorker(all_sv, stock_sv, crypto_sv, commodity_sv, period_key, _calc_weighted_sortino)
+            _worker_ref[0] = w
+            w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))
+            w.done.connect(on_done, Qt.ConnectionType.QueuedConnection)
+            w.start()
+
+        calc_btn.clicked.connect(do_calculate)
+        import sys as _sys_sor
+        if _sys_sor.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
         dialog.exec()
 
@@ -23702,11 +24056,24 @@ class PortfolioDialog(QMainWindow):
                             opened = True
                             break
                 elif sys.platform == 'darwin':
-                    for app in ['Google Chrome', 'Microsoft Edge', 'Firefox']:
+                    # Popen liefert keinen Fehler, wenn die App fehlt (das
+                    # Fehlschlagen passiert erst innerhalb des 'open'-Prozesses) -
+                    # daher subprocess.run() + returncode prüfen, statt blind
+                    # beim ersten Versuch "opened = True" zu setzen. Safari (auf
+                    # jedem Mac vorhanden) und ein finaler Standardbrowser-
+                    # Fallback stellen sicher, dass sich überhaupt etwas öffnet.
+                    for _cmd in [
+                        ['open', '-a', 'Google Chrome', '--args', '--start-maximized', url],
+                        ['open', '-a', 'Microsoft Edge', '--args', '--start-maximized', url],
+                        ['open', '-a', 'Firefox', '--args', '--start-maximized', url],
+                        ['open', '-a', 'Safari', url],
+                        ['open', url],
+                    ]:
                         try:
-                            subprocess.Popen(['open', '-a', app, '--args', '--start-maximized', url])
-                            opened = True
-                            break
+                            _r = subprocess.run(_cmd, capture_output=True)
+                            if _r.returncode == 0:
+                                opened = True
+                                break
                         except Exception:
                             continue
                 else:
@@ -23824,7 +24191,6 @@ class PortfolioDialog(QMainWindow):
 
         import matplotlib
         matplotlib.use('QtAgg')
-        import matplotlib.cm as cm
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
         from matplotlib.figure import Figure
 
@@ -23961,7 +24327,7 @@ class PortfolioDialog(QMainWindow):
             l_sorted = [p[1] for p in pairs]
 
             n = len(l_sorted)
-            cmap_  = cm.get_cmap('tab20' if n > 10 else 'tab10')
+            cmap_  = matplotlib.colormaps['tab20' if n > 10 else 'tab10']
             palette = [cmap_(i / max(cmap_.N, 1)) for i in range(cmap_.N)]
             half = len(palette) // 2
             interleaved = []
@@ -24571,9 +24937,8 @@ class PortfolioDialog(QMainWindow):
 
             # Farben so verteilen, dass benachbarte Segmente kontrastieren
             # Trick: erst alle geraden Indizes, dann alle ungeraden → max. Abstand
-            import matplotlib.cm as cm
             n = len(labels_sorted)
-            cmap = cm.get_cmap('tab20' if n > 10 else 'tab10')
+            cmap = matplotlib.colormaps['tab20' if n > 10 else 'tab10']
             palette = [cmap(i / max(cmap.N, 1)) for i in range(cmap.N)]
             # Indizes so mischen: 0, 10, 1, 11, 2, 12, ... → jedes Paar weit auseinander
             half = len(palette) // 2
@@ -27303,6 +27668,8 @@ class StockMonitorApp(QMainWindow):
             _zoom_or_overview('zoom_alpha',  chart_widget.alpha_checkbox))
         fullscreen_chart.sharpe_checkbox.setChecked(
             _zoom_or_overview('zoom_sharpe', chart_widget.sharpe_checkbox))
+        fullscreen_chart.sortino_checkbox.setChecked(
+            _zoom_or_overview('zoom_sortino', chart_widget.sortino_checkbox))
         fullscreen_chart.target_checkbox.setChecked(
             _zoom_or_overview('zoom_target', chart_widget.target_checkbox))
         if hasattr(chart_widget, 'w52_checkbox') and hasattr(fullscreen_chart, 'w52_checkbox'):
@@ -27366,8 +27733,9 @@ class StockMonitorApp(QMainWindow):
                 ('trend_checkbox',  'zoom_trend'),
                 ('beta_checkbox',   'zoom_beta'),
                 ('alpha_checkbox',  'zoom_alpha'),
-                ('sharpe_checkbox', 'zoom_sharpe'),
-                ('target_checkbox', 'zoom_target'),
+                ('sharpe_checkbox',  'zoom_sharpe'),
+                ('sortino_checkbox', 'zoom_sortino'),
+                ('target_checkbox',  'zoom_target'),
             ]
             for cb_attr, store_attr in _shared_attrs:
                 if hasattr(fullscreen_chart, cb_attr):
@@ -27949,18 +28317,39 @@ class StockMonitorApp(QMainWindow):
         # QTimer in __init__ startet _master_load nach 80ms automatisch
 
     def open_favorites_dialog(self):
-        """Öffne Favoriten-Dialog"""
+        """Öffne Favoriten-Dialog oder füge aktuelle Aktie direkt hinzu"""
+        # Bestimme das aktuell angezeigte Symbol (Fullscreen-Chart hat Priorität)
+        current_symbol = None
+        if getattr(self, 'fullscreen_chart', None) is not None:
+            current_symbol = self.fullscreen_chart.symbol
+        elif self.charts:
+            current_symbol = self.charts[0].symbol
+
+        # Symbol noch nicht in Favoriten → direkt hinzufügen, kein Dialog
+        if current_symbol and current_symbol.upper() not in [f.upper() for f in self.favorites]:
+            sym = current_symbol.upper()
+            self.favorites.append(sym)
+            self.save_favorites()
+            for chart in self.charts:
+                chart.update_favorites_list(self.favorites)
+            if getattr(self, 'fullscreen_chart', None) is not None:
+                self.fullscreen_chart.update_favorites_list(self.favorites)
+            QMessageBox.information(self, TR("btn_favorites"),
+                                    TR("msg_fav_symbol_added", symbol=sym))
+            return
+
+        # Symbol bereits in Favoriten → Dialog öffnen wie bisher
         print(f">>> open_favorites_dialog aufgerufen, {len(self.favorites)} Favoriten")
         try:
             dialog = FavoritesDialog(self.favorites, self)
             print(f">>> Dialog erstellt, öffne jetzt...")
-            
+
             # Stelle sicher dass Dialog im Vordergrund ist
             dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
             dialog.show()
             dialog.raise_()
             dialog.activateWindow()
-            
+
             result = dialog.exec()
             print(f">>> Dialog geschlossen mit result={result}")
             if result == QDialog.DialogCode.Accepted:
@@ -29335,11 +29724,16 @@ class StockMonitorApp(QMainWindow):
                         except Exception:
                             _pv = (0, 0)
                         _bsp = ["--break-system-packages"] if _pv >= (22, 3) else []
-                        # Mit --user installieren: geht nach ~/.local/lib/pythonX.Y/site-packages
+                        # In einem venv ist --user nicht erlaubt (User-Site-Packages
+                        # sind dort unsichtbar) und auch nicht nötig, da das venv
+                        # ohnehin isoliert ist.
+                        _in_venv = _sys.prefix != getattr(_sys, "base_prefix", _sys.prefix)
+                        _user_flag = [] if _in_venv else ["--user"]
+                        # Ohne venv mit --user installieren: geht nach ~/.local/lib/pythonX.Y/site-packages
                         # → immer in sys.path, unabhängig von PYTHONPATH
                         r = subprocess.run(
                             [_sys.executable, "-m", "pip", "install",
-                             "--upgrade", "--user"] + _bsp + [f"yfinance=={_v}"],
+                             "--upgrade"] + _user_flag + _bsp + [f"yfinance=={_v}"],
                             capture_output=True, text=True
                         )
                         if r.returncode == 0:
@@ -30388,7 +30782,9 @@ class StockMonitorApp(QMainWindow):
                 text_lbl = QLabel(txt_clean)
                 text_lbl.setWordWrap(True)
                 if _emoji_font_name:
-                    text_lbl.setFont(QFont(_emoji_font_name, 10))
+                    _font = QFont(QApplication.font().family(), 10)
+                    _font.setFamilies([QApplication.font().family(), _emoji_font_name])
+                    text_lbl.setFont(_font)
                 if is_title:
                     text_lbl.setStyleSheet("font-weight: bold;")
                 row_layout.addWidget(text_lbl, stretch=1)
@@ -30397,7 +30793,9 @@ class StockMonitorApp(QMainWindow):
                 lbl = QLabel(txt)
                 lbl.setWordWrap(True)
                 if _emoji_font_name:
-                    lbl.setFont(QFont(_emoji_font_name, 10))
+                    _font = QFont(QApplication.font().family(), 10)
+                    _font.setFamilies([QApplication.font().family(), _emoji_font_name])
+                    lbl.setFont(_font)
                 if is_title:
                     lbl.setStyleSheet("font-weight: bold;")
                 return lbl
@@ -31224,12 +31622,29 @@ class StockMonitorApp(QMainWindow):
                         else:
                             h = yf.Ticker(sym).history(period=pk, interval='1d')
                         return sym, h
+                    def _fetch_fallback(sym, skip_pk):
+                        """Kürzere Perioden als Fallback wenn Hauptperiode leer (z.B. Börse geschlossen)"""
+                        for fb_pk in ('5d', '1mo', '3mo', '6mo'):
+                            if fb_pk == skip_pk:
+                                continue
+                            try:
+                                _, hfb = _fetch(sym, fb_pk)
+                                if not hfb.empty:
+                                    return hfb
+                            except Exception:
+                                pass
+                        return None
                     def _resolve(sym, pk):
                         resolved, hist = _fetch(sym, pk)
                         if not hist.empty and len(hist) >= 2:
                             return resolved, hist
                         has_suffix = any(sym.upper().endswith(s.upper()) for s in _SFXS)
                         if has_suffix or len(sym) > 6:
+                            # Fallback: kürzere Periode für letzten Schlusskurs (Börse geschlossen)
+                            if hist.empty:
+                                hfb = _fetch_fallback(sym, pk)
+                                if hfb is not None:
+                                    return sym, hfb
                             return sym, hist
                         for sfx in _SFXS:
                             try:
@@ -31239,6 +31654,11 @@ class StockMonitorApp(QMainWindow):
                                     return test, h2
                             except Exception:
                                 pass
+                        # Fallback: Suffixe mit kürzeren Perioden
+                        for sfx in _SFXS:
+                            hfb = _fetch_fallback(sym + sfx, pk)
+                            if hfb is not None:
+                                return sym + sfx, hfb
                         return sym, hist
                     results = []
                     total = len(self._syms)
@@ -31247,13 +31667,18 @@ class StockMonitorApp(QMainWindow):
                         abs_change = None; currency = ""
                         try:
                             resolved_sym, hist = _resolve(sym, self._pk)
-                            if hist.empty or len(hist) < 2:
+                            if hist.empty:
                                 pct = None  # Kein Datenfund → wird gefiltert
-                            else:
+                            elif len(hist) >= 2:
                                 sp  = float(hist['Close'].iloc[0])
                                 ep  = float(hist['Close'].iloc[-1])
                                 pct = (ep - sp) / sp * 100 if sp > 0 else 0.0
                                 abs_change = ep - sp
+                            else:
+                                # 1 Datenpunkt: letzter Schlusskurs (Börse geschlossen)
+                                ep = float(hist['Close'].iloc[0])
+                                pct = 0.0
+                                abs_change = 0.0
                         except Exception:
                             resolved_sym = sym; pct = None  # Kein Datenfund → wird gefiltert
                         # Sektor aus App-Cache holen (schnell, kein extra yfinance-Call nötig)

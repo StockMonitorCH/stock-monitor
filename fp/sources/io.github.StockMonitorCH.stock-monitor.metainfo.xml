@@ -60,6 +60,12 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.5.0" date="2026-07-29">
+      <description>
+        <p>Sortino Ratio in zoom chart and portfolio (new dialog accessible from Sharpe dialog). Watchlist: last available closing price used when market is closed. Favourites: clicking the star dropdown in a chart adds the stock directly if not yet in favourites. Help updated with Sortino deep-dive section.</p>
+        <p xml:lang="de">Sortino-Ratio im Zoom-Chart und im Portfolio (neuer Dialog über Sharpe-Dialog erreichbar). Watchlist: letzter verfügbarer Schlusskurs bei geschlossener Börse. Favoriten: Klick auf das Stern-Dropdown fügt Aktie direkt hinzu, wenn noch nicht in Favoriten. Hilfe mit Sortino-Vertiefung erweitert.</p>
+      </description>
+    </release>
     <release version="5.4.4" date="2026-07-09">
       <description>
         <p>Zoom chart now has independent indicator settings (MA, Trend, Beta etc.) that are preserved across sessions. Global settings apply to all charts including the open zoom view. Windows fix: loading stocks with maximum period (e.g. McDonald's, Coca-Cola) no longer fails with Errno 22.</p>
