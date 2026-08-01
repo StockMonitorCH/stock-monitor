@@ -140,4 +140,4 @@ Stock Monitor is free and developed in spare time. If you enjoy it, any donation
 
 ## 📄 License
 
-GPL-3.0 — see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE) for details.
