@@ -8243,6 +8243,7 @@ class PortfolioDialog(QMainWindow):
 
     # ── API-Key Defaults (leer = nicht konfiguriert) ──────────────────────
     _api_keys = {'finnhub': '', 'gemini': '', 'fmp': ''}
+    _gemini_model = 'gemini-2.0-flash'   # ausgewähltes Gemini-Modell
 
     @classmethod
     def _get_api_key(cls, name):
@@ -8272,6 +8273,9 @@ class PortfolioDialog(QMainWindow):
                 with open(cls.SETTINGS_FILE, 'r') as f:
                     data = json.load(f)
                     cls._api_keys.update(data.get('api_keys', {}))
+                    saved_model = data.get('gemini_model', '')
+                    if saved_model:
+                        cls._gemini_model = saved_model
         except Exception:
             pass
 
@@ -8285,6 +8289,7 @@ class PortfolioDialog(QMainWindow):
                 with open(cls.SETTINGS_FILE, 'r') as f:
                     existing = json.load(f)
             existing['api_keys'] = cls._api_keys
+            existing['gemini_model'] = cls._gemini_model
             with open(cls.SETTINGS_FILE, 'w') as f:
                 json.dump(existing, f, indent=2)
         except Exception:
@@ -15714,7 +15719,7 @@ class PortfolioDialog(QMainWindow):
                             "generationConfig": {"maxOutputTokens": 4000, "temperature": 0.7}
                         }
                         url = (f"https://generativelanguage.googleapis.com/v1beta/models"
-                               f"/gemini-2.5-flash:generateContent?key={self._key}")
+                               f"/{PortfolioDialog._gemini_model}:generateContent?key={self._key}")
                         req = urllib.request.Request(
                             url,
                             data=json.dumps(payload).encode(),
@@ -28475,7 +28480,75 @@ class StockMonitorApp(QMainWindow):
                 QLineEdit.EchoMode.Normal if s else QLineEdit.EchoMode.Password))
         ai_form.addRow(TR("lbl_gemini_api_key"), ai_key_edit)
         ai_form.addRow("", ai_show_cb)
+
+        # ── Modell-Auswahl ────────────────────────────────────────────────
+        model_row = QHBoxLayout()
+        model_combo = QComboBox()
+        model_combo.setMinimumHeight(28)
+        model_combo.setMinimumWidth(260)
+        # Aktuell gespeichertes Modell als Startwert eintragen
+        _cur_model = PortfolioDialog._gemini_model or 'gemini-2.0-flash'
+        model_combo.addItem(_cur_model)
+        model_combo.setCurrentText(_cur_model)
+        load_models_btn = QPushButton(TR("btn_load_models"))
+        load_models_btn.setMinimumHeight(28)
+        load_models_btn.setStyleSheet("padding:2px 10px;")
+        model_row.addWidget(model_combo, stretch=1)
+        model_row.addWidget(load_models_btn)
+        ai_form.addRow(TR("lbl_gemini_model"), model_row)
         ai_lay.addLayout(ai_form)
+
+        model_status = QLabel("")
+        model_status.setStyleSheet("font-size:11px; color:#888;")
+        ai_lay.addWidget(model_status)
+
+        def _fetch_models():
+            key = ai_key_edit.text().strip()
+            if not key:
+                model_status.setText("⚠ Bitte zuerst API-Key eingeben.")
+                return
+            load_models_btn.setEnabled(False)
+            model_status.setText(TR("lbl_model_loading"))
+            QApplication.processEvents()
+            try:
+                import urllib.request, urllib.error, json as _json
+                url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
+                with urllib.request.urlopen(url, timeout=10) as resp:
+                    data = _json.loads(resp.read())
+                models_raw = data.get('models', [])
+                # Nur Modelle die generateContent unterstützen und nicht deprecated sind
+                usable = [
+                    m for m in models_raw
+                    if 'generateContent' in m.get('supportedGenerationMethods', [])
+                ]
+                # Nach Name sortieren, neueste zuerst
+                usable.sort(key=lambda m: m.get('name', ''), reverse=True)
+                model_names = [m['name'].split('/')[-1] for m in usable]
+                if not model_names:
+                    model_status.setText(TR("lbl_model_load_error"))
+                    load_models_btn.setEnabled(True)
+                    return
+                prev = model_combo.currentText()
+                model_combo.blockSignals(True)
+                model_combo.clear()
+                model_combo.addItems(model_names)
+                # Aktuell gewähltes Modell behalten wenn vorhanden, sonst gemini-2.0-flash als Empfehlung
+                preferred = ['gemini-2.0-flash', 'gemini-1.5-flash']
+                if prev in model_names:
+                    model_combo.setCurrentText(prev)
+                else:
+                    for pref in preferred:
+                        if pref in model_names:
+                            model_combo.setCurrentText(pref)
+                            break
+                model_combo.blockSignals(False)
+                model_status.setText(f"✅ {len(model_names)} Modelle geladen")
+            except Exception as ex:
+                model_status.setText(f"{TR('lbl_model_load_error')}: {ex}")
+            finally:
+                load_models_btn.setEnabled(True)
+
+        load_models_btn.clicked.connect(_fetch_models)
 
         ai_status = QLabel("")
         ai_status.setStyleSheet("font-size:11px; color:#27ae60;")
@@ -28518,6 +28591,7 @@ class StockMonitorApp(QMainWindow):
         def _save_settings():
             gem = ai_key_edit.text().strip()
             PortfolioDialog._api_keys['gemini'] = gem
+            PortfolioDialog._gemini_model = model_combo.currentText().strip() or 'gemini-2.0-flash'
             PortfolioDialog.save_api_keys()
             parts = []
             if gem: parts.append("Gemini ✅")
