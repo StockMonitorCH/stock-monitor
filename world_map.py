@@ -548,11 +548,10 @@ def generate_map_html(geo_data, lang='DE'):
     worldCopyJump: false
   }});
 
-  // CartoDB Positron — noWrap verhindert Wiederholung
-  L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 19,
+  // Esri World Light Gray — kostenlos, kein API-Key, kein Referer-Header nötig
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+    maxZoom: 16,
     noWrap: true
   }}).addTo(map);
 
