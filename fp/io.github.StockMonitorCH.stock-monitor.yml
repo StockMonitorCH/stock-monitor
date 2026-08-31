@@ -39,5 +39,7 @@ modules:
       - chmod -R a-w /app/lib/stock-monitor/*.py || true
       - chmod 644 /app/lib/stock-monitor/*.py || true
     sources:
-      - type: dir
-        path: /tmp/sm-src
+      - type: git
+        url: https://github.com/StockMonitorCH/stock-monitor.git
+        tag: v5.6.0
+        commit: 62e503be62ae2bc2298dd0b0842b35645e7260c9
