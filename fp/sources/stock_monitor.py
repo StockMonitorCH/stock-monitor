@@ -30,6 +30,15 @@ except NameError:
         sys.argv[0] if sys.argv else ""
     )
 
+# curl_cffi (von yfinance intern genutzt) ermittelt sein Standard-CA-Bundle über
+# ssl.get_default_verify_paths(), was bei einem via Homebrew gebauten Python auf
+# einen nur auf dieser Maschine existierenden Pfad zeigt (/opt/homebrew/etc/...).
+# Auf jedem anderen Rechner explizit auf das mitgelieferte certifi-Bundle zeigen.
+import certifi
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+os.environ.setdefault("CURL_CA_BUNDLE", certifi.where())
+os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
@@ -42,7 +51,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.5.0"                            # beim Release anpassen
+APP_VERSION  = "5.6.0"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -1536,7 +1545,7 @@ class AnalystInfoDialog(QDialog):
         h_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
         h_dlg.setWindowFlag(Qt.WindowType.Window, True)
         h_dlg.setWindowTitle(TR("title_div_history", company=company_name, sym=sym))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         _is_fhd1 = screen.width() <= 1920
         hw = int(screen.width()  * (0.88 if _is_fhd1 else 0.72))
         hh = int(screen.height() * (0.90 if _is_fhd1 else 0.80))
@@ -3363,7 +3372,7 @@ class CompareDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(TR("title_compare_charts"))
         from PyQt6.QtWidgets import QApplication as _QA
-        _scr = _QA.primaryScreen().availableGeometry()
+        _scr = (self.screen() or _QA.primaryScreen()).availableGeometry()
         self.setMinimumSize(int(_scr.width() * 0.82), int(_scr.height() * 0.78))
         self.charts = charts
         self.selected_charts = []
@@ -4844,7 +4853,6 @@ class _DemoWatermark(QWidget):
         self.raise_()
 
     def paintEvent(self, event):
-        from PyQt6.QtGui import QPainter, QFont, QColor
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         text = TR("lbl_demo_watermark")
@@ -4856,6 +4864,8 @@ class _DemoWatermark(QWidget):
                          Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
                          text)
         painter.end()
+
+from stock_rating import StarRatingWidget, StockRatingDialog
 
 
 class StockChartWidget(QFrame):
@@ -5882,6 +5892,7 @@ class StockChartWidget(QFrame):
         self.zoom_beta   = state.get('zoom_beta',   None)
         self.zoom_alpha  = state.get('zoom_alpha',  None)
         self.zoom_sharpe = state.get('zoom_sharpe', None)
+        self.zoom_sortino = state.get('zoom_sortino', None)
         self.zoom_target = state.get('zoom_target', None)
         # Zoom-Only-Checkboxen: nur im zoom_mode setzen, sonst False
         if self.zoom_mode:
@@ -6561,9 +6572,17 @@ class StockChartWidget(QFrame):
 
             axis = self.plot_widget.getAxis('bottom')
             # Tick-Anzahl aus tatsächlicher Widget-Breite berechnen.
-            # MM.YYYY-Label braucht ~58px, YYYY-Label ~38px.
+            # MM.YYYY-Label braucht ~58px, YYYY-Label ~48px (grosszügiger
+            # bemessen als die reine Textbreite, damit bei langen Zeiträumen
+            # nicht zu viele Jahreszahlen dicht an dicht stehen - lieber
+            # z.B. jedes 5. statt jedes 3. Jahr beschriften).
             _days = (times_clean[-1] - times_clean[0]) / 86400 if len(times_clean) > 1 else 365
-            _lbl_px = 40 if _days > 365 else 60
+            if _days > 365 * 3:
+                _lbl_px = 48   # YYYY (z.B. 5J/Max)
+            elif _days > 60:
+                _lbl_px = 58   # MM.YYYY (z.B. 2J)
+            else:
+                _lbl_px = 40   # DD.MM / HH:MM
             _widget_px = self.plot_widget.width()
             if _widget_px < 100:  # Fallback wenn Widget noch nicht gerendert
                 _widget_px = 380 if self.compact_mode else 900
@@ -7950,10 +7969,21 @@ class StockChartWidget(QFrame):
                     ticks.append((ts, current.strftime('%Y')))
                 current = _dt(current.year + 1, 1, 1)
 
-        # Maximal max_ticks anzeigen (gleichmässig ausdünnen wenn zu viele)
+        # Maximal max_ticks anzeigen (ausdünnen wenn zu viele).
+        # Ausdünnung nach Mindestabstand in der Zeit (nicht nach Index!): Die
+        # Rohkandidaten (z.B. Quartale, 91 Tage) liegen oft enger beieinander,
+        # als für max_ticks gleichmässig verteilte Labels nötig wäre. Würde man
+        # nur nach Index ausdünnen, blieben benachbarte Kandidaten übrig, die
+        # sich als Text überlappen. Daher: fortlaufend nur behalten, was min_gap
+        # Abstand zum zuletzt behaltenen Tick hat.
         if len(ticks) > max_ticks:
-            step = len(ticks) / max_ticks
-            ticks = [ticks[int(i * step)] for i in range(max_ticks)]
+            span = ticks[-1][0] - ticks[0][0]
+            min_gap = span / (max_ticks - 1) if max_ticks > 1 else span
+            thinned = [ticks[0]]
+            for ts, lbl in ticks[1:]:
+                if ts - thinned[-1][0] >= min_gap:
+                    thinned.append((ts, lbl))
+            ticks = thinned
 
         # Mindestens 3 Ticks (Fallback auf linspace wenn zu wenig)
         if len(ticks) < 3:
@@ -8983,7 +9013,7 @@ class PortfolioDialog(QMainWindow):
         lay.addWidget(btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
         dlg.adjustSize()
-        _screen = QApplication.primaryScreen().availableGeometry()
+        _screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg.move(
             _screen.x() + (_screen.width()  - dlg.width())  // 2,
             _screen.y() + (_screen.height() - dlg.height()) // 2,
@@ -11800,7 +11830,7 @@ class PortfolioDialog(QMainWindow):
                 # Admin-Fenster als normales nicht-modales Fenster zeigen
                 self.setWindowModality(Qt.WindowModality.NonModal)
                 self.resize(1500, 700)
-                _scr = QApplication.primaryScreen().availableGeometry()
+                _scr = (self.screen() or QApplication.primaryScreen()).availableGeometry()
                 self.move(
                     _scr.x() + (_scr.width()  - self.width())  // 2,
                     _scr.y() + (_scr.height() - self.height()) // 2
@@ -11869,7 +11899,14 @@ class PortfolioDialog(QMainWindow):
         _ov_emoji_font = None
         for _fc_ov in ['Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji']:
             if _fc_ov in _QFDB_ov.families():
-                _ov_emoji_font = QFont(_fc_ov, 11)
+                # Emoji-Font nur als Fallback für Emoji-Glyphen, nicht als
+                # Hauptschrift: viele Labels hier mischen Emoji mit normalem
+                # Text/Zahlen (Preise, Summenzeile). Wäre die Emoji-Schrift
+                # (z.B. "Apple Color Emoji") die einzige Familie, fehlen ihr
+                # brauchbare Ziffern-Glyphen und Qt weicht auf eine andere
+                # Fallback-Schrift aus - sichtbar als "Schreibmaschinenschrift".
+                _ov_emoji_font = QFont("Arial", 11)
+                _ov_emoji_font.setFamilies(["Arial", _fc_ov])
                 break
 
         def _make_ov_btn(label, tooltip, min_width=None):
@@ -12887,8 +12924,11 @@ class PortfolioDialog(QMainWindow):
                 _price_lbl = QLabel(f"{_fmt(_price_disp)}{_ind}")
                 _price_lbl.setMinimumWidth(105); _price_lbl.setMaximumWidth(105)
                 _price_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                if _ov_emoji_font:
-                    _price_lbl.setFont(_ov_emoji_font)
+                # Kein eigenes Font mehr setzen: ▼/▲ sind normale Unicode-
+                # Zeichen (U+25BC/U+25B2), keine Emojis - die App-Standard-
+                # schrift stellt sie problemlos dar. Die Emoji-Schrift war
+                # hier unnötig und liess die Zahlen kleiner/anders wirken
+                # als in den Nachbarspalten (Kaufwert, Akt. Wert, ...).
                 if _ind:
                     _price_lbl.setStyleSheet(f"color:{_ind_color};")
                 # Tooltip zeigt Stop/Ziel
@@ -13571,7 +13611,7 @@ class PortfolioDialog(QMainWindow):
         import sys as _sys_fd
         if _sys_fd.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = int(screen.width()  * 0.82)
         dlg_h  = int(screen.height() * 0.82)
         dialog.resize(dlg_w, dlg_h)
@@ -14201,7 +14241,7 @@ class PortfolioDialog(QMainWindow):
             geo = perf_dialog.geometry()
             dialog.setGeometry(geo)
         else:
-            screen = QApplication.primaryScreen().availableGeometry()
+            screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
             dlg_w  = int(screen.width()  * 0.82)
             dlg_h  = int(screen.height() * 0.82)
             dialog.resize(dlg_w, dlg_h)
@@ -15268,7 +15308,7 @@ class PortfolioDialog(QMainWindow):
             geo = perf_dialog.geometry()
             dialog.setGeometry(geo)
         else:
-            screen = QApplication.primaryScreen().availableGeometry()
+            screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
             dlg_w  = int(screen.width()  * 0.72)
             dlg_h  = int(screen.height() * 0.82)
             dialog.resize(dlg_w, dlg_h)
@@ -15542,7 +15582,7 @@ class PortfolioDialog(QMainWindow):
         import sys as _sys_fd
         if _sys_fd.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = int(screen.width()  * 0.62)
         dlg_h  = int(screen.height() * 0.82)
         dialog.resize(dlg_w, dlg_h)
@@ -15714,7 +15754,7 @@ class PortfolioDialog(QMainWindow):
                             "generationConfig": {"maxOutputTokens": 4000, "temperature": 0.7}
                         }
                         url = (f"https://generativelanguage.googleapis.com/v1beta/models"
-                               f"/gemini-2.5-flash:generateContent?key={self._key}")
+                               f"/gemini-3.5-flash-lite:generateContent?key={self._key}")
                         req = urllib.request.Request(
                             url,
                             data=json.dumps(payload).encode(),
@@ -15819,7 +15859,7 @@ class PortfolioDialog(QMainWindow):
         import sys as _sys_pfa
         if _sys_pfa.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = min(860, int(screen.width()  * 0.65))
         dlg_h  = min(920, int(screen.height() * 0.92))
         dialog.resize(dlg_w, dlg_h)
@@ -16026,7 +16066,7 @@ class PortfolioDialog(QMainWindow):
         import sys as _sys_fd
         if _sys_fd.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         _div_is_fullhd = screen.width() <= 2560
         dlg_w  = int(screen.width()  * 0.55)
         dlg_h  = int(screen.height() * 0.70)
@@ -16359,7 +16399,7 @@ class PortfolioDialog(QMainWindow):
                 det_dlg = QDialog(dialog)
                 det_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
                 det_dlg.setWindowFlag(Qt.WindowType.Window, True)
-                screen2 = QApplication.primaryScreen().availableGeometry()
+                screen2 = (self.screen() or QApplication.primaryScreen()).availableGeometry()
                 det_w = min(int(screen2.width() * 0.80), max(700, 120 + n_bars * 70))
                 det_h = int(screen2.height() * 0.80)
                 det_dlg.resize(det_w, det_h)
@@ -16382,7 +16422,7 @@ class PortfolioDialog(QMainWindow):
                 ov_info_lbl = QLabel(
                     TR("lbl_div_stock_perf", period=period_label)
                     + TR("lbl_div_stocks_count", n=len(syms))
-                    + f"{TR('lbl_total_short')}: <b style='color:#e67e22'>{_CUR_SYM} {total_div_usd_all*_div_fx:,.0f}</b>  "
+                    + f"{TR('lbl_total_short')}: <b style='color:#e67e22'>{_CUR_SYM} {_fmt(total_div_usd_all*_div_fx, 0)}</b>  "
                     + f"<span style='color:#888; font-size:10px'>  {TR('lbl_click_bar_div_history')}</span>"
                 )
                 ov_info_lbl.setWordWrap(False)
@@ -16443,8 +16483,8 @@ class PortfolioDialog(QMainWindow):
                 _det_export_data[0] = {
                     'title': TR("export_title_div_details", period=period_label),
                     'headers': [TR("col_symbol"), TR("col_div_yield"), TR("col_dividends")],
-                    'rows': [(TR("lbl_total_short"), f"{total_div_pct:+.2f}%", f"{_CUR_SYM}{total_div_usd_all*_div_fx:,.0f}")]
-                          + [(s, f"{p:+.2f}%", f"{_CUR_SYM}{u*_div_fx:,.0f}") for s, p, u in zip(syms, dpcts, dusd)],
+                    'rows': [(TR("lbl_total_short"), f"{total_div_pct:+.2f}%", f"{_CUR_SYM}{_fmt(total_div_usd_all*_div_fx, 0)}")]
+                          + [(s, f"{p:+.2f}%", f"{_CUR_SYM}{_fmt(u*_div_fx, 0)}") for s, p, u in zip(syms, dpcts, dusd)],
                     'fig': det_fig,
                 }
                 stack.addWidget(page_overview)   # index 0
@@ -16852,7 +16892,7 @@ class PortfolioDialog(QMainWindow):
                 cal_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
                 cal_dlg.setWindowFlag(Qt.WindowType.Window, True)
                 cal_dlg.setWindowTitle(TR("title_dividend_calendar"))
-                screen2 = QApplication.primaryScreen().availableGeometry()
+                screen2 = (self.screen() or QApplication.primaryScreen()).availableGeometry()
                 _div_cal_fhd = screen2.width() <= 1920
                 cw = int(screen2.width()  * (0.94 if _div_cal_fhd else 0.72))
                 ch = int(screen2.height() * 0.80)
@@ -17149,7 +17189,7 @@ class PortfolioDialog(QMainWindow):
         dialog.setWindowTitle(f"Transaktionshistorie: {symbol}")
         dialog.setMinimumWidth(640)
         dialog.setMinimumHeight(300)
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dialog.resize(min(700, int(screen.width()*0.5)), min(500, int(screen.height()*0.6)))
         dialog.move(
             screen.x() + (screen.width()  - dialog.width())  // 2,
@@ -17291,7 +17331,7 @@ class PortfolioDialog(QMainWindow):
         import sys as _sys_fd
         if _sys_fd.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = min(1320, int(screen.width()  * 0.88))
         dlg_h  = min(920,  int(screen.height() * 0.92))
         dialog.resize(dlg_w, dlg_h)
@@ -19051,7 +19091,46 @@ class PortfolioDialog(QMainWindow):
         disclaimer.setStyleSheet("font-size:11px; font-style:italic; padding:4px 12px; border-top:1px solid #ddd;")
         outer.addWidget(disclaimer)
 
+        # ── Eigenes Hover-Popup statt nativem QToolTip ───────────────────────
+        # Workaround für ein Plattform-Problem (macOS 26 + Qt 6.11): native
+        # QToolTip-Fenster verlieren dort manchmal ihr "always on top" und
+        # werden hinter den Tabellenzeilen gerendert. Ein normales Kind-Widget
+        # (kein eigenes Fenster) unterliegt stattdessen Qts internem Z-Order
+        # innerhalb des Dialogs und bleibt zuverlässig sichtbar.
+        from PyQt6.QtCore import QPoint as _QPoint
+        _hover_popup = QLabel(dialog)
+        _hover_popup.setWordWrap(True)
+        _hover_popup.setStyleSheet(
+            "background:#fffbdd; color:#333; border:1px solid #999; "
+            "border-radius:4px; padding:5px 8px; font-size:11px;")
+        _hover_popup.setMaximumWidth(420)
+        _hover_popup.hide()
 
+        def _show_hover_popup(source_widget, text):
+            _hover_popup.setText(text)
+            _hover_popup.adjustSize()
+            pos = source_widget.mapTo(dialog, _QPoint(0, source_widget.height() + 2))
+            x = min(pos.x(), max(0, dialog.width()  - _hover_popup.width()  - 4))
+            y = min(pos.y(), max(0, dialog.height() - _hover_popup.height() - 4))
+            _hover_popup.move(max(0, x), max(0, y))
+            _hover_popup.show()
+            _hover_popup.raise_()
+
+        def _hide_hover_popup():
+            _hover_popup.hide()
+
+        class _HoverTipLabel(QLabel):
+            """QLabel mit eigenem Hover-Popup statt nativem QToolTip (s.o.)."""
+            def __init__(self, text, tip_text, parent=None):
+                super().__init__(text, parent)
+                self._tip_text = tip_text
+            def enterEvent(self, event):
+                if self._tip_text:
+                    _show_hover_popup(self, self._tip_text)
+                super().enterEvent(event)
+            def leaveEvent(self, event):
+                _hide_hover_popup()
+                super().leaveEvent(event)
 
         _worker_ref = [None]
         _calc_context = {'target_val_map': {}, 'total_capital': 0.0}  # Closure für do_calculate → _build_table
@@ -19220,19 +19299,18 @@ class PortfolioDialog(QMainWindow):
                 rl.addWidget(_sym_lbl)
                 rl.addWidget(mk(f"{'+' if r['pct']>=0 else ''}{r['pct']:.1f}%",       80, pc, True))
 
-                # Analyst-Label direkt erstellen und Tooltip sofort setzen (kein Closure-Problem)
-                a_lbl = QLabel(a_txt)
+                # Analyst-Label direkt erstellen, Hover-Text sofort binden (kein Closure-Problem).
+                # _HoverTipLabel statt setToolTip() - siehe Kommentar bei der Definition oben.
+                a_lbl = _HoverTipLabel(a_txt, str(a_raw))
                 a_lbl.setFixedWidth(85)
                 a_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 a_lbl.setStyleSheet(f"font-size:{FS}; background:transparent; border:none; color:{a_col}; font-weight:bold;")
-                a_lbl.setToolTip(str(a_raw))   # sofortige Bindung, kein Closure
                 rl.addWidget(a_lbl)
 
-                n_lbl = QLabel(n_txt)
+                n_lbl = _HoverTipLabel(n_txt, str(n_raw))
                 n_lbl.setFixedWidth(70)
                 n_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 n_lbl.setStyleSheet(f"font-size:{FS}; background:transparent; border:none; color:{n_col};")
-                n_lbl.setToolTip(str(n_raw))   # sofortige Bindung, kein Closure
                 rl.addWidget(n_lbl)
                 rl.addWidget(mk(f"{cs:.0f}",  65, sc_col, True))
                 rl.addWidget(mk(f"{_cur_sym}{_fmt(r['val'] * _disp_fx)}",                               120, right=True))
@@ -19820,7 +19898,7 @@ class PortfolioDialog(QMainWindow):
         import sys as _sys_fd
         if _sys_fd.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = min(int(screen.width()  * 0.82), 2200)   # max 2200px (4K-fähig)
         dlg_h  = int(screen.height() * 0.84)
         dialog.resize(dlg_w, dlg_h)
@@ -20622,7 +20700,7 @@ class PortfolioDialog(QMainWindow):
         import sys as _sys_idx
         if _sys_idx.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = min(int(screen.width()  * 0.82), 2200)
         dlg_h  = int(screen.height() * 0.84)
         dialog.resize(dlg_w, dlg_h)
@@ -20980,7 +21058,7 @@ class PortfolioDialog(QMainWindow):
         dialog = QDialog(self)
         dialog.setWindowTitle(TR("title_correlation"))
         dialog.setWindowFlag(Qt.WindowType.Window, True)
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = min(int(screen.width() * 0.72), 1200)
         dlg_h  = min(int(screen.height() * 0.80), 900)
         dialog.resize(dlg_w, dlg_h)
@@ -21021,6 +21099,19 @@ class PortfolioDialog(QMainWindow):
         exp_btn = self._make_export_btn(lambda: export_data[0], TR("title_correlation"))
         exp_btn.setMinimumHeight(30)
         ctrl.addWidget(exp_btn)
+
+        stress_btn = QPushButton(TR("btn_stress_test"))
+        stress_btn.setMinimumHeight(30)
+        stress_btn.setStyleSheet("padding:2px 14px;")
+        self._ef(stress_btn)
+        def _open_stress():
+            from stress_test import show_stress_test_dialog
+            cur  = getattr(self, '_ov_currency', 'USD') or 'USD'
+            fx   = self._ov_fx.get(cur, 1.0) if hasattr(self, '_ov_fx') else 1.0
+            pv   = sum(v for _, v in self._get_symbols_values_for_risk()) * fx
+            show_stress_test_dialog(dialog, pv, cur)
+        stress_btn.clicked.connect(_open_stress)
+        ctrl.addWidget(stress_btn)
 
         close_btn = QPushButton(TR("btn_close"))
         close_btn.setMinimumHeight(30)
@@ -21245,6 +21336,8 @@ class PortfolioDialog(QMainWindow):
         QTimer.singleShot(100, _run_calc)
 
         dialog.exec()
+        self.raise_()
+        self.activateWindow()
 
     # ── Portfolio-Notizen ──────────────────────────────────────────────────────
     def show_portfolio_notes(self):
@@ -21502,7 +21595,7 @@ class PortfolioDialog(QMainWindow):
         # ── Dialog aufbauen ────────────────────────────────────────────────
         dialog = QDialog(self)
         dialog.setWindowTitle(TR("title_rebalancing"))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = min(1150, int(screen.width()  * 0.84))
         dlg_h  = min(880,  int(screen.height() * 0.92))
         dialog.resize(dlg_w, dlg_h)
@@ -21857,7 +21950,7 @@ class PortfolioDialog(QMainWindow):
         import sys as _sys_fd
         if _sys_fd.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = min(920, int(screen.width()  * 0.72))
         dlg_h  = min(860, int(screen.height() * 0.90))
         dialog.resize(dlg_w, dlg_h)
@@ -22622,7 +22715,7 @@ class PortfolioDialog(QMainWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle(TR("title_beta_analysis"))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = min(920, int(screen.width()  * 0.72))
         dlg_h  = min(860, int(screen.height() * 0.90))
         dialog.resize(dlg_w, dlg_h)
@@ -23048,7 +23141,7 @@ class PortfolioDialog(QMainWindow):
         # ── Dialog ─────────────────────────────────────────────────────────────
         dialog = QDialog(self)
         dialog.setWindowTitle(TR("title_geo_distribution"))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w = int(screen.width()  * 0.70)
         dlg_h = int(screen.height() * 0.72)
         dialog.resize(dlg_w, dlg_h)
@@ -23558,7 +23651,7 @@ class PortfolioDialog(QMainWindow):
 
         # ── GeoWorker ─────────────────────────────────────────────────────────
         class GeoWorker(QThread):
-            done    = Signal(dict)
+            done    = Signal(dict, int)   # (geo_data, error_count)
             progress = Signal(int, int)   # (fertig, gesamt) für Statusanzeige
 
             def __init__(self, portfolio_data, price_cache, parent=None):
@@ -23586,6 +23679,7 @@ class PortfolioDialog(QMainWindow):
                 result = {}
                 result_lock = threading.Lock()
                 done_count  = [0]
+                error_count = [0]
 
                 def fetch_one(sym):
                     if self._abort_event.is_set():
@@ -23603,7 +23697,10 @@ class PortfolioDialog(QMainWindow):
                         address1 = info.get('address1', '') or ''
                         zip_code = info.get('zip',      '') or ''
                     except Exception:
+                        _log.exception(f"GeoWorker: Ticker('{sym}').info fehlgeschlagen")
                         country, city, state, website, longname, address1, zip_code = 'Unknown', '', '', '', sym, '', ''
+                        with result_lock:
+                            error_count[0] += 1
                     entry = {
                         'country':  country,
                         'city':     city,
@@ -23632,7 +23729,7 @@ class PortfolioDialog(QMainWindow):
                             pass
 
                 if not self._abort_event.is_set():
-                    self.done.emit(result)
+                    self.done.emit(result, error_count[0])
 
         # ── Pie zeichnen ───────────────────────────────────────────────────────
         def _draw_pie(geo_data):
@@ -23988,11 +24085,24 @@ class PortfolioDialog(QMainWindow):
                             opened = True
                             break
                 elif sys.platform == 'darwin':
-                    for app in ['Google Chrome', 'Microsoft Edge', 'Firefox']:
+                    # Popen liefert keinen Fehler, wenn die App fehlt (das
+                    # Fehlschlagen passiert erst innerhalb des 'open'-Prozesses) -
+                    # daher subprocess.run() + returncode prüfen, statt blind
+                    # beim ersten Versuch "opened = True" zu setzen. Safari (auf
+                    # jedem Mac vorhanden) und ein finaler Standardbrowser-
+                    # Fallback stellen sicher, dass sich überhaupt etwas öffnet.
+                    for _cmd in [
+                        ['open', '-a', 'Google Chrome', '--args', '--start-maximized', url],
+                        ['open', '-a', 'Microsoft Edge', '--args', '--start-maximized', url],
+                        ['open', '-a', 'Firefox', '--args', '--start-maximized', url],
+                        ['open', '-a', 'Safari', url],
+                        ['open', url],
+                    ]:
                         try:
-                            subprocess.Popen(['open', '-a', app, '--args', '--start-maximized', url])
-                            opened = True
-                            break
+                            _r = subprocess.run(_cmd, capture_output=True)
+                            if _r.returncode == 0:
+                                opened = True
+                                break
                         except Exception:
                             continue
                 else:
@@ -24025,7 +24135,7 @@ class PortfolioDialog(QMainWindow):
         # ── Callbacks ─────────────────────────────────────────────────────────
         _geo_data_ref = [None]
 
-        def on_geo_done(geo_data):
+        def on_geo_done(geo_data, error_count=0):
             _geo_data_ref[0] = geo_data
             n = len(geo_data)
             try:
@@ -24036,11 +24146,17 @@ class PortfolioDialog(QMainWindow):
                 pie_canvas.setVisible(True)
                 status_lbl.setVisible(True)
                 try:
-                    status_lbl.setText(TR("msg_positions_loaded", n=n))
+                    if error_count > 0:
+                        status_lbl.setText(TR("msg_geo_fetch_errors", n=n, errors=error_count))
+                    else:
+                        status_lbl.setText(TR("msg_positions_loaded", n=n))
                 except RuntimeError:
                     pass
                 try:
-                    status_lbl.setStyleSheet("color:#4caf50; font-size:11px;")
+                    if error_count > 0:
+                        status_lbl.setStyleSheet("color:#e67e00; font-size:11px;")
+                    else:
+                        status_lbl.setStyleSheet("color:#4caf50; font-size:11px;")
                 except RuntimeError:
                     pass
                 _draw_pie(geo_data)
@@ -24110,7 +24226,6 @@ class PortfolioDialog(QMainWindow):
 
         import matplotlib
         matplotlib.use('QtAgg')
-        import matplotlib.cm as cm
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
         from matplotlib.figure import Figure
 
@@ -24124,7 +24239,7 @@ class PortfolioDialog(QMainWindow):
         import sys as _sys_fd
         if _sys_fd.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = int(screen.width()  * 0.82)
         dlg_h  = int(screen.height() * 0.84)
         dialog.resize(dlg_w, dlg_h)
@@ -24247,7 +24362,7 @@ class PortfolioDialog(QMainWindow):
             l_sorted = [p[1] for p in pairs]
 
             n = len(l_sorted)
-            cmap_  = cm.get_cmap('tab20' if n > 10 else 'tab10')
+            cmap_  = matplotlib.colormaps['tab20' if n > 10 else 'tab10']
             palette = [cmap_(i / max(cmap_.N, 1)) for i in range(cmap_.N)]
             half = len(palette) // 2
             interleaved = []
@@ -24811,7 +24926,7 @@ class PortfolioDialog(QMainWindow):
         dialog.setMinimumSize(760, 580)
 
         # Dialog auf ~80% der Bildschirmgrösse skalieren
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w = int(screen.width()  * 0.80)
         dlg_h = int(screen.height() * 0.82)
         dialog.resize(dlg_w, dlg_h)
@@ -24857,9 +24972,8 @@ class PortfolioDialog(QMainWindow):
 
             # Farben so verteilen, dass benachbarte Segmente kontrastieren
             # Trick: erst alle geraden Indizes, dann alle ungeraden → max. Abstand
-            import matplotlib.cm as cm
             n = len(labels_sorted)
-            cmap = cm.get_cmap('tab20' if n > 10 else 'tab10')
+            cmap = matplotlib.colormaps['tab20' if n > 10 else 'tab10']
             palette = [cmap(i / max(cmap.N, 1)) for i in range(cmap.N)]
             # Indizes so mischen: 0, 10, 1, 11, 2, 12, ... → jedes Paar weit auseinander
             half = len(palette) // 2
@@ -27263,7 +27377,7 @@ class StockMonitorApp(QMainWindow):
         if self.isMaximized():
             return  # Maximiertes Fenster braucht keine Korrektur
         
-        screen = QApplication.primaryScreen().availableGeometry()  # berücksichtigt Taskbar
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()  # berücksichtigt Taskbar
         max_w = screen.width()
         max_h = screen.height()
         
@@ -27676,7 +27790,24 @@ class StockMonitorApp(QMainWindow):
         # Signal: wenn Zurück-Button geklickt wird
         back_btn.clicked.connect(_sync_zoom_state_back)
 
-        fullscreen_layout.addWidget(back_btn)
+        # Bewertungs-Button
+        rating_btn = QPushButton(TR("btn_stock_rating"))
+        rating_btn.setToolTip(TR("tip_stock_rating"))
+        rating_btn.setMaximumWidth(130)
+        StockRatingDialog._apply_emoji_font(rating_btn)
+        def _open_rating():
+            dlg = StockRatingDialog(fullscreen_chart, self)
+            dlg.exec()
+        rating_btn.clicked.connect(_open_rating)
+
+        top_row = QHBoxLayout()
+        top_row.addWidget(back_btn)
+        top_row.addWidget(rating_btn)
+        top_row.addStretch()
+        top_widget = QWidget()
+        top_widget.setLayout(top_row)
+
+        fullscreen_layout.addWidget(top_widget)
         fullscreen_layout.addWidget(fullscreen_chart)
         fullscreen_container.setLayout(fullscreen_layout)
         
@@ -28361,29 +28492,15 @@ class StockMonitorApp(QMainWindow):
                 pass
         StockChartWidget._worker_registry.clear()
 
-        # 4. Alle verbleibenden QThread-Kinder kooperativ stoppen
-        #    requestInterruption() statt terminate() – verhindert pthread_cancel()
-        #    auf Python-Threads (würde SIGABRT verursachen wenn GIL gehalten wird)
-        try:
-            from PyQt6.QtCore import QThread as _QThread
-            _threads = list(self.findChildren(_QThread))
-            for _t in _threads:
-                try:
-                    if _t.isRunning():
-                        _t.requestInterruption()
-                        _t.quit()
-                except Exception:
-                    pass
-            for _t in _threads:
-                try:
-                    if _t.isRunning():
-                        _t.wait(3000)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-        event.accept()
+        # Schritt 4 (findChildren) entfernt: löst SIGSEGV in Python 3.14 + PyQt6 aus.
+        # sip ruft PyQtMonitor::monitor(NULL) auf, weil Python 3.14's GC Wrapper-
+        # Objekte früher freigibt als Qt's Objektbaum sie freigibt. Alle relevanten
+        # Worker wurden bereits in Schritt 2 und 3 gestoppt.
+        #
+        # os._exit(0) statt event.accept(): umgeht Qt's Destruktor-Chain, die den
+        # gleichen Bug auslösen kann. Config wurde bereits gespeichert (Zeile oben).
+        import os as _os
+        _os._exit(0)
         
     def refresh_all(self):
         """Alle Charts aktualisieren – mit 5-Sekunden-Cooldown gegen Yahoo-Rate-Limiting."""
@@ -28431,7 +28548,7 @@ class StockMonitorApp(QMainWindow):
         dlg = QDialog(self)
         dlg.setWindowTitle(TR("title_settings"))
         dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg.resize(min(760, int(screen.width() * 0.55)),
                    min(680, int(screen.height() * 0.75)))
         dlg.move(screen.x() + (screen.width()  - dlg.width())  // 2,
@@ -28564,7 +28681,7 @@ class StockMonitorApp(QMainWindow):
         dialog = QDialog(_dlg_parent)
         dialog.setWindowTitle(_load_help()["window_title"])
         dialog.setMinimumSize(1000, 720)
-        screen = QApplication.primaryScreen().availableGeometry()
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w = int(screen.width()  * 0.78)
         dlg_h = int(screen.height() * 0.84)
         dialog.resize(dlg_w, dlg_h)
@@ -28818,11 +28935,12 @@ class StockMonitorApp(QMainWindow):
                     data = _json.loads(resp.read().decode())
                 latest = data.get("tag_name", "").lstrip("v")
                 if not latest:
-                    return "error", APP_VERSION, "", "", "", "", "", ""
+                    return "error", APP_VERSION, "", "", "", "", "", "", ""
                 zip_url = ""
                 flatpak_url = ""
                 deb_url = ""
                 rpm_url = ""
+                dmg_url = ""
                 for asset in data.get("assets", []):
                     name = asset.get("name", "").lower()
                     dl = asset.get("browser_download_url", "")
@@ -28834,6 +28952,8 @@ class StockMonitorApp(QMainWindow):
                         deb_url = dl
                     elif name.endswith(".rpm") and "src" not in name:
                         rpm_url = dl
+                    elif name.endswith(".dmg"):
+                        dmg_url = dl
                 def _vtuple(v):
                     try: return tuple(int(x) for x in v.split("."))
                     except: return (0,)
@@ -28841,14 +28961,14 @@ class StockMonitorApp(QMainWindow):
                     return ("update_available", latest,
                             data.get("html_url") or "",
                             data.get("body") or "",
-                            zip_url, flatpak_url, deb_url, rpm_url)
-                return "current", APP_VERSION, "", "", "", "", "", ""
+                            zip_url, flatpak_url, deb_url, rpm_url, dmg_url)
+                return "current", APP_VERSION, "", "", "", "", "", "", ""
             except Exception:
-                return "error", APP_VERSION, "", "", "", "", "", ""
+                return "error", APP_VERSION, "", "", "", "", "", "", ""
 
         def _on_result(result):
             try:
-                status, version, url, notes, zip_url, flatpak_url, deb_url, rpm_url = result
+                status, version, url, notes, zip_url, flatpak_url, deb_url, rpm_url, dmg_url = result
                 if status == "update_available":
                     if status_label:
                         status_label.setText(
@@ -28868,12 +28988,12 @@ class StockMonitorApp(QMainWindow):
                             update_btn.clicked.disconnect()
                         except Exception:
                             pass
-                        def _open_release(checked=False, _url=url, _v=version, _n=notes, _z=zip_url, _fz=flatpak_url, _dz=deb_url, _rz=rpm_url):
-                            self._show_app_update_dialog(_v, _url, _n, _z, _fz, _dz, _rz)
+                        def _open_release(checked=False, _url=url, _v=version, _n=notes, _z=zip_url, _fz=flatpak_url, _dz=deb_url, _rz=rpm_url, _dm=dmg_url):
+                            self._show_app_update_dialog(_v, _url, _n, _z, _fz, _dz, _rz, _dm)
                         update_btn.clicked.connect(_open_release)
                     # Eigenständiger Dialog (kein status_label von aussen)
                     if not status_label:
-                        self._show_app_update_dialog(version, url, notes, zip_url, flatpak_url, deb_url, rpm_url)
+                        self._show_app_update_dialog(version, url, notes, zip_url, flatpak_url, deb_url, rpm_url, dmg_url)
                 elif status == "current":
                     if status_label:
                         status_label.setText(
@@ -28893,7 +29013,7 @@ class StockMonitorApp(QMainWindow):
 
         self._start_update_worker(_do_check, _on_result)
 
-    def _show_app_update_dialog(self, version, url, notes, zip_url="", flatpak_url="", deb_url="", rpm_url=""):
+    def _show_app_update_dialog(self, version, url, notes, zip_url="", flatpak_url="", deb_url="", rpm_url="", dmg_url=""):
         """Zeigt einen Nicht-Blocking-Dialog wenn eine neue App-Version verfügbar ist."""
         dlg = QDialog(self)
         dlg.setWindowTitle(TR("title_update_check"))
@@ -28919,6 +29039,7 @@ class StockMonitorApp(QMainWindow):
 
         _in_flatpak = os.path.exists('/.flatpak-info')
         _is_exe_win = getattr(sys, 'frozen', False) and sys.platform == "win32"
+        _is_exe_mac = getattr(sys, 'frozen', False) and sys.platform == "darwin"
         _is_opt_install = os.path.abspath(__file__).startswith('/opt/stock-monitor/')
         _is_deb = _is_opt_install and os.path.exists('/etc/debian_version')
         _is_rpm = (_is_opt_install and not _is_deb and (
@@ -28949,6 +29070,18 @@ class StockMonitorApp(QMainWindow):
                 self._do_self_update(_v, _z)
             auto_btn.clicked.connect(_do_auto)
             btn_row.addWidget(auto_btn)
+        if _is_exe_mac and dmg_url:
+            mac_auto_btn = QPushButton(TR("btn_auto_update"))
+            mac_auto_btn.setStyleSheet(
+                "QPushButton{background:#27ae60;color:white;font-weight:bold;"
+                "border-radius:6px;padding:4px 14px;}"
+                "QPushButton:hover{background:#1e8449;}"
+            )
+            def _do_mac_auto(checked=False, _v=version, _dm=dmg_url):
+                dlg.close()
+                self._do_macos_update(_v, _dm)
+            mac_auto_btn.clicked.connect(_do_mac_auto)
+            btn_row.addWidget(mac_auto_btn)
         if _in_flatpak and flatpak_url:
             install_btn = QPushButton(TR("btn_flatpak_install"))
             install_btn.setStyleSheet(
@@ -29083,6 +29216,7 @@ class StockMonitorApp(QMainWindow):
             if _state['done']:
                 return
             title_lbl.setText(TR("lbl_flatpak_installing"))
+            # Qt-eigener pulsender Balken – zuverlässiger als Timer-Simulation
             prog.setRange(0, 0)
             status_lbl.setText("")
 
@@ -29112,6 +29246,8 @@ class StockMonitorApp(QMainWindow):
         def _run():
             try:
                 import time as _time
+                # XDG_CACHE_HOME zeigt auf den echten Dateisystempfad (nicht Sandbox-Overlay)
+                # ~/.cache/io.github.StockMonitorCH.stock-monitor/ ist vom Host aus erreichbar
                 xdg_cache = os.environ.get(
                     "XDG_CACHE_HOME",
                     os.path.join(os.path.expanduser("~"), ".cache",
@@ -29161,6 +29297,8 @@ class StockMonitorApp(QMainWindow):
                     pass   # Fallback: curl via Host
 
                 if not downloaded:
+                    # SSL-Fallback innerhalb Flatpak-Sandbox: curl auf dem Host
+                    # Zuerst Dateigrösse via HEAD ermitteln für echten Fortschritt
                     curl_total = 0
                     try:
                         head = subprocess.run(
@@ -29194,7 +29332,7 @@ class StockMonitorApp(QMainWindow):
                             sigs.progress.emit(0, f"{done/1_048_576:.1f} MB …")
                         _time.sleep(0.3)
                     if proc.returncode != 0:
-                        sigs.finished.emit(False, "curl error")
+                        QTimer.singleShot(0, lambda: _on_error("curl error"))
                         return
                     sigs.progress.emit(85, "")
 
@@ -29591,15 +29729,20 @@ class StockMonitorApp(QMainWindow):
         hdr.setStyleSheet("font-size:13px; color:#1a1a1a;")
         lay.addWidget(hdr)
 
-        _in_flatpak  = os.path.exists('/.flatpak-info')
-        _is_exe      = getattr(sys, 'frozen', False) and sys.platform == "win32"
-        _is_opt      = (not getattr(sys, 'frozen', False)
+        _in_flatpak    = os.path.exists('/.flatpak-info')
+        _is_exe        = getattr(sys, 'frozen', False) and sys.platform == "win32"
+        _is_mac_frozen = getattr(sys, 'frozen', False) and sys.platform == "darwin"
+        _is_opt        = (not getattr(sys, 'frozen', False)
                         and os.path.abspath(__file__).startswith('/opt/stock-monitor/'))
 
         if (_is_exe or _is_opt) and wheel_url:
             msg_text = TR("lbl_yf_toast_msg_exe", latest=latest, installed=installed)
         elif _in_flatpak:
             msg_text = TR("lbl_yf_toast_msg_flatpak", latest=latest, installed=installed)
+        elif _is_mac_frozen:
+            # macOS: In-Place-Ersetzung würde die Notarisierungs-Signatur brechen
+            # (Gatekeeper blockiert die App danach) → nur über volles App-Update.
+            msg_text = TR("lbl_yf_toast_msg_managed", latest=latest, installed=installed)
         else:
             msg_text = TR("lbl_yf_toast_msg", latest=latest, installed=installed)
         msg_lbl = QLabel(msg_text)
@@ -29610,7 +29753,7 @@ class StockMonitorApp(QMainWindow):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        if not _in_flatpak and not _is_exe and not _is_opt:
+        if not _in_flatpak and not _is_exe and not _is_opt and not _is_mac_frozen:
             # Script-Modus: pip install möglich
             pip_btn = QPushButton(TR("btn_install_yfinance"))
             pip_btn.setToolTip(TR("tip_install_yfinance"))
@@ -29636,11 +29779,16 @@ class StockMonitorApp(QMainWindow):
                         except Exception:
                             _pv = (0, 0)
                         _bsp = ["--break-system-packages"] if _pv >= (22, 3) else []
-                        # Mit --user installieren: geht nach ~/.local/lib/pythonX.Y/site-packages
+                        # In einem venv ist --user nicht erlaubt (User-Site-Packages
+                        # sind dort unsichtbar) und auch nicht nötig, da das venv
+                        # ohnehin isoliert ist.
+                        _in_venv = _sys.prefix != getattr(_sys, "base_prefix", _sys.prefix)
+                        _user_flag = [] if _in_venv else ["--user"]
+                        # Ohne venv mit --user installieren: geht nach ~/.local/lib/pythonX.Y/site-packages
                         # → immer in sys.path, unabhängig von PYTHONPATH
                         r = subprocess.run(
                             [_sys.executable, "-m", "pip", "install",
-                             "--upgrade", "--user"] + _bsp + [f"yfinance=={_v}"],
+                             "--upgrade"] + _user_flag + _bsp + [f"yfinance=={_v}"],
                             capture_output=True, text=True
                         )
                         if r.returncode == 0:
@@ -29778,14 +29926,16 @@ class StockMonitorApp(QMainWindow):
             _yf_installed = "?"
         yf_hdr = QLabel(f"<b>yfinance</b>  <span style='color:#888;'>(installiert: {_yf_installed})</span>")
         yf_lay.addWidget(yf_hdr)
-        _in_flatpak = os.path.exists('/.flatpak-info')
-        _yf_initial = (f"<span style='color:#27ae60;'>{TR('lbl_yf_flatpak_managed')}</span>"
-                       if _in_flatpak
-                       else f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>")
+        _in_flatpak    = os.path.exists('/.flatpak-info')
+        _is_frozen     = getattr(sys, 'frozen', False)
+        _is_mac_frozen = _is_frozen and sys.platform == "darwin"
+        if _in_flatpak:
+            _yf_initial = f"<span style='color:#27ae60;'>{TR('lbl_yf_flatpak_managed')}</span>"
+        else:
+            _yf_initial = f"<span style='color:#888;'>{TR('lbl_update_checking_yf')}</span>"
         yf_status_lbl = QLabel(_yf_initial)
         yf_status_lbl.setWordWrap(True)
         yf_lay.addWidget(yf_status_lbl)
-        _is_frozen  = getattr(sys, 'frozen', False)
         yf_install_btn = QPushButton(TR("btn_install_yfinance"))
         yf_install_btn.setVisible(False)
         yf_install_btn.setStyleSheet(
@@ -29812,7 +29962,7 @@ class StockMonitorApp(QMainWindow):
 
             # App-Check – mit eigenem on_result für den Dialog-Modus
             def _on_app(result):
-                status, version, url, notes, zip_url = result
+                status, version, url, notes, zip_url, dmg_url = result
                 recheck_btn.setEnabled(True)
                 if status == "update_available":
                     app_status_lbl.setText(
@@ -29825,8 +29975,8 @@ class StockMonitorApp(QMainWindow):
                         app_update_btn.clicked.disconnect()
                     except Exception:
                         pass
-                    def _open(checked=False, _url=url, _v=version, _n=notes, _z=zip_url):
-                        self._show_app_update_dialog(_v, _url, _n, _z)
+                    def _open(checked=False, _url=url, _v=version, _n=notes, _z=zip_url, _dm=dmg_url):
+                        self._show_app_update_dialog(_v, _url, _n, _z, dmg_url=_dm)
                     app_update_btn.clicked.connect(_open)
                 elif status == "current":
                     app_status_lbl.setText(
@@ -29858,6 +30008,17 @@ class StockMonitorApp(QMainWindow):
                             + TR("lbl_yf_update_available", latest=latest, installed=installed)
                             + f"</span><br><span style='color:#888;font-size:11px;'>"
                             + TR("lbl_yf_toast_msg_flatpak", latest=latest, installed=installed).split("\n")[1]
+                            + "</span>"
+                        )
+                    elif _is_mac_frozen:
+                        # macOS: In-Place-Ersetzung würde die Notarisierungs-Signatur brechen
+                        # (Gatekeeper blockiert die App danach) → nur über volles App-Update,
+                        # kein Update-Button anzeigen.
+                        yf_status_lbl.setText(
+                            f"<span style='color:#e67e00;'>"
+                            + TR("lbl_yf_update_available", latest=latest, installed=installed)
+                            + f"</span><br><span style='color:#888;font-size:11px;'>"
+                            + TR("lbl_yf_toast_msg_managed", latest=latest, installed=installed).split("\n")[1]
                             + "</span>"
                         )
                     elif not _is_frozen:
@@ -29971,20 +30132,23 @@ class StockMonitorApp(QMainWindow):
                         data = _json.loads(resp.read().decode())
                     latest = data.get("tag_name", "").lstrip("v")
                     if not latest:
-                        return "error", APP_VERSION, "", "", ""
+                        return "error", APP_VERSION, "", "", "", ""
                     zip_url = ""
+                    dmg_url = ""
                     for asset in data.get("assets", []):
-                        if asset.get("name", "").lower() == "stock_monitor.zip":
+                        _name = asset.get("name", "").lower()
+                        if _name == "stock_monitor.zip":
                             zip_url = asset.get("browser_download_url", "")
-                            break
+                        elif _name.endswith(".dmg"):
+                            dmg_url = asset.get("browser_download_url", "")
                     if latest != APP_VERSION:
                         return ("update_available", latest,
                                 data.get("html_url") or "",
                                 data.get("body") or "",
-                                zip_url)
-                    return "current", APP_VERSION, "", "", ""
+                                zip_url, dmg_url)
+                    return "current", APP_VERSION, "", "", "", ""
                 except Exception:
-                    return "error", APP_VERSION, "", "", ""
+                    return "error", APP_VERSION, "", "", "", ""
 
             # ── yfinance-Worker ───────────────────────────────────────────────
             def _check_yf():
@@ -30259,6 +30423,180 @@ class StockMonitorApp(QMainWindow):
 
         t = threading.Thread(target=_thread, daemon=True)
         t.start()
+
+        dlg.adjustSize()
+        _screen = self.screen() or QApplication.primaryScreen()
+        if _screen:
+            sg = _screen.availableGeometry()
+            dlg.move(sg.center().x() - dlg.width() // 2,
+                     sg.center().y() - dlg.height() // 2)
+        dlg.exec()
+
+    def _do_macos_update(self, version, dmg_url):
+        """Lädt das neue DMG von GitHub herunter und ersetzt die App in-place.
+        Nur für die signierte/notarisierte macOS-App (PyInstaller, sys.frozen=True).
+        Ablauf: DMG herunterladen → per hdiutil einbinden → neue .app per ditto
+                über die laufende App kopieren (Admin-Rechte nur falls nötig) →
+                DMG auswerfen → Neustart.
+        """
+        import tempfile, threading, subprocess, plistlib, shutil, shlex
+        from PyQt6.QtCore import pyqtSignal, QObject
+        from PyQt6.QtWidgets import QProgressBar
+
+        class _Sigs(QObject):
+            progress_update = pyqtSignal(int, str)
+            finished        = pyqtSignal(str, str)
+
+        sigs = _Sigs(self)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(TR("title_update_download"))
+        dlg.setFixedWidth(450)
+        dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(20, 16, 20, 16)
+        lay.setSpacing(10)
+
+        title_lbl = QLabel(f"<b>Stock Monitor v{version}</b> wird heruntergeladen…")
+        title_lbl.setStyleSheet("font-size:13px;")
+        lay.addWidget(title_lbl)
+
+        pbar = QProgressBar()
+        pbar.setRange(0, 100)
+        pbar.setValue(0)
+        lay.addWidget(pbar)
+
+        status_lbl = QLabel(TR("lbl_update_connecting"))
+        status_lbl.setStyleSheet("color:#555; font-size:11px;")
+        lay.addWidget(status_lbl)
+
+        sigs.progress_update.connect(
+            lambda v, t: (pbar.setValue(v), status_lbl.setText(t)),
+            Qt.ConnectionType.QueuedConnection
+        )
+
+        def _on_done(status, msg):
+            dlg.close()
+            if status == "error":
+                QMessageBox.critical(self, TR("lbl_update_error_title"), msg)
+                return
+            mb = QMessageBox(self)
+            mb.setWindowTitle("Stock Monitor Update")
+            mb.setText(TR("msg_update_ready").format(version=version))
+            now_btn   = mb.addButton(TR("btn_update_now"),   QMessageBox.ButtonRole.AcceptRole)
+            mb.addButton(TR("btn_update_later"), QMessageBox.ButtonRole.RejectRole)
+            mb.setDefaultButton(now_btn)
+            mb.exec()
+            if mb.clickedButton() is now_btn:
+                subprocess.Popen(["open", msg])  # msg = Pfad der neuen .app
+                QTimer.singleShot(300, QApplication.instance().quit)
+
+        sigs.finished.connect(_on_done, Qt.ConnectionType.QueuedConnection)
+
+        def _thread():
+            mount_point = None
+            tmp_dir = None
+            try:
+                import urllib.request, ssl
+
+                sigs.progress_update.emit(5, TR("lbl_update_connecting"))
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+
+                tmp_dir  = tempfile.mkdtemp(prefix="sm_upd_")
+                dmg_path = os.path.join(tmp_dir, "StockMonitor.dmg")
+
+                req = urllib.request.Request(dmg_url, headers={"User-Agent": "StockMonitor"})
+                with urllib.request.urlopen(req, timeout=120, context=ctx) as resp:
+                    total      = int(resp.headers.get("Content-Length", 0))
+                    downloaded = 0
+                    with open(dmg_path, "wb") as f:
+                        while True:
+                            buf = resp.read(65536)
+                            if not buf:
+                                break
+                            f.write(buf)
+                            downloaded += len(buf)
+                            if total > 0:
+                                pct  = int(5 + downloaded / total * 55)
+                                mb_d = downloaded / 1_048_576
+                                mb_t = total / 1_048_576
+                                sigs.progress_update.emit(pct, f"Download: {mb_d:.1f} / {mb_t:.1f} MB")
+                            else:
+                                mb_d = downloaded / 1_048_576
+                                sigs.progress_update.emit(30, f"Download: {mb_d:.1f} MB…")
+
+                sigs.progress_update.emit(65, "DMG wird eingebunden…")
+                res = subprocess.run(
+                    ["hdiutil", "attach", dmg_path, "-nobrowse", "-readonly", "-plist"],
+                    capture_output=True, timeout=60
+                )
+                if res.returncode != 0:
+                    raise RuntimeError((res.stderr or b"").decode(errors="ignore") or "hdiutil attach fehlgeschlagen.")
+                info = plistlib.loads(res.stdout)
+                for entity in info.get("system-entities", []):
+                    mp = entity.get("mount-point")
+                    if mp:
+                        mount_point = mp
+                        break
+                if not mount_point:
+                    raise RuntimeError("DMG konnte nicht eingebunden werden.")
+
+                new_app = None
+                for name in os.listdir(mount_point):
+                    if name.endswith(".app"):
+                        new_app = os.path.join(mount_point, name)
+                        break
+                if not new_app:
+                    raise RuntimeError("Keine .app im DMG gefunden.")
+
+                sigs.progress_update.emit(78, "Update wird installiert…")
+
+                exe_path   = os.path.abspath(sys.executable)
+                target_app = os.path.dirname(os.path.dirname(os.path.dirname(exe_path)))
+                if not target_app.endswith(".app"):
+                    target_app = f"/Applications/{os.path.basename(new_app)}"
+
+                try:
+                    if os.path.isdir(target_app):
+                        shutil.rmtree(target_app)
+                    shutil.copytree(new_app, target_app, symlinks=True)
+                except PermissionError:
+                    # Kein Schreibzugriff (z.B. App nicht im eigenen Home-Bereich installiert)
+                    # → normaler macOS-Admin-Prompt, wie bei jedem anderen Updater üblich.
+                    script = (
+                        f"rm -rf {shlex.quote(target_app)} && "
+                        f"ditto {shlex.quote(new_app)} {shlex.quote(target_app)}"
+                    )
+                    result = subprocess.run(
+                        ["osascript", "-e",
+                         f'do shell script "{script}" with administrator privileges'],
+                        capture_output=True, text=True, timeout=180
+                    )
+                    if result.returncode != 0:
+                        raise RuntimeError(result.stderr.strip() or "Installation fehlgeschlagen.")
+
+                sigs.progress_update.emit(96, "Räume auf…")
+                subprocess.run(["hdiutil", "detach", mount_point, "-quiet"], timeout=30)
+                mount_point = None
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+                tmp_dir = None
+
+                sigs.progress_update.emit(100, "Fertig")
+                sigs.finished.emit("ready", target_app)
+
+            except Exception as e:
+                _log.exception("macOS Self-Update fehlgeschlagen")
+                if mount_point:
+                    subprocess.run(["hdiutil", "detach", mount_point, "-quiet"], timeout=30)
+                if tmp_dir:
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+                sigs.finished.emit("error", str(e))
+
+        threading.Thread(target=_thread, daemon=True).start()
 
         dlg.adjustSize()
         _screen = self.screen() or QApplication.primaryScreen()
@@ -30689,7 +31027,9 @@ class StockMonitorApp(QMainWindow):
                 text_lbl = QLabel(txt_clean)
                 text_lbl.setWordWrap(True)
                 if _emoji_font_name:
-                    text_lbl.setFont(QFont(_emoji_font_name, 10))
+                    _font = QFont(QApplication.font().family(), 10)
+                    _font.setFamilies([QApplication.font().family(), _emoji_font_name])
+                    text_lbl.setFont(_font)
                 if is_title:
                     text_lbl.setStyleSheet("font-weight: bold;")
                 row_layout.addWidget(text_lbl, stretch=1)
@@ -30698,7 +31038,9 @@ class StockMonitorApp(QMainWindow):
                 lbl = QLabel(txt)
                 lbl.setWordWrap(True)
                 if _emoji_font_name:
-                    lbl.setFont(QFont(_emoji_font_name, 10))
+                    _font = QFont(QApplication.font().family(), 10)
+                    _font.setFamilies([QApplication.font().family(), _emoji_font_name])
+                    lbl.setFont(_font)
                 if is_title:
                     lbl.setStyleSheet("font-weight: bold;")
                 return lbl
@@ -30874,14 +31216,17 @@ class StockMonitorApp(QMainWindow):
         if not hasattr(self, '_watchlist_symbols'):
             self._watchlist_symbols = []
 
-        dialog = QDialog(self)
+        # Kein Parent → Qt zentriert nicht am Parent-Fenster (adjustPosition bleibt screen-basiert)
+        dialog = QDialog()
+        dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
         dialog.setWindowTitle(TR("title_watchlist"))
-        screen = QApplication.primaryScreen().availableGeometry()
+        dialog.setWindowFlag(Qt.WindowType.Window, True)
+        _scr   = self.screen() or QApplication.primaryScreen()
+        screen = _scr.availableGeometry()
         dlg_w  = int(screen.width()  * 0.88)
         dlg_h  = int(screen.height() * 0.88)
-        dialog.resize(dlg_w, dlg_h)
-        dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
-                    screen.y() + (screen.height() - dlg_h) // 2)
+        # resize/move erst nach UI-Aufbau (unten, direkt vor exec) –
+        # so wird die tatsächliche Dialogbreite berücksichtigt
 
         outer = QVBoxLayout(dialog)
         outer.setSpacing(6)
@@ -30956,6 +31301,63 @@ class StockMonitorApp(QMainWindow):
         export_btn.setToolTip(TR("tip_export_pdf_excel"))
         if _ef: export_btn.setFont(_ef)
         ctrl_row.addWidget(export_btn)
+
+        ctrl_row.addSpacing(8)
+
+        screener_btn = QPushButton(TR("scr_btn"))
+        screener_btn.setMinimumHeight(28)
+        screener_btn.setToolTip(TR("tip_scr_btn"))
+        if _ef: screener_btn.setFont(_ef)
+        screener_btn.setStyleSheet(
+            "QPushButton { background:#3f51b5; color:white; font-weight:bold; "
+            "border-radius:4px; padding:2px 10px; }"
+            "QPushButton:hover { background:#303f9f; }"
+        )
+
+        def _open_screener():
+            import screener as _screener_mod
+            from screener import StockScreenerDialog
+
+            def _zoom_chart(sym):
+                from stock_rating import StockRatingDialog
+                chart_dlg = QDialog(dialog)
+                chart_dlg.setWindowTitle(sym)
+                screen2 = (self.screen() or QApplication.primaryScreen()).availableGeometry()
+                cw = int(screen2.width()  * 0.82)
+                ch = int(screen2.height() * 0.82)
+                chart_dlg.resize(cw, ch)
+                chart_dlg.move(
+                    screen2.x() + (screen2.width()  - cw) // 2,
+                    screen2.y() + (screen2.height() - ch) // 2,
+                )
+                lay = QVBoxLayout(chart_dlg)
+                lay.setContentsMargins(6, 6, 6, 6)
+                lay.setSpacing(4)
+                cwidget = StockChartWidget(sym, zoom_mode=True)
+                _screener_mod.apply_chart_prefs(cwidget)
+                top_row = QHBoxLayout()
+                rating_btn = QPushButton(TR("btn_stock_rating"))
+                rating_btn.setToolTip(TR("tip_stock_rating"))
+                rating_btn.setMaximumWidth(130)
+                StockRatingDialog._apply_emoji_font(rating_btn)
+                rating_btn.clicked.connect(lambda: StockRatingDialog(cwidget, chart_dlg).exec())
+                top_row.addWidget(rating_btn)
+                top_row.addStretch()
+                close_c = QPushButton(TR("btn_close"))
+                close_c.setMaximumWidth(120)
+                close_c.clicked.connect(chart_dlg.close)
+                top_row.addWidget(close_c)
+                lay.addLayout(top_row)
+                lay.addWidget(cwidget, stretch=1)
+                chart_dlg.finished.connect(lambda _: _screener_mod.save_chart_prefs(cwidget))
+                chart_dlg.exec()
+
+            dlg = StockScreenerDialog(dialog, self, on_chart_fn=_zoom_chart)
+            dlg.exec()
+
+        screener_btn.clicked.connect(_open_screener)
+        if _ef: screener_btn.setFont(_ef)
+        ctrl_row.addWidget(screener_btn)
 
         # ── GICS-Sektor-Filter ────────────────────────────────────────────
         ctrl_row.addSpacing(8)
@@ -31436,7 +31838,7 @@ class StockMonitorApp(QMainWindow):
             def _open_symbol_chart(sym):
                 chart_dlg = QDialog(dialog)
                 chart_dlg.setWindowTitle(f"📈  {sym}  –  {_company_names.get(sym, sym)}")
-                screen2 = QApplication.primaryScreen().availableGeometry()
+                screen2 = (self.screen() or QApplication.primaryScreen()).availableGeometry()
                 cw = int(screen2.width()  * 0.82)
                 ch = int(screen2.height() * 0.82)
                 chart_dlg.resize(cw, ch)
@@ -31670,6 +32072,11 @@ class StockMonitorApp(QMainWindow):
         import sys as _sys_wl
         if _sys_wl.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
+        _eff_w = min(screen.width(),  max(dlg_w, dialog.minimumSizeHint().width()))
+        _eff_h = min(screen.height(), max(dlg_h, dialog.minimumSizeHint().height()))
+        dialog.resize(_eff_w, _eff_h)
+        dialog.move(screen.x() + (screen.width()  - _eff_w) // 2,
+                    screen.y() + (screen.height() - _eff_h) // 2)
         dialog.exec()
 
 
@@ -32187,7 +32594,7 @@ class StockMonitorApp(QMainWindow):
         if _sys_cur.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
         # Dialog im oberen Bereich des Bildschirms positionieren
-        _screen = QApplication.primaryScreen().availableGeometry()
+        _screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         _dx = _screen.x() + (_screen.width() - dialog.width()) // 2
         _dy = _screen.y() + int(_screen.height() * 0.08)
         dialog.move(_dx, _dy)

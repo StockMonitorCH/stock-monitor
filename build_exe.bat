@@ -72,6 +72,12 @@ for %%f in (
     world_map.py
     etf_holdings.py
     dividend_lists.json
+    stress_test.py
+    stress_test_translations.py
+    komplex.py
+    komplex_translations.py
+    screener.py
+    stock_rating.py
 ) do (
     if not exist "%%f" (
         echo [FEHLER] Fehlende Datei: %%f
@@ -138,6 +144,12 @@ python -m PyInstaller ^
     --add-data "world_map.py;." ^
     --add-data "etf_holdings.py;." ^
     --add-data "dividend_lists.json;." ^
+    --add-data "stress_test.py;." ^
+    --add-data "stress_test_translations.py;." ^
+    --add-data "komplex.py;." ^
+    --add-data "komplex_translations.py;." ^
+    --add-data "screener.py;." ^
+    --add-data "stock_rating.py;." ^
     --hidden-import "PyQt6.QtCore" ^
     --hidden-import "PyQt6.QtGui" ^
     --hidden-import "PyQt6.QtWidgets" ^
@@ -146,6 +158,7 @@ python -m PyInstaller ^
     --hidden-import "PyQt6.QtNetwork" ^
     --hidden-import "PyQt6.QtPrintSupport" ^
     --hidden-import "matplotlib.backends.backend_qt5agg" ^
+    --hidden-import "matplotlib.backends.backend_qtagg" ^
     --hidden-import "matplotlib.backends.backend_agg" ^
     --hidden-import "mpl_toolkits.mplot3d" ^
     --hidden-import "pyqtgraph" ^

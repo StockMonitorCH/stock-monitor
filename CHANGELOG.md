@@ -5,6 +5,82 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [5.6.0] – 2026-08-31
+
+### Added
+- **Stress Test** (Correlation window): new button runs the portfolio through 15 historical crisis scenarios (Dotcom, 2008, COVID, …)
+- **Advanced Analysis – 7 tabs** (accessible from the stress test dialog):
+  - Tab 1 – Factor Exposure: Beta + R² against 5 benchmarks (SPY, AGG, GLD, VNQ, GSG)
+  - Tab 2 – Rolling Correlation: 30/60/90-day windows, portfolio vs. benchmark
+  - Tab 3 – VaR / CVaR: historical simulation, Calmar Ratio, Skewness, Kurtosis, Tail Ratio
+  - Tab 4 – Drawdown Analysis: underwater chart, top-5 drawdowns, peak→trough, recovery time
+  - Tab 5 – Stress & Correlation: normal vs. crisis periods, Lombard credit calculator
+  - Tab 6 – Sector Stress Test: GICS breakdown for 15 historical scenarios (historical + custom)
+  - Tab 7 – Historical Chart: crisis-period chart with portfolio overlay, synthetic data back to 1907
+- **Stock Screener** (accessible from the watchlist): 12 indices (S&P 500, Nasdaq 100, Nasdaq Extra, DAX, SMI, CAC 40, FTSE 100, Nikkei 225, TSX, ASX 200, Russell 2000), filter by 1-year performance band and max. P/E ratio, AND/OR logic, direct chart access from results
+- **Stock Rating** in zoom chart: 1–5 star rating (half-star precision), 6 categories (Performance, Risk, Technical, Suitable for Trading, Long-term Suitability, Analyst Recommendation), overall rating as weighted average
+- macOS: automatic update via DMG (`_do_macos_update`), update dialog now supports DMG URL
+
+### Changed
+- AI analysis model updated to `gemini-3.5-flash-lite`
+- yfinance updated to 1.7.0
+- World map tile service switched from CARTO to Esri World Light Gray (CARTO now requires an API key; OSM blocks desktop apps without a Referer header)
+
+### Fixed
+- Dividends: total amount in the dividend details window now correctly formatted (e.g. CHF 1,870 instead of wrong format)
+- Sector stress test: first dropdown entry «— No scenario —» resets all sector values to 0%
+- Advanced Analysis: no crash when closing the dialog before the data loader thread finishes (`_on_done`, `_on_error`, `_update_rolling` now check whether the dialog is still open)
+- Correlation window (Windows): main window is explicitly brought to the foreground after closing so Windows does not focus a browser window instead
+- Watchlist dialog: correct centering on Full HD displays — two root causes fixed: Qt's `adjustPosition` centering on parent instead of screen, and screener button inflating toolbar min-width before `move()` was called
+- All dialogs (28 locations in `stock_monitor.py`, 1 each in `komplex.py` and `stress_test.py`): use `self.screen()` instead of `QApplication.primaryScreen()` so dialogs always appear on the monitor that contains the main window
+
+---
+
+## [5.5.0] – 2026-07-29
+
+### Added
+- Sortino Ratio in zoom chart (new «So» checkbox next to the Sharpe checkbox)
+- Portfolio Sortino Ratio dialog accessible from the Sharpe dialog
+
+### Fixed
+- Watchlist: last available closing price is now used when the market is closed, instead of showing «no data»
+- Favourites: clicking the chart star dropdown adds the stock directly if it is not yet in the favourites list
+
+### Changed
+- Help section expanded with a Sortino deep-dive, extended Favourites and Watchlist sections
+- yfinance updated to 1.5.2
+
+---
+
+## [5.4.4] – 2026-07-09
+
+### Added
+- Zoom chart now saves its own indicator settings (MA, Trend, Beta etc.) independently per stock — settings are preserved across sessions
+
+### Changed
+- Global settings now also apply to the currently open zoom chart
+- Zoom chart indicator state is restored when reopening a chart
+
+### Fixed
+- Windows: loading stocks with maximum time range (e.g. McDonald's, Coca-Cola) no longer fails with Errno 22
+
+---
+
+## [5.4.3] – 2026-06-22
+
+### Fixed
+- Dark mode: company info box and AI assessment box are now readable (hard-coded background color removed)
+- RI-Factor tooltip text corrected: left-click (not right-click) opens the detail view
+
+---
+
+## [5.4.2] – 2026-06-16
+
+### Fixed
+- Company name now appears correctly in the portfolio overview tooltip on Full HD displays (1920×1080)
+
+---
+
 ## [5.4.1] – 2026-06-02
 
 ### Fixed
