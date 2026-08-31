@@ -29171,23 +29171,25 @@ class StockMonitorApp(QMainWindow):
         QApplication.setActiveWindow(dlg)
 
     def _do_flatpak_install(self, version, flatpak_url):
-        """Lädt die .flatpak-Datei herunter (0-85 % real) und installiert sie (85-100 % animiert)."""
-        import subprocess, threading, urllib.request, ssl
+        """Lädt die .flatpak-Datei herunter (0-85 % real) und installiert sie (pulsierend)."""
+        import subprocess, threading, urllib.request, ssl, queue as _queue
         from PyQt6.QtCore import pyqtSignal, QObject
 
         class _Sigs(QObject):
-            progress    = pyqtSignal(int, str)   # Prozent, Statustext
-            start_anim  = pyqtSignal()           # Installation gestartet → Animation im GUI-Thread
-            finished    = pyqtSignal(bool, str)  # ok, stderr
+            # v=-1 → pulsierend (setRange 0,0); v>=0 → determinate
+            progress      = pyqtSignal(int, str)
+            start_install = pyqtSignal()   # GUI-Thread: auf Install-Phase umschalten
+            tick          = pyqtSignal(str)  # Elapsed-Zeit-Update
+            finished      = pyqtSignal(bool, str)
 
         sigs = _Sigs(self)
 
         prog_dlg = QDialog(self)
         prog_dlg.setWindowTitle(TR("title_flatpak_install"))
-        prog_dlg.setFixedWidth(440)
+        prog_dlg.setFixedWidth(460)
         prog_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
         lay = QVBoxLayout(prog_dlg)
-        lay.setContentsMargins(20, 16, 20, 14)
+        lay.setContentsMargins(20, 16, 20, 16)
         lay.setSpacing(8)
 
         title_lbl = QLabel(TR("lbl_flatpak_downloading", version=version))
@@ -29203,31 +29205,60 @@ class StockMonitorApp(QMainWindow):
         status_lbl.setStyleSheet("color:#888; font-size:11px;")
         lay.addWidget(status_lbl)
 
+        elapsed_lbl = QLabel("")
+        elapsed_lbl.setStyleSheet("color:#aaa; font-size:10px;")
+        elapsed_lbl.setVisible(False)
+        lay.addWidget(elapsed_lbl)
+
+        close_btn = QPushButton("Im Hintergrund fortsetzen")
+        close_btn.setVisible(False)
+        close_btn.clicked.connect(lambda: prog_dlg.accept())
+        lay.addWidget(close_btn)
+
         prog_dlg.show()
 
         _state = {'done': False}
+        _elapsed_timer = QTimer(prog_dlg)
 
-        sigs.progress.connect(
-            lambda v, t: (prog.setValue(v), status_lbl.setText(t)),
-            Qt.ConnectionType.QueuedConnection
-        )
+        def _on_progress(v, t):
+            if v == -1:
+                prog.setRange(0, 0)   # pulsierend
+            else:
+                if prog.maximum() == 0:
+                    prog.setRange(0, 100)
+                prog.setValue(v)
+            status_lbl.setText(t)
 
-        def _start_install_animation():
+        sigs.progress.connect(_on_progress, Qt.ConnectionType.QueuedConnection)
+
+        def _on_start_install():
             if _state['done']:
                 return
             title_lbl.setText(TR("lbl_flatpak_installing"))
-            # Qt-eigener pulsender Balken – zuverlässiger als Timer-Simulation
             prog.setRange(0, 0)
             status_lbl.setText("")
+            elapsed_lbl.setVisible(True)
+            close_btn.setVisible(True)
+            prog_dlg.adjustSize()
+            # Elapsed-Timer: zählt Sekunden seit Install-Start
+            _t0 = [__import__('time').monotonic()]
+            def _tick():
+                if _state['done']:
+                    _elapsed_timer.stop()
+                    return
+                s = int(__import__('time').monotonic() - _t0[0])
+                elapsed_lbl.setText(f"Läuft seit {s} s…")
+            _elapsed_timer.timeout.connect(_tick)
+            _elapsed_timer.start(1000)
 
-        sigs.start_anim.connect(_start_install_animation, Qt.ConnectionType.QueuedConnection)
+        sigs.start_install.connect(_on_start_install, Qt.ConnectionType.QueuedConnection)
 
         def _on_finished(ok, err):
             _state['done'] = True
+            _elapsed_timer.stop()
             prog.setRange(0, 100)
             prog.setValue(100)
             prog_dlg.close()
-            from PyQt6.QtWidgets import QMessageBox
             mb = QMessageBox(self)
             mb.setWindowTitle(TR("title_flatpak_install"))
             if ok:
@@ -29246,8 +29277,6 @@ class StockMonitorApp(QMainWindow):
         def _run():
             try:
                 import time as _time
-                # XDG_CACHE_HOME zeigt auf den echten Dateisystempfad (nicht Sandbox-Overlay)
-                # ~/.cache/io.github.StockMonitorCH.stock-monitor/ ist vom Host aus erreichbar
                 xdg_cache = os.environ.get(
                     "XDG_CACHE_HOME",
                     os.path.join(os.path.expanduser("~"), ".cache",
@@ -29255,7 +29284,7 @@ class StockMonitorApp(QMainWindow):
                 tmpdir = os.path.join(xdg_cache, "stockmonitor-update")
                 os.makedirs(tmpdir, exist_ok=True)
                 fpath = os.path.join(tmpdir, f"StockMonitor-{version}.flatpak")
-                sigs.progress.emit(0, "Verbindung wird hergestellt…")
+                sigs.progress.emit(-1, "Verbindung wird hergestellt…")
 
                 # ── Phase 1: Download (0–85 %) ────────────────────────────
                 downloaded = False
@@ -29288,17 +29317,17 @@ class StockMonitorApp(QMainWindow):
                                         f"{done/1_048_576:.0f} / {total/1_048_576:.0f} MB{speed_str}"
                                     )
                                 else:
+                                    # Unbekannte Größe → pulsierend + MB-Zähler
                                     sigs.progress.emit(
-                                        0,
-                                        f"{done/1_048_576:.1f} MB …{speed_str}"
+                                        -1,
+                                        f"{done/1_048_576:.1f} MB heruntergeladen…{speed_str}"
                                     )
                     downloaded = True
                 except Exception:
                     pass   # Fallback: curl via Host
 
                 if not downloaded:
-                    # SSL-Fallback innerhalb Flatpak-Sandbox: curl auf dem Host
-                    # Zuerst Dateigrösse via HEAD ermitteln für echten Fortschritt
+                    # SSL-Fallback: curl auf dem Host, Fortschritt via Dateigröße
                     curl_total = 0
                     try:
                         head = subprocess.run(
@@ -29313,51 +29342,65 @@ class StockMonitorApp(QMainWindow):
                     except Exception:
                         pass
 
-                    sigs.progress.emit(0, "")
-                    proc = subprocess.Popen(
+                    sigs.progress.emit(-1 if curl_total == 0 else 0, "")
+                    dl_proc = subprocess.Popen(
                         ['flatpak-spawn', '--host', 'curl', '-L', '--fail',
                          '-A', 'StockMonitor', '-o', fpath, flatpak_url],
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                     )
-                    while proc.poll() is None:
-                        if curl_total > 0 and os.path.exists(fpath):
+                    t0 = _time.monotonic()
+                    while dl_proc.poll() is None:
+                        if os.path.exists(fpath):
                             done = os.path.getsize(fpath)
-                            pct  = int(done / curl_total * 85)
-                            sigs.progress.emit(
-                                pct,
-                                f"{done/1_048_576:.0f} / {curl_total/1_048_576:.0f} MB"
-                            )
-                        elif os.path.exists(fpath):
-                            done = os.path.getsize(fpath)
-                            sigs.progress.emit(0, f"{done/1_048_576:.1f} MB …")
+                            elapsed = _time.monotonic() - t0
+                            speed = done / elapsed if elapsed > 0 else 0
+                            speed_str = f"  {speed/1_048_576:.1f} MB/s" if speed > 0 else ""
+                            if curl_total > 0:
+                                pct = int(done / curl_total * 85)
+                                sigs.progress.emit(
+                                    pct,
+                                    f"{done/1_048_576:.0f} / {curl_total/1_048_576:.0f} MB{speed_str}"
+                                )
+                            else:
+                                sigs.progress.emit(-1, f"{done/1_048_576:.1f} MB…{speed_str}")
                         _time.sleep(0.3)
-                    if proc.returncode != 0:
-                        QTimer.singleShot(0, lambda: _on_error("curl error"))
+                    if dl_proc.returncode != 0:
+                        sigs.finished.emit(False, "Download fehlgeschlagen (curl error).")
                         return
                     sigs.progress.emit(85, "")
 
-                # ── Phase 2: Install (indeterminate, via Signal) ───────────
+                # ── Phase 2: Install ──────────────────────────────────────
+                # flatpak-spawn schließt die stderr-Pipe nicht zuverlässig nach Exit →
+                # proc.communicate() würde hängen. Lösung: stderr in eigenem Thread
+                # lesen, Hauptschleife pollt proc.poll() alle 500 ms.
                 sigs.progress.emit(85, "")
-                sigs.start_anim.emit()
+                sigs.start_install.emit()
 
-                proc = subprocess.Popen(
+                install_proc = subprocess.Popen(
                     ['flatpak-spawn', '--host', 'flatpak', 'install',
                      '--user', '--bundle', '--assumeyes', '--noninteractive', fpath],
                     stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True
                 )
-                try:
-                    _, stderr = proc.communicate(timeout=600)
-                    if proc.returncode == 0:
-                        sigs.finished.emit(True, "")
-                    else:
-                        sigs.finished.emit(False, (stderr or "").strip())
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                    try:
-                        proc.communicate(timeout=5)
-                    except Exception:
-                        pass
-                    sigs.finished.emit(False, "Timeout: Installation hat zu lange gedauert.")
+
+                stderr_lines = []
+                def _drain():
+                    for line in install_proc.stderr:
+                        stderr_lines.append(line)
+
+                drain_t = threading.Thread(target=_drain, daemon=True)
+                drain_t.start()
+
+                while install_proc.poll() is None:
+                    _time.sleep(0.5)
+
+                drain_t.join(timeout=5)
+                stderr = "".join(stderr_lines).strip()
+
+                if install_proc.returncode == 0:
+                    sigs.finished.emit(True, "")
+                else:
+                    sigs.finished.emit(False, stderr)
+
             except Exception as e:
                 sigs.finished.emit(False, str(e))
 
