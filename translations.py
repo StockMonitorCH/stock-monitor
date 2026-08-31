@@ -28,6 +28,18 @@ def set_language(lang: str) -> None:
             set_tax_language(lang)
         except ImportError:
             pass  # tax_module nicht vorhanden – kein Fehler
+        # Stresstest-Übersetzungen synchron umstellen
+        try:
+            from stress_test_translations import set_stress_language
+            set_stress_language(lang)
+        except ImportError:
+            pass  # stress_test nicht vorhanden – kein Fehler
+        # Komplex-Übersetzungen synchron umstellen
+        try:
+            from komplex_translations import set_komplex_language
+            set_komplex_language(lang)
+        except ImportError:
+            pass  # komplex nicht vorhanden – kein Fehler
 
 
 def get_language() -> str:
@@ -424,6 +436,7 @@ Er steuert das <b>Gewicht</b> zwischen historischer Performance und dem AI-Signa
 
         # ── QMessageBox Titel ─────────────────────────────────────────────────
         "msg_title_error":              "Fehler",
+        "msg_title_success":            "Erfolg",
         "msg_title_info":               "Info",
         "msg_title_hint":               "Hinweis",
         "msg_title_done":               "Fertig",
@@ -719,6 +732,8 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "tip_ov_notes":                 "Portfolio-Notizbuch: Gedanken und Entscheidungen festhalten (wird verschlüsselt mit dem Portfolio gespeichert)",
         "btn_ov_correlation":           "🔗 Korrelation",
         "tip_ov_correlation":           "Korrelationsmatrix: Zeigt wie stark die Kursbewegungen der Aktien miteinander zusammenhängen",
+        "btn_stress_test":              "📉 Stresstest",
+        "btn_komplex":                  "▦ Komplex",
         "title_correlation":            "Portfolio-Korrelationsmatrix",
         "lbl_correlation_info":         "Werte nahe +1: gleichgerichtete Bewegung  |  Werte nahe –1: gegenläufige Bewegung  |  Werte nahe 0: kein Zusammenhang",
         "lbl_correlation_loading":      "Kursdaten werden geladen…",
@@ -806,6 +821,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "status_loading_line2":         "Lade Kursdaten …",
         "status_from_cache":            "✅ (aus Cache)",
         "status_sectors_loading":       "Branchen ({n} Symbole)…",
+        "status_loading_sectors2":      "🏭 Lade Branchendaten ({n} Symbole)…",
         "status_sectors_cached":        "Branchen aus Cache ✓",
         "status_active_portfolio":      "<i>Aktives Portfolio: <b>{name}</b></i>",
         "status_active_portfolio2":     "📂 Aktives Portfolio: <b>{name}</b>",
@@ -1070,6 +1086,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_recognise_exchange":                  '🔍 Erkenne Börse für {sym}...',
         "lbl_financials_hint":                     'ℹ️ Kennzahlen {src} – vollständige GuV nur mit Finnhub Premium</p>',
         "lbl_no_fin_data":                         '⚠️  Keine Daten verfügbar (Yahoo Finance).',
+        "lbl_fin_info_html":                       '<html><body><table><tr><td>ℹ️ ',
         "lbl_session_saved_at":                    'Gespeichert: {ts}\n',
 
         # ── Hardcoded-Fixes (ehemals nicht in TR) ────────────────────────────
@@ -1112,6 +1129,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "title_div_history_sym":                   "📈 Dividendenhistorie – {sym}",
         "title_div_details":                       "💰 Dividenden Details – {period}",
         "msg_no_dividends":                        "⚠️  <b>{sym}</b> zahlt keine Dividenden.",
+        "lbl_no_div_data":                         "⚠️  Keine Dividendendaten für <b>{sym}</b> verfügbar (Yahoo Finance).",
         # Chart labels: dividend history
         "chart_ylabel_dividend":                   "Dividende ({currency})",
         "chart_title_div_history":                 "Dividendenhistorie {company}  ({sym} · {currency})",
@@ -1141,6 +1159,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "status_loading_n_symbols":                "Lade {n} Symbole parallel…",
         "status_loading_sym":                      "Lade {sym} ({cur}/{tot})…",
         "status_loading_sym_short":                "Lade {sym}…",
+        "status_loading_symbol":                   "⏳ Lade {symbol}…",
         "status_loading_ai_news":                  "★  Lade Analysten & News…",
         "status_loading_div_prices":               "⏳  Lade Dividenden- und Kursdaten…",
         # Message labels
@@ -1333,6 +1352,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "msg_no_analyst_finnhub":                  "ℹ️ Keine Analysten-Daten verfügbar.\nFinnhub Free-Tier unterstützt EU-Aktien-Empfehlungen nicht.\nYahoo Finance liefert für diesen Titel ebenfalls keine Daten.",
         "msg_no_data_timeframe":                   "ℹ️  Keine Daten für {sym} über {tf}. Diese Aktie ist möglicherweise noch nicht lange genug gelistet. Bitte versuche einen kürzeren Zeitraum (z.B. 1J oder 2J).",
         "msg_no_data_timeframe_html":              "ℹ️  Keine verwertbaren Daten für <b>{sym}</b> im Zeitraum «{tf}». Diese Aktie ist möglicherweise noch nicht lange genug gelistet – bitte kürzeren Zeitraum wählen (z.B. 1J oder 2J).",
+        "lbl_no_valid_prices":                     "⚠️  Keine gültigen Kursdaten für <b>{symbol}</b> verfügbar.",
         "msg_watchlist_symbols_added":             "✅ {n} Symbol(e) hinzugefügt. Klicke ▶ Berechnen um die Performance zu laden.",
         "msg_watchlist_loaded":                    "✅ {n} Symbole geladen aus: {file}",
         "lbl_symbols_comma_help":                  "Symbole durch Komma getrennt eingeben (z.B. AAPL, MSFT, NESN.SW, ENR.DE)",
@@ -1340,6 +1360,8 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "lbl_disclaimer_ai_balance_full":          "⚠️  Dies ist keine Anlageberatung. Analysten-Meinungen und News-Stimmung sind automatisch ausgewertet und können unvollständig oder fehlerhaft sein. Vergangene Performance ist kein Indikator für zukünftige Entwicklungen.",
         "status_being_fetched":                    "werden abgerufen",
         "msg_positions_loaded":                    "✓ {n} Positionen geladen",
+        "msg_geo_fetch_errors":                    "⚠️ {n} Positionen geladen ({errors} Fehler beim Abruf)",
+        "msg_no_symbols":                          "⚠️ Keine Symbole für die Berechnung vorhanden.",
 
         # ── Batch 6: Fehlende Übersetzungen (gefunden März 2026) ─────────────
         # Berechne-Status (Alpha / Beta / Sharpe / AI-Balance / TWR)
@@ -1412,6 +1434,8 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         # Kaufkurs Handelstag
         "msg_trading_day_price_used":              "Kaufkurs vom nächsten Handelstag verwendet: {date}\n",
         "msg_no_price_for_symbol":                 "Keine Kursdaten für {symbol} gefunden.",
+        "status_no_prices2":                       "⚠️ Keine Kursdaten verfügbar.",
+        "status_no_prices3":                       "⚠️ Keine gültigen Performance-Daten verfügbar.",
         "msg_buy_price_used":                      "Kurs: {price}",
         # CSV Mapping Zeilen-Labels
         "lbl_csv_col_symbol":                      "Symbol / ISIN *",
@@ -1706,6 +1730,7 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "title_yf_update_download":   "yfinance wird aktualisiert",
         "lbl_yf_toast_msg_exe":       "Version {latest} ist verfügbar (installiert: {installed}).\nDie App wird aktualisiert und automatisch neu gestartet.",
         "lbl_yf_toast_msg_flatpak":   "Version {latest} ist verfügbar (installiert: {installed}).\nDas Update kommt automatisch mit dem nächsten Flatpak-Release.",
+        "lbl_yf_toast_msg_managed":   "Version {latest} ist verfügbar (installiert: {installed}).\nDas Update kommt automatisch mit dem nächsten Stock-Monitor-Update.",
         "lbl_yf_update_done":         "✅ yfinance {version} installiert! App wird neu gestartet…",
         "msg_yf_installed":           "yfinance {version} wurde installiert.",
         "msg_restart_now_question":   "Jetzt neu starten?",
@@ -1756,6 +1781,118 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
             "die Nutzung dieser Demo entstehen."
         ),
         "btn_demo_disclaimer_accept":  "✓  Ich habe den Hinweis gelesen und verstanden",
+
+        # ── Aktien-Screener ───────────────────────────────────────────────────
+        "scr_btn":              "📡 Screener",
+        "tip_scr_btn":          "Aktien-Screener öffnen",
+        "scr_title":            "📡 Aktien-Screener",
+        "scr_lbl_index":        "Index",
+        "scr_lbl_perf":         "Performance (1 Jahr)",
+        "scr_perf_any":         "Kein Filter",
+        "scr_lbl_kgv":          "Max. KGV (P/E)",
+        "scr_kgv_hint":         "Optional, z.B. 30",
+        "scr_lbl_logic":        "Verknüpfung",
+        "scr_btn_search":       "🔍 Suchen",
+        "scr_btn_abort":        "✕ Abbrechen",
+        "scr_lbl_hint":         "Index und Performance wählen, dann auf 'Suchen' klicken.",
+        "scr_lbl_no_results":   "Keine Aktien gefunden. Filter anpassen?",
+        "scr_lbl_results":      "Top {n} Aktien (nach Performance)",
+        "scr_lbl_aborted":      "Abgebrochen – {n} Aktien gefunden",
+        "scr_progress_perf":    "{done}/{total} Aktien geprüft…",
+        "scr_progress_kgv":     "KGV-Filter: {done}/{total}…",
+        "scr_col_symbol":       "Symbol",
+        "scr_col_name":         "Name",
+        "scr_col_perf":         "Perf. (1J)",
+        "scr_col_price":        "Kurs",
+        "scr_col_actions":      "Aktionen",
+        "scr_tip_add_fav":      "Zu Favoriten hinzufügen",
+        "scr_tip_show_chart":   "Chart anzeigen",
+        "scr_already_fav":      "Bereits in Favoriten",
+        "scr_fav_added":        "{sym} zu Favoriten hinzugefügt",
+        "scr_disclaimer":       "Kein Anlageberatung. Immer eigene Recherche durchführen.",
+        "scr_info_title":       "ℹ Wie funktioniert der Screener?",
+        "scr_info_body":        (
+            "1. Index wählen\n"
+            "Wähle einen Aktienindex aus. Die Aktien des Index werden analysiert.\n\n"
+            "2. Performance (1 Jahr)\n"
+            "Filtert Aktien nach ihrer Kursveränderung der letzten 12 Monate. "
+            "'Kein Filter' zeigt die Top 25 unabhängig vom Bereich.\n\n"
+            "3. Max. KGV (optional)\n"
+            "Filtert nach dem Kurs-Gewinn-Verhältnis (Trailing P/E). "
+            "Bei leerem Feld wird nur die Performance berücksichtigt.\n\n"
+            "4. Verknüpfung AND / OR\n"
+            "AND: Beide Bedingungen müssen erfüllt sein.\n"
+            "OR: Mindestens eine Bedingung muss erfüllt sein.\n\n"
+            "5. Ergebnisse\n"
+            "Die Top 25 Aktien werden nach Performance sortiert angezeigt. "
+            "Direkt zum Chart oder zu den Favoriten hinzufügen.\n\n"
+            "Hinweis: Datenverfügbarkeit variiert je nach Index und Börse. "
+            "Aktien ohne ausreichende Daten werden übersprungen."
+        ),
+        "scr_russell_title":    "Russell 2000 (erweitert) – Warnung",
+        "scr_russell_warn":     (
+            "Die erweiterte Liste enthält {n} Aktien.\n\n"
+            "Das Screening kann 5–15 Minuten dauern.\n\n"
+            "Du kannst den Scan jederzeit abbrechen – die bis dahin "
+            "gefundenen Aktien werden trotzdem angezeigt."
+        ),
+        "scr_russell_confirm":  "Trotzdem suchen",
+
+        # ── Aktien-Bewertungsdialog ───────────────────────────────────────────
+        "btn_stock_rating":             "⭐ Bewertung",
+        "tip_stock_rating":             "Aktie anhand Kennzahlen bewerten",
+        "title_stock_rating":           "Aktien-Bewertung – {symbol}",
+        "rating_loading":               "Daten werden geladen …",
+        "rating_cat_performance":       "Performance",
+        "rating_cat_risk":              "Risiko",
+        "rating_cat_technical":         "Technisch",
+        "rating_cat_trading":           "Zum Traden geeignet",
+        "rating_cat_longterm":          "Langfrist-Eignung",
+        "rating_cat_analyst":           "Analystenempfehlung",
+        "rating_cat_overall":           "Gesamtrating",
+        "rating_not_available":         "Nicht verfügbar",
+        "rating_basis":                 "Datenbasis",
+        "rating_disclaimer":            "Keine Anlageberatung – eigene Recherche erforderlich.",
+        "btn_rating_info":              "ℹ️ Methodik",
+        "title_rating_info":            "Bewertungsmethodik",
+        "rating_info_text":             (
+            "Wie die Bewertung berechnet wird\n\n"
+            "Jede Kategorie wird mit 1–5 Sternen bewertet (Abstufung in halben Sternen). "
+            "Fehlt eine Kennzahl (z. B. kein Analystenkonsens für diese Aktie), "
+            "wird sie komplett aus der Berechnung herausgenommen, "
+            "damit das Ergebnis nicht verfälscht wird.\n\n"
+            "⭐ PERFORMANCE\n"
+            "70 % 1-Jahres-Rendite + 30 % 5-Jahres-Rendite\n"
+            "(falls nur eine verfügbar: 100 % Gewicht auf diese)\n\n"
+            "⭐ RISIKO\n"
+            "Beta (Marktrisiko), Sortino-Ratio (Abwärtsrisiko),\n"
+            "Annualisierte Volatilität – gleich gewichtet.\n\n"
+            "⭐ TECHNISCH\n"
+            "60 % MA-Position (Kurs vs. MA20/50/200 + Goldenes Kreuz)\n"
+            "40 % RSI-Momentum (Zielzone 50–65 = optimaler Aufwärtstrend)\n\n"
+            "⭐ ZUM TRADEN GEEIGNET\n"
+            "55 % RSI-Einstiegssignal (Idealzone 30–45 = überverkauft/Erholung)\n"
+            "45 % Kurzfristiger MA-Trend (MA20 vs. MA50)\n\n"
+            "⭐ LANGFRIST-EIGNUNG\n"
+            "Alpha, Beta, Sortino, 5J-Performance,\n"
+            "Analysten-Upside, MA200-Position\n"
+            "– gleich gewichtet, nur verfügbare Kennzahlen.\n\n"
+            "⭐ ANALYSTENEMPFEHLUNG\n"
+            "Konsensus (Strong Buy → Strong Sell)\n"
+            "+ Bonus/Malus für Analystenzielkurs-Upside/-Downside\n\n"
+            "⭐ GESAMTRATING\n"
+            "Gewichteter Durchschnitt der 6 Kategorien:\n"
+            "Technisch 22 % · Risiko 20 % · Performance 18 %\n"
+            "Langfrist 18 % · Zum Traden 12 % · Analysten 10 %\n"
+            "Fehlt eine Kategorie → ihr Gewicht wird proportional verteilt.\n\n"
+            "⭐ WARUM KEIN 'FUNDAMENTAL'?\n"
+            "Eine separate Fundamental-Kategorie würde Alpha und den\n"
+            "Analysten-Upside doppelt gewichten, da beide bereits\n"
+            "in 'Langfrist-Eignung' und 'Analystenempfehlung' einfließen.\n"
+            "Alpha misst die risikoadjustierte Outperformance gegenüber\n"
+            "dem S&P 500 – das ist der aussagekräftigste Fundamental-\n"
+            "indikator, den yfinance zuverlässig liefert."
+        ),
 
     },
 
@@ -2122,6 +2259,7 @@ It controls the <b>weight</b> between historical performance and the AI signal:<
 
         # ── QMessageBox Titles ────────────────────────────────────────────────
         "msg_title_error":              "Error",
+        "msg_title_success":            "Success",
         "msg_title_info":               "Info",
         "msg_title_hint":               "Note",
         "msg_title_done":               "Done",
@@ -2417,6 +2555,8 @@ more than enough for personal use.</p>
         "tip_ov_notes":                 "Portfolio notebook: Record thoughts and decisions (saved encrypted with the portfolio)",
         "btn_ov_correlation":           "🔗 Correlation",
         "tip_ov_correlation":           "Correlation matrix: Shows how closely the price movements of the stocks move together",
+        "btn_stress_test":              "📉 Stress Test",
+        "btn_komplex":                  "▦ Komplex",
         "title_correlation":            "Portfolio Correlation Matrix",
         "lbl_correlation_info":         "Values near +1: move together  |  Values near –1: move opposite  |  Values near 0: no relationship",
         "lbl_correlation_loading":      "Loading price data…",
@@ -2504,6 +2644,7 @@ more than enough for personal use.</p>
         "status_loading_line2":         "Loading prices…",
         "status_from_cache":            "✅ (from cache)",
         "status_sectors_loading":       "Sectors ({n} symbols)…",
+        "status_loading_sectors2":      "🏭 Loading sector data ({n} symbols)…",
         "status_sectors_cached":        "Sectors from cache ✓",
         "status_active_portfolio":      "<i>Active Portfolio: <b>{name}</b></i>",
         "status_active_portfolio2":     "📂 Active Portfolio: <b>{name}</b>",
@@ -2768,6 +2909,7 @@ more than enough for personal use.</p>
         "lbl_recognise_exchange":                  '🔍 Detecting exchange for {sym}...',
         "lbl_financials_hint":                     'ℹ️ Metrics {src} – full P&L only with Finnhub Premium</p>',
         "lbl_no_fin_data":                         '⚠️  No data available (Yahoo Finance).',
+        "lbl_fin_info_html":                       '<html><body><table><tr><td>ℹ️ ',
         "lbl_session_saved_at":                    'Saved: {ts}\n',
 
         # ── Hardcoded-Fixes (formerly not in TR) ─────────────────────────────
@@ -2810,6 +2952,7 @@ more than enough for personal use.</p>
         "title_div_history_sym":                   "📈 Dividend History – {sym}",
         "title_div_details":                       "💰 Dividend Details – {period}",
         "msg_no_dividends":                        "⚠️  <b>{sym}</b> pays no dividends.",
+        "lbl_no_div_data":                         "⚠️  No dividend data available for <b>{sym}</b> (Yahoo Finance).",
         # Chart labels: dividend history
         "chart_ylabel_dividend":                   "Dividend ({currency})",
         "chart_title_div_history":                 "Dividend History {company}  ({sym} · {currency})",
@@ -2839,6 +2982,7 @@ more than enough for personal use.</p>
         "status_loading_n_symbols":                "Loading {n} symbols in parallel…",
         "status_loading_sym":                      "Loading {sym} ({cur}/{tot})…",
         "status_loading_sym_short":                "Loading {sym}…",
+        "status_loading_symbol":                   "⏳ Loading {symbol}…",
         "status_loading_ai_news":                  "★  Loading Analyst & News data…",
         # Message labels
         "msg_min_2_chars":                         "⚠️ Please enter at least 2 characters",
@@ -3030,6 +3174,7 @@ more than enough for personal use.</p>
         "msg_no_analyst_finnhub":                  "ℹ️ No analyst data available.\nFinnhub Free Tier does not support EU stock recommendations.\nYahoo Finance also provides no data for this ticker.",
         "msg_no_data_timeframe":                   "ℹ️  No data for {sym} over {tf}. This stock may not have been listed long enough. Please try a shorter period (e.g. 1Y or 2Y).",
         "msg_no_data_timeframe_html":              "ℹ️  No usable data for <b>{sym}</b> in period «{tf}». This stock may not have been listed long enough – please select a shorter period (e.g. 1Y or 2Y).",
+        "lbl_no_valid_prices":                     "⚠️  No valid price data available for <b>{symbol}</b>.",
         "msg_watchlist_symbols_added":             "✅ {n} symbol(s) added. Click ▶ Calculate to load performance.",
         "msg_watchlist_loaded":                    "✅ {n} symbols loaded from: {file}",
         "lbl_symbols_comma_help":                  "Enter symbols separated by commas (e.g. AAPL, MSFT, NESN.SW, ENR.DE)",
@@ -3037,6 +3182,8 @@ more than enough for personal use.</p>
         "lbl_disclaimer_ai_balance_full":          "⚠️  This is not investment advice. Analyst opinions and news sentiment are processed automatically and may be incomplete or inaccurate. Past performance is not indicative of future results.",
         "status_being_fetched":                    "being fetched",
         "msg_positions_loaded":                    "✓ {n} positions loaded",
+        "msg_geo_fetch_errors":                    "⚠️ {n} positions loaded ({errors} fetch errors)",
+        "msg_no_symbols":                          "⚠️ No symbols available for the calculation.",
 
         # ── Batch 6: Missing translations (found March 2026) ──────────────────
         # Calculating status (Alpha / Beta / Sharpe / AI Balance / TWR)
@@ -3109,6 +3256,8 @@ more than enough for personal use.</p>
         # Purchase price from next trading day
         "msg_trading_day_price_used":              "Purchase price from next trading day used: {date}\n",
         "msg_no_price_for_symbol":                 "No price data found for {symbol}.",
+        "status_no_prices2":                       "⚠️ No price data available.",
+        "status_no_prices3":                       "⚠️ No valid performance data available.",
         "msg_buy_price_used":                      "Price: {price}",
         # CSV mapping row labels
         "lbl_csv_col_symbol":                      "Symbol / ISIN *",
@@ -3389,6 +3538,7 @@ more than enough for personal use.</p>
         "title_yf_update_download":   "Updating yfinance",
         "lbl_yf_toast_msg_exe":       "Version {latest} is available (installed: {installed}).\nThe app will update and restart automatically.",
         "lbl_yf_toast_msg_flatpak":   "Version {latest} is available (installed: {installed}).\nThe update will arrive automatically with the next Flatpak release.",
+        "lbl_yf_toast_msg_managed":   "Version {latest} is available (installed: {installed}).\nThe update will arrive automatically with the next Stock Monitor update.",
         "lbl_yf_update_done":         "✅ yfinance {version} installed! App will restart…",
         "msg_yf_installed":           "yfinance {version} has been installed.",
         "msg_restart_now_question":   "Restart now?",
@@ -3439,6 +3589,117 @@ more than enough for personal use.</p>
             "the use of this demo."
         ),
         "btn_demo_disclaimer_accept":  "✓  I have read and understood this notice",
+
+        # ── Stock Screener ────────────────────────────────────────────────────
+        "scr_btn":              "📡 Screener",
+        "tip_scr_btn":          "Open stock screener",
+        "scr_title":            "📡 Stock Screener",
+        "scr_lbl_index":        "Index",
+        "scr_lbl_perf":         "Performance (1 Year)",
+        "scr_perf_any":         "No filter",
+        "scr_lbl_kgv":          "Max. P/E Ratio",
+        "scr_kgv_hint":         "Optional, e.g. 30",
+        "scr_lbl_logic":        "Logic",
+        "scr_btn_search":       "🔍 Search",
+        "scr_btn_abort":        "✕ Abort",
+        "scr_lbl_hint":         "Select an index and performance range, then click 'Search'.",
+        "scr_lbl_no_results":   "No stocks found. Try adjusting the filters.",
+        "scr_lbl_results":      "Top {n} stocks (by performance)",
+        "scr_lbl_aborted":      "Aborted – {n} stocks found",
+        "scr_progress_perf":    "{done}/{total} stocks checked…",
+        "scr_progress_kgv":     "P/E filter: {done}/{total}…",
+        "scr_col_symbol":       "Symbol",
+        "scr_col_name":         "Name",
+        "scr_col_perf":         "Perf. (1Y)",
+        "scr_col_price":        "Price",
+        "scr_col_actions":      "Actions",
+        "scr_tip_add_fav":      "Add to favorites",
+        "scr_tip_show_chart":   "Show chart",
+        "scr_already_fav":      "Already in favorites",
+        "scr_fav_added":        "{sym} added to favorites",
+        "scr_disclaimer":       "Not financial advice. Always do your own research.",
+        "scr_info_title":       "ℹ How does the Screener work?",
+        "scr_info_body":        (
+            "1. Select Index\n"
+            "Choose a stock index. All stocks in the index will be analysed.\n\n"
+            "2. Performance (1 Year)\n"
+            "Filters stocks by their price change over the last 12 months. "
+            "'No filter' shows the top 25 regardless of range.\n\n"
+            "3. Max. P/E Ratio (optional)\n"
+            "Filters by the trailing price-to-earnings ratio. "
+            "Leave empty to filter by performance only.\n\n"
+            "4. Logic AND / OR\n"
+            "AND: Both conditions must be met.\n"
+            "OR: At least one condition must be met.\n\n"
+            "5. Results\n"
+            "The top 25 stocks are shown sorted by performance. "
+            "Open the chart directly or add to favorites.\n\n"
+            "Note: Data availability varies by index and exchange. "
+            "Stocks with insufficient data are skipped."
+        ),
+        "scr_russell_title":    "Russell 2000 (extended) – Warning",
+        "scr_russell_warn":     (
+            "The extended list contains {n} stocks.\n\n"
+            "The scan may take 5–15 minutes.\n\n"
+            "You can abort at any time – stocks found so far will still be shown."
+        ),
+        "scr_russell_confirm":  "Search anyway",
+
+        # ── Stock Rating Dialog ───────────────────────────────────────────────
+        "btn_stock_rating":             "⭐ Rating",
+        "tip_stock_rating":             "Rate stock based on key metrics",
+        "title_stock_rating":           "Stock Rating – {symbol}",
+        "rating_loading":               "Loading data …",
+        "rating_cat_performance":       "Performance",
+        "rating_cat_risk":              "Risk",
+        "rating_cat_technical":         "Technical",
+        "rating_cat_trading":           "Suitable for Trading",
+        "rating_cat_longterm":          "Long-Term Suitability",
+        "rating_cat_analyst":           "Analyst Recommendation",
+        "rating_cat_overall":           "Overall Rating",
+        "rating_not_available":         "Not available",
+        "rating_basis":                 "Data basis",
+        "rating_disclaimer":            "Not investment advice – do your own research.",
+        "btn_rating_info":              "ℹ️ Methodology",
+        "title_rating_info":            "Rating Methodology",
+        "rating_info_text":             (
+            "How the rating is calculated\n\n"
+            "Each category is rated 1–5 stars (half-star increments). "
+            "If a metric is unavailable (e.g. no analyst coverage), "
+            "it is excluded from the calculation entirely "
+            "to avoid skewing the result.\n\n"
+            "⭐ PERFORMANCE\n"
+            "70 % 1-year return + 30 % 5-year return\n"
+            "(if only one is available: 100 % weight on that one)\n\n"
+            "⭐ RISK\n"
+            "Beta (market risk), Sortino ratio (downside risk),\n"
+            "annualized volatility – equally weighted.\n\n"
+            "⭐ TECHNICAL\n"
+            "60 % MA position (price vs. MA20/50/200 + golden cross)\n"
+            "40 % RSI momentum (target zone 50–65 = healthy uptrend)\n\n"
+            "⭐ SUITABLE FOR TRADING\n"
+            "55 % RSI entry signal (ideal zone 30–45 = oversold/recovery)\n"
+            "45 % Short-term MA trend (MA20 vs. MA50)\n\n"
+            "⭐ LONG-TERM SUITABILITY\n"
+            "Alpha, Beta, Sortino, 5Y performance,\n"
+            "analyst upside, MA200 position\n"
+            "– equally weighted, only available metrics.\n\n"
+            "⭐ ANALYST RECOMMENDATION\n"
+            "Consensus (Strong Buy → Strong Sell)\n"
+            "+ bonus/penalty for analyst target price upside/downside\n\n"
+            "⭐ OVERALL RATING\n"
+            "Weighted average of the 6 categories:\n"
+            "Technical 22 % · Risk 20 % · Performance 18 %\n"
+            "Long-Term 18 % · Trading 12 % · Analysts 10 %\n"
+            "Missing categories → their weight is redistributed proportionally.\n\n"
+            "⭐ WHY NO 'FUNDAMENTAL' CATEGORY?\n"
+            "A separate Fundamental category would double-count Alpha\n"
+            "and analyst upside, since both already feed into\n"
+            "'Long-Term Suitability' and 'Analyst Recommendation'.\n"
+            "Alpha measures risk-adjusted outperformance vs. the S&P 500\n"
+            "– the most meaningful fundamental metric reliably\n"
+            "provided by yfinance."
+        ),
 
     },
 }

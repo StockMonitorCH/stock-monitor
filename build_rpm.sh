@@ -7,7 +7,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="5.5.0"
+VERSION="5.6.0"
 PKG="stock-monitor-${VERSION}"
 RPMBUILD="$HOME/rpmbuild"
 
@@ -35,7 +35,9 @@ mkdir -p "$SRCDIR/wheels"
 for f in stock_monitor.py portfolio_db.py config.py market_data.py \
           tax_module.py tax_translations.py translations.py help_texts.py \
           world_map.py etf_holdings.py dividend_lists.json Demo.smpf LICENSE \
-          portfolio_analysis.py portfolio_analysis_extended.py portfolio_analysis_texts.py; do
+          portfolio_analysis.py portfolio_analysis_extended.py portfolio_analysis_texts.py \
+          stress_test.py stress_test_translations.py komplex.py komplex_translations.py \
+          screener.py stock_rating.py; do
     if [ -f "$f" ]; then
         cp "$f" "$SRCDIR/app/$f"
     else

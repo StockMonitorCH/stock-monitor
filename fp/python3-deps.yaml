@@ -220,11 +220,20 @@ modules:
     --prefix=${FLATPAK_DEST} "pycparser==3.0" --no-build-isolation
   sources:
   - *id006
+- name: python3-lxml
+  buildsystem: simple
+  build-commands:
+  - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} "lxml==6.1.2" --no-build-isolation
+  sources:
+  - type: file
+    path: sources/lxml-6.1.2-cp313-cp313-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
+    sha256: e8b9a92652e75e7731309ea51db5dee892eef414ce70a6ec3441e5d36bf5189f
 - name: python3-yfinance
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "yfinance==1.5.2" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "yfinance==1.7.0" --no-build-isolation
   sources:
   - &id023
     type: file
@@ -307,8 +316,8 @@ modules:
     url: https://files.pythonhosted.org/packages/6f/28/258ebab549c2bf3e64d2b0217b973467394a9cea8c42f70418ca2c5d0d2e/websockets-16.0-py3-none-any.whl
     sha256: 1637db62fad1dc833276dded54215f2c7fa46912301a24bd94d45d46a011ceec
   - type: file
-    path: sources/yfinance-1.5.2-py2.py3-none-any.whl
-    sha256: 197fc03485c246547a5a9184956c60150ea33b6f740d877e02a97f123d5cd2b9
+    path: sources/yfinance-1.7.0-py3-none-any.whl
+    sha256: 91281ecd1f71069a37155ff8653aff2d3085f3492bd8721f18b70955da62911a
 - name: python3-curl-cffi
   buildsystem: simple
   build-commands:

@@ -306,6 +306,28 @@ _HTML_DE = """
         </ul>
         <div class="tip"><b>Tipp:</b> Candlestick-Charts eignen sich besonders gut für kurzfristige technische Analyse (z.B. Zeitraum 1T &ndash; 1M).</div>
 
+        <a name="aktien-bewertung"></a><h2>&#11088; Aktien-Bewertung (Zoom-Modus)</h2>
+        <p>Im <b>Vollbild-Chart</b> erscheint der Button <b>&#11088; Bewertung</b> neben dem Zurück-Button. Ein Klick öffnet das Bewertungsfenster für die aktuelle Aktie.</p>
+        <h3>Kategorien (je 1–5 Sterne, halbe Sterne möglich)</h3>
+        <table>
+            <tr><th>Kategorie</th><th>Gewicht</th><th>Datenbasis</th></tr>
+            <tr><td><b>Performance</b></td><td>18 %</td><td>1-Jahres-Rendite (70 %) + 5-Jahres-Rendite (30 %)</td></tr>
+            <tr><td><b>Risiko</b></td><td>20 %</td><td>Beta, Sortino-Ratio, annualisierte Volatilität</td></tr>
+            <tr><td><b>Technisch</b></td><td>22 %</td><td>MA20/50/200-Position + Goldenes Kreuz (60 %), RSI-Momentum (40 %)</td></tr>
+            <tr><td><b>Zum Traden geeignet</b></td><td>12 %</td><td>RSI-Einstiegssignal (55 %), MA20/MA50-Trend (45 %)</td></tr>
+            <tr><td><b>Langfrist-Eignung</b></td><td>18 %</td><td>Alpha, Beta, Sortino, 5J-Performance, Analyst-Upside, MA200</td></tr>
+            <tr><td><b>Analystenempfehlung</b></td><td>10 %</td><td>Konsensus (Strong Buy → Strong Sell) + Zielkurs-Upside</td></tr>
+        </table>
+        <h3>Besonderheiten</h3>
+        <ul>
+            <li>Fehlt eine Kennzahl (z.B. kein Analystenkonsens), fällt sie <b>komplett aus der Berechnung</b> – kein Nullwert verfälscht das Ergebnis</li>
+            <li>Fehlt eine Kategorie, wird ihr Gewicht <b>proportional auf die anderen verteilt</b></li>
+            <li>Halbe Sterne werden durch Rundung auf 0,5-Schritte dargestellt</li>
+            <li>Daten werden beim Öffnen frisch von yfinance geladen (1J + 5J)</li>
+        </ul>
+        <div class="tip"><b>Tipp:</b> Der Button <b>&#9432;&#65039; Methodik</b> im Bewertungsfenster erklärt alle Scoring-Regeln im Detail – inkl. warum es keine separate Fundamental-Kategorie gibt.</div>
+        <div class="tip"><b>Hinweis:</b> Dies ist keine Anlageberatung. Die Bewertung basiert auf historischen Daten und mathematischen Modellen.</div>
+
         <a name="zeiträume"><h2>&#9200; Zeiträume</h2></a>
         <p><b>Global:</b> Ändert alle Charts gleichzeitig &bull; <b>Pro Chart:</b> Individuell wählbar</p>
         <p>Verfügbar: <code>1T</code> &bull; <code>5T</code> &bull; <code>1M</code> &bull; <code>3M</code> &bull; <code>6M</code> &bull; <code>YTD</code> &bull; <code>1J</code> &bull; <code>2J</code> &bull; <code>5J</code> &bull; <code>Max</code></p>
@@ -448,6 +470,25 @@ _HTML_DE = """
         <div class="tip"><b>Tipp:</b> Die Watchlist wird automatisch gespeichert und beim nächsten Start wiederhergestellt.</div>
         <div class="tip"><b>Tipp:</b> Wenn die Börse geschlossen ist, verwendet die Watchlist automatisch den letzten verfügbaren Schlusskurs – so erscheinen alle Symbole immer mit einem Wert statt «keine Daten».</div>
 
+        <a name="screener"><h2>&#128269; Aktien-Screener</h2></a>
+        <p>Der Aktien-Screener filtert einen ganzen Index nach 1-Jahres-Performance und optionalem KGV (Kurs-Gewinn-Verhältnis).</p>
+        <h3>Öffnen</h3>
+        <p>Watchlist-Fenster öffnen &rarr; <b>&#128225; Screener</b>-Button klicken.</p>
+        <h3>Filter</h3>
+        <ul>
+            <li><b>Index</b>: S&amp;P 500, Nasdaq 100, Nasdaq Extra, DAX, SMI, CAC 40, FTSE 100, Nikkei 225, TSX, ASX 200, Russell 2000</li>
+            <li><b>1-Jahres-Performance</b>: Kein Filter oder ein Prozentband (z.&nbsp;B. 10–19&nbsp;%, 20–29&nbsp;%)</li>
+            <li><b>Max. KGV (optional)</b>: Nur Aktien mit einem KGV unterhalb des eingegebenen Wertes</li>
+        </ul>
+        <h3>Ergebnisse</h3>
+        <p>Maximal 25 Treffer werden angezeigt. Pro Zeile stehen zwei Buttons:</p>
+        <ul>
+            <li><b>&#9733; Favorit</b>: Symbol zu den Favoriten hinzufügen</li>
+            <li><b>&#128200; Chart</b>: Zoom-Chart dieser Aktie öffnen (unabhängig von den 16 Haupt-Charts)</li>
+        </ul>
+        <div class="tip"><b>Tipp:</b> Ergebnisse bleiben bis zum nächsten App-Start gespeichert – du musst nicht jedes Mal neu suchen.</div>
+        <div class="tip"><b>Tipp:</b> <b>Russell 2000 (Ausw.)</b>: ca. 256 Aktien, Suche in 2–5 Min. <b>Russell 2000 (erw.)</b>: ca. 618 Aktien, Suche in 5–15 Min. – mit Abbruch-Option. Mit <b>&#10005; Abbrechen</b> werden alle bisher gefundenen Treffer angezeigt.</div>
+
         <a name="währungsrechner"><h2>&#128178; Währungsrechner</h2></a>
         <ul>
             <li>23 Fiat-Währungen inkl. BTC, ETH, XRP, SOL</li>
@@ -515,6 +556,143 @@ _HTML_DE = """
         </ul>
         <div class="tip"><b>Tipp zur Diversifikation:</b> Positionen mit niedriger oder negativer Korrelation reduzieren das Gesamtrisiko des Portfolios. Wenn alle Positionen stark positiv korreliert sind (grün), sinkt und steigt alles gleichzeitig – das Risiko ist entsprechend höher.</div>
         <div class="warning">&#9888; Die Korrelation basiert auf historischen Kursdaten (Yahoo Finance) und kann sich jederzeit ändern. Sie ist <b>keine Anlageberatung</b>.</div>
+
+        <a name="stresstest"><h2>&#9889; Stresstest</h2></a>
+        <div class="new">&#127381; Feature: Was passiert mit meinem Portfolio im nächsten Crash?</div>
+
+        <h3>Was ist ein Stresstest?</h3>
+        <p>Ein Stresstest zeigt, wie stark dein Portfolio in einer historischen Börsenkrise verloren hätte – und wie lange die Erholung gedauert hätte. Er gibt keine Prognose für die Zukunft, aber ein realistisches Gefühl für das eigene Risiko. Ideal für alle, die wissen wollen: <b>«Kann ich einen solchen Crash emotionally und finanziell verkraften?»</b></p>
+
+        <h3>Wie starte ich den Stresstest?</h3>
+        <ul>
+            <li>Portfolio-Übersicht &rarr; <b>&#128279; Korrelation</b> &rarr; <b>&#9889; Stresstest</b></li>
+        </ul>
+
+        <h3>Tab «Historische Ereignisse»</h3>
+        <p>15 historische Börsencrashs stehen zur Auswahl – von der Panic von 1907 bis zum Aktienmarktrückgang 2022. Für jeden Crash sind drei Werte hinterlegt:</p>
+        <ul>
+            <li><b>Drawdown:</b> maximaler Kursverlust vom Hoch zum Tief (z.B. &minus;57 % in der Finanzkrise 2007–2008)</li>
+            <li><b>Bärenmarkt-Dauer:</b> wie lange der Absturz gedauert hat (in Monaten)</li>
+            <li><b>Erholung:</b> wie lange das Portfolio brauchte, um wieder das Ausgangsniveau zu erreichen</li>
+        </ul>
+        <p><b>Mehrere Szenarien kombinieren:</b></p>
+        <ul>
+            <li><b>OR</b> – zeigt den schlimmsten der ausgewählten Crashs (pessimistischste Einzelbetrachtung)</li>
+            <li><b>AND</b> – kombiniert mehrere Crashs gleichzeitig (kumulierter Effekt, z.B. Dotcom + Zinsschock)</li>
+        </ul>
+
+        <h3>Tab «Eigenes Szenario»</h3>
+        <p>Eigene Annahmen eingeben: Drawdown in %, Bärenmarkt-Dauer und Erholungszeit. Optional kann ein zweiter Schock hinzugefügt und mit AND/OR verknüpft werden – z.B. «Portfolio fällt 30 % AND dann nochmals 15 %».</p>
+
+        <h3>Erholungskurve (Chart)</h3>
+        <p>Der Chart zeigt den zeitlichen Verlauf: roter Bereich = Bärenmarkt, grüner Bereich = Erholung. Die gestrichelte Linie markiert den Ausgangswert (100%). So ist sofort sichtbar, wie lange es gedauert hätte, bis das Portfolio wieder «break even» wäre.</p>
+
+        <h3>Lombardkredit (für fortgeschrittene Nutzer)</h3>
+        <p>Wer sein Portfolio als Sicherheit für einen Kredit hinterlegt hat (Lombardkredit / Wertpapierkredit), kann hier prüfen: <b>Wird bei diesem Crash der Margin Call ausgelöst?</b></p>
+        <ul>
+            <li><b>Kreditbetrag:</b> ausstehender Kredit in der Portfolio-Währung</li>
+            <li><b>Zinssatz (% p.a.):</b> jährlicher Zinssatz des Lombardkredits</li>
+            <li><b>LTV-Limit (%):</b> Loan-to-Value-Grenze der Bank – z.B. 70 % bedeutet: die Bank ruft an (Margin Call), sobald der Kredit mehr als 70 % des Portfoliowerts ausmacht</li>
+        </ul>
+        <p>Der Stresstest berechnet dann, ob der stressierte Portfoliowert die Margin-Call-Schwelle unterschreitet, und zeigt den verbleibenden Puffer in Franken/Euro/Dollar.</p>
+        <div class="tip"><b>Tipp für Kleinanleger:</b> Den Lombardkredit-Teil einfach ausgeklappt lassen (Checkbox nicht aktivieren) – er ist nur für Nutzer relevant, die tatsächlich einen Wertpapierkredit haben.</div>
+        <div class="warning">&#9888; Keine Anlageberatung. Alle historischen Szenarien basieren auf S&amp;P-500-Daten und spiegeln nicht zwingend die Entwicklung des eigenen Portfolios wider.</div>
+
+        <a name="komplex"><h2>&#9632; Komplex-Analyse</h2></a>
+        <div class="new">&#127381; Feature: Bloomberg-ähnliche Risikoanalyse – Faktorexposition, rollende Korrelation, VaR/CVaR, Drawdown-Analyse, Stress-Korrelation, Sektor-Stresstest und Historischer Chart in einem Fenster.</div>
+
+        <h3>Was ist die Komplex-Analyse?</h3>
+        <p>Die Komplex-Analyse ist das professionelle Risikowerkzeug von Stock Monitor – sieben Tabs mit institutionellen Risikokennzahlen, ähnlich wie sie Vermögensberater und Fondsmanager in Bloomberg nutzen. Sie richtet sich an fortgeschrittene Nutzer; für Einsteiger ist der normale Stresstest gedacht. Öffnen über: <b>&#9632; Stresstest &rarr; &#9632; Komplex</b>.</p>
+
+        <h3>Tab «Faktorexposition»</h3>
+        <p>Für jedes Symbol im Portfolio wird berechnet, wie stark es sich im Gleichschritt mit fünf wichtigen Benchmarks bewegt. Das Ergebnis ist der <b>Beta-Koeffizient</b>:</p>
+        <ul>
+            <li><b>Beta = 1.0:</b> Die Aktie bewegt sich exakt wie der Benchmark</li>
+            <li><b>Beta = 0.5:</b> Halb so stark wie der Benchmark</li>
+            <li><b>Beta = 1.5:</b> Anderthalb Mal so stark (höheres Risiko)</li>
+            <li><b>Beta ≈ 0:</b> Kaum Zusammenhang – gute Diversifikation</li>
+            <li><b>Beta negativ:</b> Gegenläufige Bewegung (z.B. Gold bei Marktpanik)</li>
+        </ul>
+        <p>Die Zellen sind farbcodiert: <span style="background:#99bbff">&nbsp;Blau&nbsp;</span> = positives Beta (bewegt sich mit dem Markt), <span style="background:#ffaaaa">&nbsp;Rot&nbsp;</span> = negatives Beta. Tooltip auf einer Zelle zeigt den R²-Wert (Erklärungsgrad: wie viel % der Kursbewegung durch diesen Benchmark erklärt wird).</p>
+        <p><b>Fünf Benchmarks:</b> S&amp;P 500 (Aktien), AGG (Anleihen), Gold (GLD), Immobilien/REITs (VNQ), Rohstoffe (GSG).</p>
+        <div class="tip"><b>Tipp:</b> Ein Portfolio mit niedrigem Beta gegenüber dem S&amp;P 500 aber hohem R² gegenüber Gold oder Anleihen ist gut gegen Marktcrashs geschützt.</div>
+
+        <h3>Tab «Rollende Korrelation»</h3>
+        <p>Zeigt, wie sich die Korrelation zwischen dem Portfolio und einem Benchmark <b>über die Zeit verändert</b> – als Zeitreihe mit drei Linien: 30, 60 und 90 Tage rollierendes Fenster.</p>
+        <ul>
+            <li>In Krisen steigt die Korrelation mit dem Aktienmarkt oft sprunghaft an («Correlation goes to 1 in a crisis»)</li>
+            <li>Phasen mit niedriger Korrelation deuten auf echte Diversifikation hin</li>
+            <li>Die grünen Punktlinien markieren ±0.5 als Referenzlinien</li>
+        </ul>
+        <p>Benchmark im Dropdown wechseln, um verschiedene Anlageklassen zu vergleichen.</p>
+
+        <h3>Tab «VaR / CVaR»</h3>
+        <p>Der <b>Value at Risk (VaR)</b> ist die Antwort auf die Frage: «Wie viel kann ich an einem schlechten Tag maximal verlieren?» – berechnet aus historischen Daten (keine Normalverteilungsannahme).</p>
+        <ul>
+            <li><b>VaR 95%:</b> Mit 95% Wahrscheinlichkeit verliert das Portfolio nicht mehr als diesen Betrag pro Tag</li>
+            <li><b>VaR 99%:</b> Mit 99% Wahrscheinlichkeit – der «fast schlimmste Tag»</li>
+            <li><b>CVaR (Expected Shortfall):</b> Was verliert man im Durchschnitt, wenn es trotzdem schlechter läuft als der VaR – also in den 5% bzw. 1% schlechtesten Tagen</li>
+            <li><b>Calmar Ratio:</b> Jährliche Rendite geteilt durch den maximalen Drawdown – höher ist besser</li>
+            <li><b>Schiefe (Skewness):</b> Negative Werte = Verluste fallen stärker aus als Gewinne («fat left tail»)</li>
+            <li><b>Wölbung (Kurtosis):</b> Hohe positive Werte = Extremereignisse häufiger als bei Normalverteilung</li>
+            <li><b>Tail Ratio:</b> P95 / |P5| – Verhältnis guter zu schlechter Ausreißer; über 1.0 ist vorteilhaft</li>
+        </ul>
+        <p>Das Histogramm zeigt die Verteilung der historischen Tagesrenditen mit der orangenen (VaR 95%) und roten (VaR 99%) Linie sowie der gestrichelten Normalverteilungskurve als Referenz. Fette, nach links verschobene Enden («Fat Tails») deuten auf höheres Extremrisiko hin.</p>
+        <div class="tip"><b>Zeitraum:</b> Über das Dropdown in der Toolbar zwischen 6 Monaten und 3 Jahren wählen. Längere Zeiträume zeigen mehr Marktphasen; kürzere zeigen das aktuelle Risiko genauer.</div>
+
+        <h3>Tab «Drawdown-Analyse»</h3>
+        <p>Der <b>Underwater-Chart</b> (rechts) zeigt den prozentualen Rückstand des Portfolios gegenüber seinem jeweiligen Höchststand – je tiefer die rote Fläche, desto stärker der Drawdown. Links werden die fünf schlimmsten Drawdown-Perioden tabellarisch aufgelistet:</p>
+        <ul>
+            <li><b>Beginn:</b> Datum, an dem der Drawdown startete (letzter Hochpunkt)</li>
+            <li><b>Drawdown:</b> Maximaler Verlust dieser Periode in Prozent</li>
+            <li><b>Peak → Tief:</b> Handelstage vom Höchststand bis zum Tiefstkurs</li>
+            <li><b>Erholung:</b> Handelstage bis zur vollständigen Erholung auf den vorherigen Höchststand. «Noch offen» = Portfolio hat sich noch nicht erholt</li>
+        </ul>
+        <p>Darunter: <b>Max. DD Dauer</b> und <b>Max. Underwater</b> für den schlimmsten Drawdown insgesamt.</p>
+        <div class="tip"><b>Tipp:</b> Die Erholungszeit ist oft unterschätzt – ein -30%-Drawdown braucht rechnerisch +43% Gewinn und kann Jahre dauern.</div>
+
+        <h3>Tab «Stress &amp; Korrelation»</h3>
+        <p>Zeigt, wie sich Beta und Korrelation des Portfolios gegenüber den fünf Benchmarks <b>in Krisenperioden verändert</b>. Krisentag = Tage, an denen der S&amp;P 500 (SPY) mehr als 1.5% fiel.</p>
+        <ul>
+            <li><b>Norm. Korr. / Krisen-Korr.:</b> Korrelation in normalen vs. gestressten Marktphasen</li>
+            <li><b>Δ Korr.:</b> Positive Werte (rot) = Diversifikation bricht in der Krise ein – ein klassisches Zeichen von «Correlation goes to 1». Negative Werte (grün) = Diversifikation hält</li>
+            <li><b>Norm. β / Krisen-β:</b> Beta in normalen vs. gestressten Marktphasen</li>
+            <li><b>Δ β:</b> Wenn das Beta in der Krise stark steigt, ist das Portfolio sensibler für Marktrückgänge als in ruhigen Phasen</li>
+        </ul>
+        <p><b>Lombard-Kredit / Margin-Call-Distanz:</b> Optionaler Bereich (aufklappen). Kreditbetrag und LTV-Grenze eingeben; die Anzeige zeigt den prozentualen Puffer bis zum Margin-Call sowie die jährliche Zinslast. Hilfreich, um zu sehen, wieviel Spielraum das Portfolio noch hat, bevor Sicherheiten nachgeschossen werden müssten.</p>
+
+        <h3>Tab «Sektor-Stresstest»</h3>
+        <p>Dies ist der Bloomberg-ähnliche Kernbereich für professionelle Analysen. Für jedes der 15 historischen Szenarien wird der Schock <b>nach GICS-Sektoren aufgegliedert</b> – nicht als Einheitsgrösse, sondern differenziert nach der historischen Reaktion jedes Sektors. Der Tab hat zwei Modi:</p>
+        <p><b>■ Historisch</b> (Standardmodus):</p>
+        <ul>
+            <li><b>Szenario wählen:</b> Dropdown – alle 15 Szenarien von der Panik von 1907 bis zum Inflationscrash 2022</li>
+            <li><b>▶ Laden:</b> Startet den Datenabruf im Hintergrund (1–3 Sekunden). Für Szenarien ab 2000 werden echte Sektor-ETF-Renditen geladen (XLK, XLF, XLY, …); für ältere Szenarien kalibrierte Schätzwerte (NBER/Shiller)</li>
+            <li><b>Tabelle:</b> Sektor | Positionen | Marktwert | Anteil | Schock% | Stresswert | P&amp;L</li>
+            <li><b>Schock-Spalte:</b> Farbcodiert – rot = Verlust, grün = Zuwachs (z.B. Energie profitiert bei Ölkrise)</li>
+            <li><b>Balkendiagramm:</b> Visueller Vergleich aktueller vs. gestresster Wert je Sektor</li>
+        </ul>
+        <p><b>✎ Benutzerdefiniert</b> (eigene Szenarien):</p>
+        <ul>
+            <li><b>11 Sektor-Eingabefelder</b> (−100% bis +100%): Schock für jeden GICS-Sektor manuell eingeben. Nicht belegte Sektoren auf 0% lassen</li>
+            <li><b>↩ Aus Szenario übernehmen:</b> Szenario aus Dropdown wählen und Schockwerte automatisch in die Felder übertragen – als Ausgangspunkt für eigene Anpassungen</li>
+            <li><b>▶ Berechnen:</b> Sofortige Berechnung ohne Netzwerkzugriff – Tabelle und Balkendiagramm werden direkt befüllt</li>
+            <li>Beispiel: Industrie −30%, Finanzen −40%, Energie +20% – was passiert mit dem Portfolio?</li>
+        </ul>
+        <div class="tip"><b>Tipp für Profis:</b> Kombiniere Tab «Sektor-Stresstest» mit Tab «Faktorexposition»: hohe Faktorexposition gegenüber einem Sektor + starker sektoraler Schock = erhöhtes Risiko. Mit dem benutzerdefinierten Modus kannst du eigene Szenarien modellieren – z.B. regulatorischen Druck auf Tech (IT −25%) kombiniert mit Zinsstress auf Immobilien (Real Estate −20%).</div>
+
+        <h3>Tab «Historischer Chart»</h3>
+        <p>Visualisiert die Marktentwicklung während einer Krisenperiode – ähnlich wie Bloomberg's Zeitreihen-Charts mit Krisenmarkierung und Ereignis-Annotationen.</p>
+        <ul>
+            <li><b>Blaue Linie (Echtdaten):</b> Marktentwicklung (Dow Jones / S&amp;P 500 / SPY je nach Epoche), indexiert auf 100. Verfügbar für Szenarien ab 1966 (^GSPC / SPY)</li>
+            <li><b>Gestrichelte Linie (Simuliert):</b> Für ältere Szenarien (1907–1962) hat Yahoo Finance keine Tageskursdaten. Stattdessen wird eine synthetische Kurve aus den kalibrierten Drawdown- und Recovery-Parametern erzeugt – klar mit gelbem Hinweiskasten «Simuliert» im Chart markiert</li>
+            <li><b>Rote Fläche:</b> Drawdown-Periode (Markt unter dem vorherigen Höchststand) – je tiefer, desto schlimmer der Crash</li>
+            <li><b>Orangene gestrichelte Linie:</b> Geschätzte Portfolio-Entwicklung, basierend auf dem aktuellen Beta vs. S&amp;P 500 – zeigt, wie das eigene Portfolio wahrscheinlich reagiert hätte</li>
+            <li><b>Roter Prozentsatz:</b> Maximaler Drawdown der Krisenperiode</li>
+            <li><b>Annotations:</b> Schlüsselereignisse (Lehman-Pleite, OPEC-Embargo, COVID-Tief etc.) – nur bei Echtdaten</li>
+        </ul>
+        <p><b>Hinweis zur synthetischen Kurve:</b> Für 1929 mit einer Erholungszeit von 22 Jahren wird nur ein 10-Jahres-Ausschnitt gezeigt – die Kurve endet dann noch klar unter 100, was die historische Realität korrekt widerspiegelt. Die Kurvenform (leicht beschleunigte Abwärtsphase, schnell anlaufende Erholung) ist kalibriert nach NBER- und Shiller-Daten.</p>
+        <p>Die Portfolio-Kurve ist immer eine <i>Schätzung</i> – Denkwerkzeug, kein historischer Fakt: «Was, wenn mein heutiges Portfolio 2008 schon existiert hätte?»</p>
+        <div class="warning">&#9888; Keine Anlageberatung. Berechnungen basieren auf historischen Schlusskursen (yfinance) bzw. kalibrierten Parametern. Benchmarks in USD.</div>
 
         <a name="rohstoffe"><h2>&#127775; Rohstoffe</h2></a>
         <p>Stock Monitor unterstützt <b>5 Rohstoffe</b> als eigene Anlageklasse neben Aktien und Krypto.</p>
@@ -1246,6 +1424,28 @@ _HTML_EN = """
         </ul>
         <div class="tip"><b>Tip:</b> Candlestick charts are best suited for short-term technical analysis (e.g. period 1D – 1M).</div>
 
+        <a name="aktien-bewertung"></a><h2>&#11088; Stock Rating (Zoom Mode)</h2>
+        <p>In <b>fullscreen chart mode</b>, the button <b>&#11088; Rating</b> appears next to the back button. Clicking it opens the rating window for the current stock.</p>
+        <h3>Categories (1–5 stars each, half-star increments)</h3>
+        <table>
+            <tr><th>Category</th><th>Weight</th><th>Data basis</th></tr>
+            <tr><td><b>Performance</b></td><td>18 %</td><td>1-year return (70 %) + 5-year return (30 %)</td></tr>
+            <tr><td><b>Risk</b></td><td>20 %</td><td>Beta, Sortino ratio, annualised volatility</td></tr>
+            <tr><td><b>Technical</b></td><td>22 %</td><td>MA20/50/200 position + golden cross (60 %), RSI momentum (40 %)</td></tr>
+            <tr><td><b>Suitable for Trading</b></td><td>12 %</td><td>RSI entry signal (55 %), MA20/MA50 trend (45 %)</td></tr>
+            <tr><td><b>Long-Term Suitability</b></td><td>18 %</td><td>Alpha, Beta, Sortino, 5Y performance, analyst upside, MA200</td></tr>
+            <tr><td><b>Analyst Recommendation</b></td><td>10 %</td><td>Consensus (Strong Buy → Strong Sell) + target price upside</td></tr>
+        </table>
+        <h3>Key features</h3>
+        <ul>
+            <li>If a metric is unavailable (e.g. no analyst coverage), it is <b>excluded entirely</b> – no zero value skews the result</li>
+            <li>If a category is missing, its weight is <b>redistributed proportionally</b> to the others</li>
+            <li>Half stars are shown by rounding to 0.5 increments</li>
+            <li>Data is freshly loaded from yfinance when the dialog opens (1Y + 5Y)</li>
+        </ul>
+        <div class="tip"><b>Tip:</b> The <b>&#9432;&#65039; Methodology</b> button inside the rating window explains all scoring rules in detail – including why there is no separate Fundamental category.</div>
+        <div class="tip"><b>Note:</b> This is not investment advice. The rating is based on historical data and mathematical models.</div>
+
         <a name="zeiträume"><h2>&#9200; Time Periods</h2></a>
         <p><b>Global:</b> Changes all charts at once &bull; <b>Per chart:</b> Individually selectable</p>
         <p>Available: <code>1D</code> &bull; <code>5D</code> &bull; <code>1M</code> &bull; <code>3M</code> &bull; <code>6M</code> &bull; <code>YTD</code> &bull; <code>1Y</code> &bull; <code>2Y</code> &bull; <code>5Y</code> &bull; <code>Max</code></p>
@@ -1388,6 +1588,25 @@ _HTML_EN = """
         <div class="tip"><b>Tip:</b> The Watchlist is automatically saved and restored on next launch.</div>
         <div class="tip"><b>Tip:</b> When the market is closed, the Watchlist automatically uses the last available closing price – so all symbols always show a value instead of "no data".</div>
 
+        <a name="screener"><h2>&#128269; Stock Screener</h2></a>
+        <p>The Stock Screener filters an entire index by 1-year performance and optional P/E ratio.</p>
+        <h3>Open</h3>
+        <p>Open the Watchlist window &rarr; click the <b>&#128225; Screener</b> button.</p>
+        <h3>Filters</h3>
+        <ul>
+            <li><b>Index</b>: S&amp;P 500, Nasdaq 100, Nasdaq Extra, DAX, SMI, CAC 40, FTSE 100, Nikkei 225, TSX, ASX 200, Russell 2000</li>
+            <li><b>1-Year Performance</b>: No filter or a percentage band (e.g. 10–19&nbsp;%, 20–29&nbsp;%)</li>
+            <li><b>Max. P/E (optional)</b>: Only stocks with a P/E ratio below the entered value</li>
+        </ul>
+        <h3>Results</h3>
+        <p>Up to 25 matches are shown. Each row has two buttons:</p>
+        <ul>
+            <li><b>&#9733; Favourite</b>: Add symbol to favourites</li>
+            <li><b>&#128200; Chart</b>: Open a zoom chart for this stock (independent of the 16 main charts)</li>
+        </ul>
+        <div class="tip"><b>Tip:</b> Results are kept until the next app launch – no need to search again every time.</div>
+        <div class="tip"><b>Tip:</b> <b>Russell 2000 (Ausw.)</b>: ~256 stocks, scan in 2–5 min. <b>Russell 2000 (ext.)</b>: ~618 stocks, scan in 5–15 min. – with abort option. Use <b>&#10005; Abort</b> to display all results found so far.</div>
+
         <a name="währungsrechner"><h2>&#128178; Currency Converter</h2></a>
         <ul>
             <li>23 fiat currencies incl. BTC, ETH, XRP, SOL</li>
@@ -1455,6 +1674,143 @@ _HTML_EN = """
         </ul>
         <div class="tip"><b>Diversification tip:</b> Positions with low or negative correlation reduce the overall portfolio risk. If all positions are strongly positively correlated (green), everything rises and falls together – risk is correspondingly higher.</div>
         <div class="warning">&#9888; Correlation is based on historical price data (Yahoo Finance) and can change at any time. It is <b>not investment advice</b>.</div>
+
+        <a name="stresstest"><h2>&#9889; Stress Test</h2></a>
+        <div class="new">&#127381; Feature: What happens to my portfolio in the next crash?</div>
+
+        <h3>What is a Stress Test?</h3>
+        <p>A stress test shows how much your portfolio would have lost during a historical market crisis – and how long the recovery would have taken. It does not predict the future, but gives a realistic sense of your own risk exposure. Ideal for anyone asking: <b>"Can I emotionally and financially survive a crash like this?"</b></p>
+
+        <h3>How do I launch the Stress Test?</h3>
+        <ul>
+            <li>Portfolio Overview &rarr; <b>&#128279; Correlation</b> &rarr; <b>&#9889; Stress Test</b></li>
+        </ul>
+
+        <h3>Tab "Historical Events"</h3>
+        <p>15 historical market crashes are available – from the Panic of 1907 to the Bear Market of 2022. Three values are stored for each crash:</p>
+        <ul>
+            <li><b>Drawdown:</b> maximum loss from peak to trough (e.g. &minus;57% in the 2007–2008 Financial Crisis)</li>
+            <li><b>Bear Market Duration:</b> how long the decline lasted (in months)</li>
+            <li><b>Recovery:</b> how long the portfolio needed to return to its starting level</li>
+        </ul>
+        <p><b>Combining multiple scenarios:</b></p>
+        <ul>
+            <li><b>OR</b> – shows the worst of the selected crashes (most pessimistic single scenario)</li>
+            <li><b>AND</b> – combines multiple crashes simultaneously (compounded effect, e.g. Dot-com + rate shock)</li>
+        </ul>
+
+        <h3>Tab "Custom Scenario"</h3>
+        <p>Enter your own assumptions: drawdown in %, bear market duration and recovery time. Optionally add a second shock linked with AND/OR – e.g. "Portfolio falls 30% AND then another 15%".</p>
+
+        <h3>Recovery Curve (Chart)</h3>
+        <p>The chart shows the timeline: red area = bear market, green area = recovery. The dashed line marks the starting value (100%). This makes it immediately clear how long it would have taken for the portfolio to be "break even" again.</p>
+
+        <h3>Lombard Credit (for advanced users)</h3>
+        <p>If you have pledged your portfolio as collateral for a loan (Lombard credit / securities-backed loan), you can check here: <b>Is a margin call triggered by this crash?</b></p>
+        <ul>
+            <li><b>Loan Amount:</b> outstanding loan in the portfolio currency</li>
+            <li><b>Interest Rate (% p.a.):</b> annual interest rate of the Lombard loan</li>
+            <li><b>LTV Limit (%):</b> the bank's Loan-to-Value threshold – e.g. 70% means the bank calls (margin call) once the loan exceeds 70% of the portfolio value</li>
+        </ul>
+        <p>The stress test then calculates whether the stressed portfolio value falls below the margin call threshold, and shows the remaining buffer in your currency.</p>
+        <div class="tip"><b>Tip for retail investors:</b> Simply leave the Lombard credit section collapsed (don't activate the checkbox) – it is only relevant for users who actually have a securities-backed loan.</div>
+        <div class="warning">&#9888; Not investment advice. All historical scenarios are based on S&amp;P 500 data and do not necessarily reflect the performance of your own portfolio.</div>
+
+        <a name="komplex"><h2>&#9632; Komplex Analysis</h2></a>
+        <div class="new">&#127381; Feature: Bloomberg-style risk analysis – factor exposure, rolling correlation, VaR/CVaR, drawdown analysis, stress correlation, sector stress test and historical chart in one window.</div>
+
+        <h3>What is the Komplex Analysis?</h3>
+        <p>The Komplex Analysis is Stock Monitor's professional risk tool – seven tabs with institutional-grade metrics, similar to what wealth managers and fund managers use in Bloomberg. It is designed for advanced users; beginners should use the regular Stress Test. Open it via: <b>&#9632; Stress Test &rarr; &#9632; Komplex</b>.</p>
+
+        <h3>Tab «Factor Exposure»</h3>
+        <p>For each symbol in your portfolio, the analysis calculates how closely it moves with five key benchmarks. The result is the <b>beta coefficient</b>:</p>
+        <ul>
+            <li><b>Beta = 1.0:</b> The stock moves exactly like the benchmark</li>
+            <li><b>Beta = 0.5:</b> Half as much as the benchmark</li>
+            <li><b>Beta = 1.5:</b> One and a half times as much (higher risk)</li>
+            <li><b>Beta ≈ 0:</b> Virtually no relationship – good diversification</li>
+            <li><b>Negative beta:</b> Counter-directional movement (e.g. gold during market panic)</li>
+        </ul>
+        <p>Cells are color-coded: <span style="background:#99bbff">&nbsp;Blue&nbsp;</span> = positive beta (moves with the market), <span style="background:#ffaaaa">&nbsp;Red&nbsp;</span> = negative beta. Hover a cell to see the R² value (explanatory power: what percentage of the price movement is explained by this benchmark).</p>
+        <p><b>Five benchmarks:</b> S&amp;P 500 (equities), AGG (bonds), Gold (GLD), Real Estate/REITs (VNQ), Commodities (GSG).</p>
+        <div class="tip"><b>Tip:</b> A portfolio with low beta relative to the S&amp;P 500 but high R² relative to gold or bonds is well protected against market crashes.</div>
+
+        <h3>Tab «Rolling Correlation»</h3>
+        <p>Shows how the correlation between the portfolio and a benchmark <b>changes over time</b> – as a time series with three lines: 30, 60 and 90-day rolling windows.</p>
+        <ul>
+            <li>In crises, correlation with the stock market often spikes («correlation goes to 1 in a crisis»)</li>
+            <li>Periods of low correlation indicate genuine diversification</li>
+            <li>The green dotted lines mark ±0.5 as reference thresholds</li>
+        </ul>
+        <p>Switch the benchmark in the dropdown to compare different asset classes.</p>
+
+        <h3>Tab «VaR / CVaR»</h3>
+        <p><b>Value at Risk (VaR)</b> answers the question: «How much can I lose on a bad day?» – calculated from historical data (no normal distribution assumption required).</p>
+        <ul>
+            <li><b>VaR 95%:</b> With 95% probability, the portfolio does not lose more than this amount in a single day</li>
+            <li><b>VaR 99%:</b> With 99% probability – the «almost worst day»</li>
+            <li><b>CVaR (Expected Shortfall):</b> The average loss on the days that are worse than the VaR – in the worst 5% or 1% of days</li>
+            <li><b>Calmar Ratio:</b> Annual return divided by maximum drawdown – higher is better</li>
+            <li><b>Skewness:</b> Negative values = losses tend to be larger than gains («fat left tail»)</li>
+            <li><b>Excess Kurtosis:</b> High positive values = extreme events occur more often than a normal distribution would suggest</li>
+            <li><b>Tail Ratio:</b> P95 / |P5| – ratio of good to bad outliers; above 1.0 is favorable</li>
+        </ul>
+        <p>The histogram shows the distribution of historical daily returns with the orange (VaR 95%) and red (VaR 99%) lines plus a dashed normal distribution curve as reference. Heavy left tails («fat tails») indicate higher tail risk.</p>
+        <div class="tip"><b>Period:</b> Select between 6 months and 3 years using the toolbar dropdown. Longer periods capture more market regimes; shorter periods reflect current risk more precisely.</div>
+
+        <h3>Tab «Drawdown Analysis»</h3>
+        <p>The <b>underwater chart</b> (right) shows how far the portfolio is below its previous peak at any point in time – the deeper the red area, the more severe the drawdown. The left panel lists the five worst drawdown periods:</p>
+        <ul>
+            <li><b>Start:</b> Date when the drawdown began (last peak)</li>
+            <li><b>Drawdown:</b> Maximum loss during that period in percent</li>
+            <li><b>Peak → Trough:</b> Trading days from the peak to the lowest point</li>
+            <li><b>Recovery:</b> Trading days until the portfolio fully recovered to its prior peak. «Still open» = the portfolio has not yet recovered</li>
+        </ul>
+        <p>Below the table: <b>Max. DD Duration</b> and <b>Max. Underwater</b> for the worst drawdown overall.</p>
+        <div class="tip"><b>Tip:</b> Recovery time is often underestimated – a –30% drawdown requires +43% gain to recover and can take years.</div>
+
+        <h3>Tab «Stress &amp; Correlation»</h3>
+        <p>Shows how the portfolio's beta and correlation versus the five benchmarks <b>change during market stress periods</b>. A crisis day is defined as any day on which the S&amp;P 500 (SPY) fell more than 1.5%.</p>
+        <ul>
+            <li><b>Normal Corr. / Crisis Corr.:</b> Correlation in normal vs. stressed market periods</li>
+            <li><b>Δ Corr.:</b> Positive values (red) = diversification breaks down in a crisis – the classic «correlation goes to 1» effect. Negative values (green) = diversification holds</li>
+            <li><b>Normal β / Crisis β:</b> Beta in normal vs. stressed market periods</li>
+            <li><b>Δ β:</b> If beta rises sharply in a crisis, the portfolio becomes more sensitive to market declines than in calm periods</li>
+        </ul>
+        <p><b>Lombard Loan / Margin-Call Distance:</b> Optional section (expand to use). Enter the loan amount and LTV limit; the display shows the percentage buffer to the margin call and the annual interest cost. Useful for assessing how much room the portfolio has before additional collateral would be required.</p>
+
+        <h3>Tab «Sector Stress Test»</h3>
+        <p>This is the Bloomberg-style core for professional analysis. For each of the 15 historical scenarios, the shock is broken down <b>by GICS sector</b> – not as a single uniform number, but differentiated by how each sector historically responded. The tab has two modes:</p>
+        <p><b>■ Historical</b> (default mode):</p>
+        <ul>
+            <li><b>Select Scenario:</b> Dropdown – all 15 scenarios from the Panic of 1907 to the 2022 inflation crash</li>
+            <li><b>▶ Load:</b> Starts background data retrieval (1–3 seconds). For scenarios from 2000 onward, actual sector ETF returns are fetched (XLK, XLF, XLY, …); for older scenarios, calibrated estimates (NBER/Shiller) are used</li>
+            <li><b>Table:</b> Sector | Positions | Market Value | Weight | Shock% | Stress Value | P&amp;L</li>
+            <li><b>Shock column:</b> Color-coded – red = loss, green = gain (e.g. Energy benefits during the oil crisis)</li>
+            <li><b>Bar chart:</b> Visual comparison of current vs. stressed value per sector</li>
+        </ul>
+        <p><b>✎ Custom</b> (your own scenarios):</p>
+        <ul>
+            <li><b>11 sector input fields</b> (−100% to +100%): enter a custom shock for each GICS sector. Leave unused sectors at 0%</li>
+            <li><b>↩ Apply from Scenario:</b> Select a scenario from the dropdown and pre-fill the fields with its shock values – as a starting point for your own adjustments</li>
+            <li><b>▶ Calculate:</b> Instant calculation with no network request – table and bar chart update immediately</li>
+            <li>Example: Industrials −30%, Financials −40%, Energy +20% – what happens to the portfolio?</li>
+        </ul>
+        <div class="tip"><b>Pro tip:</b> Combine «Sector Stress Test» with «Factor Exposure»: high factor exposure to a sector + a severe sectoral shock = elevated risk. Use Custom mode to model your own scenarios – e.g. regulatory pressure on Tech (IT −25%) combined with rate stress on real estate (Real Estate −20%).</div>
+
+        <h3>Tab «Historical Chart»</h3>
+        <p>Visualizes market performance during a crisis period – similar to Bloomberg's time-series charts with crisis highlighting and event annotations.</p>
+        <ul>
+            <li><b>Blue solid line (real data):</b> Market performance (Dow Jones / S&amp;P 500 / SPY depending on the era), indexed to 100. Available for scenarios from 1966 onward (^GSPC / SPY)</li>
+            <li><b>Dashed line (simulated):</b> For older scenarios (1907–1962), Yahoo Finance has no daily price data. Instead, a synthetic curve is generated from the calibrated drawdown and recovery parameters – clearly marked with a yellow «Simulated» box in the chart</li>
+            <li><b>Red area:</b> Drawdown period (market below its previous peak) – the deeper, the more severe the crash</li>
+            <li><b>Orange dashed line:</b> Estimated portfolio performance, based on the portfolio's current beta vs. the S&amp;P 500 – shows how your portfolio would likely have behaved</li>
+            <li><b>Red percentage:</b> Maximum drawdown of the crisis period</li>
+            <li><b>Annotations:</b> Key events (Lehman collapse, OPEC embargo, COVID trough, etc.) – real data scenarios only</li>
+        </ul>
+        <p><b>About the synthetic curve:</b> For 1929, with a real recovery time of 22 years, only a 10-year window is shown – the curve ends well below 100, correctly reflecting the historical reality. The curve shape (slightly accelerating decline, fast-starting recovery) is calibrated from NBER and Shiller data.</p>
+        <p>The portfolio curve is always an <i>estimate</i> – a thinking tool, not a historical fact: «What if my current portfolio had existed in 2008?»</p>
+        <div class="warning">&#9888; Not investment advice. Calculations are based on historical closing prices (yfinance) or calibrated parameters. Benchmarks denominated in USD.</div>
 
         <a name="rohstoffe"><h2>&#127775; Commodities</h2></a>
         <p>Stock Monitor supports <b>5 commodities</b> as a separate asset class alongside stocks and crypto.</p>
@@ -2040,11 +2396,13 @@ _TOC_DE = [
     "Updates",
     "Favoriten",
     "Watchlist",
+    "Aktien-Screener",
     "── 🔍 ANALYSE ──",
     "Alpha-Wert (Chart)",
     "Beta-Wert (Chart)",
     "Sharpe-Ratio",
     "Sortino-Ratio (Zoom)",
+    "Aktien-Bewertung",
     "Vergleich",
     "Analysten-Info",
     "Firmeninfo",
@@ -2068,6 +2426,8 @@ _TOC_DE = [
     "RI-Faktor",
     "Portfolio-Notizen",
     "Korrelationsmatrix",
+    "Stresstest",
+    "Komplex-Analyse",
     "Portfolio Diagramme",
     "Performance-Vergleich",
     "Portfolio Performance",
@@ -2124,11 +2484,13 @@ _TOC_EN = [
     "Updates",
     "Favourites",
     "Watchlist",
+    "Stock Screener",
     "── 🔍 ANALYSIS ──",
     "Alpha (Chart)",
     "Beta (Chart)",
     "Sharpe Ratio",
     "Sortino Ratio (Zoom)",
+    "Stock Rating",
     "Comparison",
     "Analyst Info",
     "Company Info",
@@ -2152,6 +2514,8 @@ _TOC_EN = [
     "RI Factor",
     "Portfolio Notes",
     "Correlation Matrix",
+    "Stress Test",
+    "Komplex Analysis",
     "Portfolio Charts",
     "Performance Comparison",
     "Portfolio Performance",
@@ -2210,6 +2574,7 @@ _ANCHOR_DE = {
     "updates":                    "updates",
     "favoriten":                  "favoriten",
     "watchlist":                  "watchlist",
+    "aktien-screener":            "screener",
     # Analyse
     "alpha-wert (chart)":         "alpha-wert_chart",
     "beta-wert (chart)":          "beta-wert_chart",
@@ -2229,6 +2594,10 @@ _ANCHOR_DE = {
     "sharpe-ratio – vertiefung":  "sharpe-vertiefung",
     "sortino-ratio – vertiefung": "sortino-vertiefung",
     "sortino-ratio (zoom)":       "sortino-zoom",
+    "aktien-bewertung":           "aktien-bewertung",
+    "bewertung":                  "aktien-bewertung",
+    "sternebewertung":            "aktien-bewertung",
+    "stock rating":               "aktien-bewertung",
     "monte carlo – vertiefung":   "monte-carlo-vertiefung",
     "ecy – vertiefung":           "ecy-vertiefung",
     "excess cape yield (ecy)":    "ecy",
@@ -2239,6 +2608,8 @@ _ANCHOR_DE = {
     "ri-faktor":                  "ri-faktor",
     "portfolio-notizen":          "portfolio_notizen",
     "korrelationsmatrix":         "korrelationsmatrix",
+    "stresstest":                 "stresstest",
+    "komplex-analyse":            "komplex",
     "portfolio diagramme":        "portfolio_diagramme",
     "performance-vergleich":      "performance_vergleich",
     "portfolio performance":      "portfolio_performance",
@@ -2302,6 +2673,7 @@ _ANCHOR_EN = {
     "updates":                    "updates",
     "favourites":                 "favoriten",
     "watchlist":                  "watchlist",
+    "stock screener":             "screener",
     # Analysis
     "alpha (chart)":              "alpha-wert_chart",
     "beta (chart)":               "beta-wert_chart",
@@ -2321,6 +2693,9 @@ _ANCHOR_EN = {
     "sharpe ratio – deep dive":   "sharpe-vertiefung",
     "sortino ratio – deep dive":  "sortino-vertiefung",
     "sortino ratio (zoom)":       "sortino-zoom",
+    "stock rating":               "aktien-bewertung",
+    "star rating":                "aktien-bewertung",
+    "rating":                     "aktien-bewertung",
     "monte carlo – deep dive":    "monte-carlo-vertiefung",
     "ecy – deep dive":            "ecy-vertiefung",
     "excess cape yield (ecy)":    "ecy",
@@ -2331,6 +2706,8 @@ _ANCHOR_EN = {
     "ri factor":                  "ri-faktor",
     "portfolio notes":            "portfolio_notizen",
     "correlation matrix":         "korrelationsmatrix",
+    "stress test":                "stresstest",
+    "komplex analysis":           "komplex",
     "portfolio charts":           "portfolio_diagramme",
     "performance comparison":     "performance_vergleich",
     "portfolio performance":      "portfolio_performance",

@@ -60,6 +60,30 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.6.0" date="2026-08-31">
+      <description>
+        <p>New: Stress test for portfolio correlation analysis. New: Advanced Analysis with 7 tabs (factor exposure, rolling correlation, VaR/CVaR, drawdown, stress &amp; correlation, sector stress test, historical chart). New: Stock Screener accessible from watchlist – 12 indices, filter by performance &amp; P/E. New: Stock Rating in zoom chart (1–5 stars, 6 categories). Fixes: dividend formatting, world map tile service (Esri), sector stress test reset, crash on fast close of advanced analysis, browser focus after closing correlation window (Windows), watchlist centering on Full HD, multi-monitor dialog centering. AI analysis upgraded to gemini-3.5-flash-lite. yfinance updated to 1.7.0.</p>
+        <p xml:lang="de">Neu: Stresstest im Korrelations-Fenster. Neu: Erweiterte Analyse mit 7 Tabs (Faktorexposition, Rollende Korrelation, VaR/CVaR, Drawdown, Stress &amp; Korrelation, Sektor-Stresstest, Historischer Chart). Neu: Aktien-Screener aus der Watchlist – 12 Indizes, Filter nach Performance &amp; KGV. Neu: Aktienbewertung im Zoom-Chart (1–5 Sterne, 6 Kategorien). Fixes: Dividenden-Format, Weltkarte (Esri), Sektor-Reset, kein Absturz beim Schließen, Browser-Fokus (Windows), Watchlist-Zentrierung Full HD, Multi-Monitor-Zentrierung. KI-Analyse auf gemini-3.5-flash-lite; yfinance auf 1.7.0 aktualisiert.</p>
+      </description>
+    </release>
+    <release version="5.5.0" date="2026-07-29">
+      <description>
+        <p>Sortino Ratio in zoom chart and portfolio (new dialog accessible from Sharpe dialog). Watchlist: last available closing price used when market is closed. Favourites: clicking the star dropdown in a chart adds the stock directly if not yet in favourites. Help updated with Sortino deep-dive section.</p>
+        <p xml:lang="de">Sortino-Ratio im Zoom-Chart und im Portfolio (neuer Dialog über Sharpe-Dialog erreichbar). Watchlist: letzter verfügbarer Schlusskurs bei geschlossener Börse. Favoriten: Klick auf das Stern-Dropdown fügt Aktie direkt hinzu, wenn noch nicht in Favoriten. Hilfe mit Sortino-Vertiefung erweitert.</p>
+      </description>
+    </release>
+    <release version="5.4.4" date="2026-07-09">
+      <description>
+        <p>Zoom chart now has independent indicator settings (MA, Trend, Beta etc.) that are preserved across sessions. Global settings apply to all charts including the open zoom view. Windows fix: loading stocks with maximum period (e.g. McDonald's, Coca-Cola) no longer fails with Errno 22.</p>
+        <p xml:lang="de">Zoom-Chart hat jetzt eigene Indikator-Einstellungen (MA, Trend, Beta etc.), die sitzungsübergreifend gespeichert werden. Global-Einstellungen gelten auch für den offenen Zoom. Windows-Fix: Laden von Aktien mit maximalem Zeitraum (z. B. McDonald's, Coca-Cola) schlägt nicht mehr mit Errno 22 fehl.</p>
+      </description>
+    </release>
+    <release version="5.4.3" date="2026-06-22">
+      <description>
+        <p>Fix: Dark mode – company info and AI analysis text is now readable. Fix: RI factor tooltip corrected (right-click → left-click).</p>
+        <p xml:lang="de">Fix: Dark Mode – Firmeninfo und AI-Einschätzung jetzt lesbar. Fix: RI-Faktor Tooltip: Rechtsklick → Linksklick korrigiert.</p>
+      </description>
+    </release>
     <release version="5.4.2" date="2026-06-16">
       <description>
         <p>Fix: Company name now appears in portfolio overview tooltip on Full HD displays.</p>

@@ -1,5 +1,5 @@
 project('stock-monitor',
-  version: '5.5.0',
+  version: '5.6.0',
   meson_version: '>= 0.59.0',
 )
 
@@ -17,6 +17,12 @@ py_sources = [
   'portfolio_analysis_extended.py',
   'portfolio_analysis_texts.py',
   'etf_holdings.py',
+  'stress_test.py',
+  'stress_test_translations.py',
+  'komplex.py',
+  'komplex_translations.py',
+  'screener.py',
+  'stock_rating.py',
 ]
 
 install_data(py_sources,

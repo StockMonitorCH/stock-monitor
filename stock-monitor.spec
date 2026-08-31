@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.5.0
+Version:        5.6.0
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
@@ -50,7 +50,9 @@ install -d %{buildroot}/usr/share/licenses/%{name}
 for f in stock_monitor.py portfolio_db.py config.py market_data.py \
           tax_module.py tax_translations.py translations.py help_texts.py \
           world_map.py etf_holdings.py dividend_lists.json Demo.smpf \
-          portfolio_analysis.py portfolio_analysis_extended.py portfolio_analysis_texts.py; do
+          portfolio_analysis.py portfolio_analysis_extended.py portfolio_analysis_texts.py \
+          stress_test.py stress_test_translations.py komplex.py komplex_translations.py \
+          screener.py stock_rating.py; do
     install -m 0644 app/$f %{buildroot}/opt/stock-monitor/app/$f
 done
 
@@ -186,6 +188,20 @@ update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %changelog
+* Sun Aug 31 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.6.0-1
+- Feature: Stresstest im Korrelations-Fenster (stress_test.py)
+- Feature: Erweiterte Analyse – 7 Tabs (komplex.py): Faktorexposition, Rollende Korrelation, VaR/CVaR, Drawdown, Stress & Korrelation, Sektor-Stresstest, Historischer Chart
+- Feature: Aktien-Screener aus der Watchlist (screener.py) – 12 Indizes, Filter nach Performance & KGV
+- Feature: Aktienbewertung im Zoom-Chart (stock_rating.py) – 1–5 Sterne, 6 Kategorien
+- Fix: Dividenden-Gesamtbetrag im Details-Fenster korrekt formatiert
+- Fix: Weltkarte – CARTO auf Esri World Light Gray umgestellt
+- Fix: Sektor-Stresstest – «Kein Szenario» setzt alle Sektorwerte auf 0 % zurück
+- Fix: Komplex-Analyse – kein Absturz beim schnellen Schließen mehr
+- Fix: Korrelationsfenster (Windows) – Browser öffnet sich nicht mehr beim Schließen
+- Fix: Watchlist-Fenster – korrekte Zentrierung auf Full HD
+- Fix: Alle Dialoge – Multi-Monitor-Zentrierung auf aktivem Bildschirm
+- Update: KI-Analyse auf gemini-3.5-flash-lite umgestellt
+- Feature (macOS): Automatisches macOS-Update über DMG
 * Wed Jul 29 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.5.0-1
 - Feature: Sortino-Ratio im Zoom-Chart (neue Checkbox «So Sortino»)
 - Feature: Portfolio Sortino-Ratio Dialog (aufrufbar aus dem Sharpe-Dialog)
