@@ -6,8 +6,8 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <!-- PRIMARY META -->
 <title>Stock Monitor – Portfolio Tracker &amp; Finance App for Private Investors</title>
-<meta content="Stock Monitor – free portfolio app for private investors. Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, ECY, dividend calendar, tax assistant (CH/DE/AT/UK/US), CSV import, cryptocurrencies, precious metals. For Windows &amp; Linux (Fedora, openSUSE, Nobara). Open Source." name="description"/>
-<meta content="Portfolio Tracker, Finanz App, Aktien Portfolio, Portfolio Verwaltung, Portfolio Manager, Portfolio Analyse, Anlage Tool, Depot, Depot Verwaltung, Depotanalyse, Wertschriftendepot, Wertschriften, Aktien verwalten, Aktien App, Dividenden Tracker, Dividenden Kalender, Steuer Assistent Aktien, Charts Aktien, mehrere Charts gleichzeitig, Portfolio Software, Kryptowährungen Portfolio, Cryptos Portfolio, Edelmetalle Portfolio, Währungsrechner, Monte Carlo Simulation Portfolio, ECY Earnings Current Yield, Alpha Beta Sharpe Ratio, Correlation Matrix Portfolio, Korrelationsmatrix Portfolio, Bollinger Bands RSI, TWR MWR IRR, KI Analyse Portfolio, AI Portfolio Analysis, GICS Sektoren, CSV Import, CSV Import Aktien, CSV Import Bank, Swissquote CSV, DeGiro CSV, Flatex CSV, Portfolio Weltkarte, Weltkarte Aktien, Stock Portfolio, Investment Tracker, Portfolio Analysis, Stock Monitor, Open Source Portfolio, Free Portfolio Manager, Investment Portfolio App, Stock Portfolio Tracker, Cryptocurrency Portfolio, Precious Metals Portfolio, Tax Assistant Stocks, Dividend History, Monte Carlo Simulation Stocks, Portfolio Rebalancing, CSV import stocks, world map portfolio, ETF, ETFs, SMI, DAX, S&amp;P 500, Candlestick, Benchmark Indizes, Benchmark Indices, Linux Portfolio App, Linux Aktien App, rpm Download, Flatpak Portfolio, Fedora Portfolio App, openSUSE Portfolio App, Nobara Portfolio App, portfolio app linux, stock tracker linux, finanz app linux" name="keywords"/>
+<meta content="Stock Monitor – free portfolio app for private investors. Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, ECY, dividend calendar, tax assistant (CH/DE/AT/UK/US), CSV import, cryptocurrencies, precious metals. For Windows, macOS &amp; Linux (Fedora, openSUSE, Nobara). Open Source." name="description"/>
+<meta content="Portfolio Tracker, Finanz App, Aktien Portfolio, Portfolio Verwaltung, Portfolio Manager, Portfolio Analyse, Anlage Tool, Depot, Depot Verwaltung, Depotanalyse, Wertschriftendepot, Wertschriften, Aktien verwalten, Aktien App, Dividenden Tracker, Dividenden Kalender, Steuer Assistent Aktien, Charts Aktien, mehrere Charts gleichzeitig, Portfolio Software, Kryptowährungen Portfolio, Cryptos Portfolio, Edelmetalle Portfolio, Währungsrechner, Monte Carlo Simulation Portfolio, ECY Earnings Current Yield, Alpha Beta Sharpe Ratio, Correlation Matrix Portfolio, Korrelationsmatrix Portfolio, Bollinger Bands RSI, TWR MWR IRR, KI Analyse Portfolio, AI Portfolio Analysis, GICS Sektoren, CSV Import, CSV Import Aktien, CSV Import Bank, Swissquote CSV, DeGiro CSV, Flatex CSV, Portfolio Weltkarte, Weltkarte Aktien, Stock Portfolio, Investment Tracker, Portfolio Analysis, Stock Monitor, Open Source Portfolio, Free Portfolio Manager, Investment Portfolio App, Stock Portfolio Tracker, Cryptocurrency Portfolio, Precious Metals Portfolio, Tax Assistant Stocks, Dividend History, Monte Carlo Simulation Stocks, Portfolio Rebalancing, CSV import stocks, world map portfolio, ETF, ETFs, SMI, DAX, S&amp;P 500, Candlestick, Benchmark Indizes, Benchmark Indices, Linux Portfolio App, Linux Aktien App, Flatpak Portfolio, Fedora Portfolio App, openSUSE Portfolio App, Nobara Portfolio App, portfolio app linux, stock tracker linux, finanz app linux" name="keywords"/>
 <meta content="Timm" name="author"/>
 <meta content="index, follow" name="robots"/>
 <link href="https://www.stock-monitor.ch/en/" rel="canonical"/><link href="https://www.stock-monitor.ch/" hreflang="de" rel="alternate"/><link href="https://www.stock-monitor.ch/en/" hreflang="en" rel="alternate"/><link href="https://www.stock-monitor.ch/" hreflang="x-default" rel="alternate"/>
@@ -15,7 +15,7 @@
 <meta content="website" property="og:type"/>
 <meta content="https://www.stock-monitor.ch/en/" property="og:url"/>
 <meta content="Stock Monitor – Portfolio Tracker &amp; Finance App" property="og:title"/>
-<meta content="Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, dividend calendar, tax assistant (CH/DE/AT/UK/US) and CSV import. Cryptocurrencies &amp; precious metals. Windows &amp; Linux. Open Source." property="og:description"/>
+<meta content="Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, dividend calendar, tax assistant (CH/DE/AT/UK/US) and CSV import. Cryptocurrencies &amp; precious metals. Windows, macOS &amp; Linux. Open Source." property="og:description"/>
 <meta content="https://www.stock-monitor.ch/screenshots/dashboard_DE.png" property="og:image"/>
 <meta content="en_US" property="og:locale"/>
 <meta content="en_US" property="og:locale:alternate"/>
@@ -23,7 +23,7 @@
 <!-- TWITTER / X -->
 <meta content="summary_large_image" name="twitter:card"/>
 <meta content="Stock Monitor – Portfolio Tracker &amp; Finance App" name="twitter:title"/>
-<meta content="Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, dividend calendar, tax assistant and CSV import. Cryptocurrencies &amp; precious metals. Windows &amp; Linux. Open Source." name="twitter:description"/>
+<meta content="Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, dividend calendar, tax assistant and CSV import. Cryptocurrencies &amp; precious metals. Windows, macOS &amp; Linux. Open Source." name="twitter:description"/>
 <meta content="https://www.stock-monitor.ch/screenshots/dashboard_DE.png" name="twitter:image"/>
 <!-- STRUCTURED DATA (Google Software App) -->
 <script type="application/ld+json">
@@ -31,7 +31,7 @@
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "Stock Monitor",
-  "operatingSystem": "Windows, Linux",
+  "operatingSystem": "Windows, macOS, Linux",
   "applicationCategory": "FinanceApplication",
   "offers": {
     "@type": "Offer",
@@ -45,7 +45,7 @@
   },
   "url": "https://www.stock-monitor.ch/",
   "downloadUrl": "https://github.com/StockMonitorCH/stock-monitor/releases",
-  "softwareVersion": "5.4.4",
+  "softwareVersion": "5.6.0",
   "screenshot": "https://www.stock-monitor.ch/screenshots/dashboard_DE.png"
 }
 </script>
@@ -103,8 +103,16 @@ body {
   align-items: center;
   padding: 12px 32px;
   background: rgba(10,14,20,0.85);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
+}
+/* iOS perf fix: disable the header blur while any overlay (mobile menu, modals) is open —
+   keeping it active behind an animating/tapped overlay forces iOS to recompute it constantly. */
+body.overlay-open .lang-bar {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgba(10,14,20,0.98);
 }
 .lang-bar .logo-small {
   margin-right: auto;
@@ -132,7 +140,124 @@ body {
 }
 .lang-btn:hover { border-color: var(--green); color: var(--text); }
 .lang-btn.active { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+
+/* COFFEE BUTTON */
+.coffee-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 10px;
+}
+.coffee-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+.coffee-btn svg { display: block; }
 .lang-btn .flag { font-size: 1.8rem; }
+
+/* MAIN NAV */
+.main-nav { display: flex; align-items: center; gap: 26px; margin-right: 28px; }
+.main-nav a {
+  color: var(--text2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.98rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+.main-nav a:hover { color: var(--green); }
+.main-nav a.nav-cta,
+.mobile-nav-panel a.nav-cta {
+  color: var(--bg);
+  background: var(--green);
+  padding: 8px 16px;
+  border-radius: 8px;
+  border-bottom: none;
+}
+.main-nav a.nav-cta:hover { color: var(--bg); opacity: 0.9; }
+.mobile-nav-panel a.nav-cta { text-align: center; margin-top: 6px; }
+
+/* HAMBURGER */
+.hamburger-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--card);
+  cursor: pointer;
+  margin-left: 10px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.hamburger-btn span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  margin: 0 auto;
+  background: var(--text2);
+  transition: transform 0.25s, opacity 0.2s;
+}
+.hamburger-btn.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger-btn.open span:nth-child(2) { opacity: 0; }
+.hamburger-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* MOBILE NAV PANEL */
+.mobile-nav-panel {
+  position: fixed;
+  top: 0; right: 0;
+  height: 100vh;
+  width: min(78vw, 300px);
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 90px 28px 28px;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+}
+.mobile-nav-panel.open { transform: translateX(0); }
+.mobile-nav-panel a {
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--border);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(34,197,94,0.15);
+}
+.mobile-nav-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 199;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.mobile-nav-backdrop.open { display: block; opacity: 1; }
+
+@media (max-width: 860px) {
+  .main-nav { display: none; }
+  .hamburger-btn { display: flex; }
+  .coffee-btn { display: none; }
+}
 
 /* HERO */
 .hero {
@@ -713,6 +838,7 @@ footer a:hover { color: var(--green); }
   z-index: 9999;
   align-items: center;
   justify-content: center;
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   cursor: zoom-out;
   animation: lbFadeIn 0.2s ease;
@@ -833,13 +959,38 @@ footer a:hover { color: var(--green); }
     <img src="screenshots/logo.png" alt="Stock Monitor Logo" style="height:34px; width:auto; display:block;">
     Stock<span>Monitor</span>
   </div>
-<button class="lang-btn active" id="btn-de" onclick="setLang('de')">
+<nav class="main-nav">
+<a href="#about">About</a>
+<a href="#contact">Contact</a>
+<a href="/mobile/">Mobile Apps</a>
+<a href="/glossaryEN.html">Glossary</a>
+<a href="#" onclick="openPrivacy(event)">Privacy</a>
+<a href="#download" class="nav-cta">Downloads</a>
+</nav>
+<button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">
+<span></span><span></span><span></span>
+</button>
+<button class="coffee-btn" id="coffee-btn" onclick="openCoffee(event)" aria-label="Buy me a coffee" style="font-size:1.3rem; line-height:1;">
+    ☕
+  </button>
+  <button class="lang-btn active" id="btn-de" onclick="setLang('de')">
 <span class="flag"><svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15"><rect width="20" height="5" fill="#000"/><rect width="20" height="5" y="5" fill="#D00"/><rect width="20" height="5" y="10" fill="#FFCE00"/></svg></span> DE
   </button>
 <button class="lang-btn" id="btn-en" onclick="setLang('en')">
 <span class="flag"><svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15"><rect width="20" height="15" fill="#B22234"/><rect width="20" height="1.15" y="1.15" fill="#fff"/><rect width="20" height="1.15" y="3.46" fill="#fff"/><rect width="20" height="1.15" y="5.77" fill="#fff"/><rect width="20" height="1.15" y="8.08" fill="#fff"/><rect width="20" height="1.15" y="10.38" fill="#fff"/><rect width="20" height="1.15" y="12.69" fill="#fff"/><rect width="8" height="8.08" fill="#3C3B6E"/></svg></span> EN
   </button>
 </div>
+<!-- MOBILE NAV PANEL -->
+<div class="mobile-nav-panel" id="mobile-nav-panel">
+<a href="#about" onclick="closeMobileNav()">About</a>
+<a href="#contact" onclick="closeMobileNav()">Contact</a>
+<a href="/mobile/">Mobile Apps</a>
+<a href="/glossaryEN.html">Glossary</a>
+<a href="#" onclick="closeMobileNav(); openCoffee(event)">☕ Buy me a coffee</a>
+<a href="#" onclick="closeMobileNav(); openPrivacy(event)">Privacy</a>
+<a href="#download" class="nav-cta" onclick="closeMobileNav()">Downloads</a>
+</div>
+<div class="mobile-nav-backdrop" id="mobile-nav-backdrop" onclick="closeMobileNav()"></div>
 <!-- HERO -->
 <section class="hero">
 <div class="hero-bg"></div>
@@ -852,24 +1003,21 @@ footer a:hover { color: var(--green); }
 <div style="display:flex; gap:14px; flex-wrap:wrap; justify-content:center;">
 <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
 
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.4/stock_monitor.zip"><span style="font-size:1.4em; line-height:1;">🪟</span> Download for Windows</a>
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.6.0/stock_monitor.zip"><span style="font-size:1.4em; line-height:1;">🪟</span> Download for Windows</a>
 
 <div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">Extract ZIP → run .exe · No setup<br/>First launch ~20 sec.</div>
 </div>
 <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
 
-<a class="btn-primary" href="#download"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.6.0/StockMonitor-5.6.0.flatpak"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
 
-<div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.rpm · .flatpak<br>(Ubuntu, Debian, Fedora, Arch & more)</div>
+<div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.flatpak<br>(Ubuntu, Debian, Fedora, Arch & more)</div>
 </div>
 <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
 
-<span style="position:relative; display:inline-flex;">
-<span class="btn-soon"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12.3 8.2c-2.9 0-5.3 2.5-5.3 6.4 0 3.4 2.1 6.6 4 6.6.9 0 1.3-.6 2.1-.6.8 0 1.2.6 2.2.6 1.6 0 3.9-3.1 3.9-6.9 0-3.6-2.5-6.1-5.1-6.1-.6 0-1.2.2-1.8 0zM12.7 7.3c-.4 0-.7-.1-.9-.2.1-1.1.6-2.1 1.3-2.8.7-.7 1.7-1.1 2.6-1.1.1 1-.2 2.1-.9 2.9-.6.7-1.4 1.2-2.1 1.2z"/></svg> Download for macOS</span>
-<span style="position:absolute; top:-9px; right:-8px; background:var(--gold); color:#000; font-size:0.62rem; font-weight:800; letter-spacing:0.02em; padding:2px 7px; border-radius:20px; line-height:1.4; box-shadow:0 2px 6px rgba(0,0,0,0.3);">SOON</span>
-</span>
+<a class="btn-primary" href="https://apps.apple.com/app/id6797549450" style="background:transparent; padding:0; box-shadow:none;"><img src="appstore-badge-en.svg" alt="Download on the App Store" style="height:50px; width:auto; display:block;"></a>
 
-<div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">In development<br>Release planned for late August</div>
+<div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">Install directly<br>from the Mac App Store</div>
 </div>
 </div>
 
@@ -969,7 +1117,7 @@ footer a:hover { color: var(--green); }
 <div class="placeholder" style="display:none; height:320px; align-items:center; justify-content:center; color:var(--text3); font-family:'DM Mono',monospace; font-size:0.85rem;">[ screenshot: 16-chart dashboard ]</div>
 </div>
 
-<div class="screenshot-caption-below">Stock Monitor v5.4.4 · 16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Correlation Matrix · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
+<div class="screenshot-caption-below">Stock Monitor v5.6.0 · 16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Correlation Matrix · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
 </section>
 <!-- FEATURES ALS HIGHLIGHT-SECTIONS -->
 <div id="features" style="padding-top:1px; margin-top:-1px;"></div>
@@ -1157,12 +1305,14 @@ footer a:hover { color: var(--green); }
 
 <span class="tag tag-gold">Risk Analysis</span>
 
-<h3>⚖️ Sharpe, Alpha &amp; Beta — calculated automatically</h3>
+<h3>⚖️ Sharpe, Sortino, Alpha &amp; Beta — calculated automatically</h3>
 
-<p>Institutional risk metrics for private investors: Sharpe Ratio separately for stocks, crypto and commodities. Jensen's Alpha and Beta vs. S&amp;P 500.</p>
+<p>Institutional risk metrics for private investors: Sharpe and Sortino Ratio separately for stocks, crypto and commodities. Jensen's Alpha and Beta vs. S&amp;P 500.</p>
 <ul class="feature-list">
 
 <li>Sharpe Ratio with assessment (Excellent / Good / …)</li>
+
+<li>Sortino Ratio — penalizes only downside volatility, not the good kind</li>
 
 <li>Alpha: excess return vs. benchmark</li>
 
@@ -1184,6 +1334,111 @@ footer a:hover { color: var(--green); }
 <li>🟢 Green → +1: move together · ⬜ Grey ≈ 0: independent · 🔴 Red → −1: move opposite</li>
 <li>Period: 1M / 3M / 6M / YTD / 1Y / 2Y / 5Y freely selectable</li>
 <li>Export as PDF, XLSX and ODS</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- HIGHLIGHT: Stress Test -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
+<div class="highlight-img-wrap">
+<img alt="Stress Test" class="clickable-img" data-src-de="screenshots/stresstest_DE.png" data-src-en="screenshots/stresstest_EN.png" onerror="this.parentElement.style.minHeight='300px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/stresstest_EN.png"/>
+</div>
+<div class="highlight-text">
+<span class="tag tag-gold">Crisis Simulation</span>
+<h3>📉 Stress Test — your portfolio in 15 historical crises</h3>
+<p>How much would your portfolio have lost in a historical market crash — and how long would recovery have taken? Not a forecast, but a realistic sense of your own risk: could you handle a crash like that financially?</p>
+<ul class="feature-list">
+<li>15 historical crashes from the Panic of 1907 to the 2022 stock market decline — or a custom scenario</li>
+<li>Per crash: drawdown, bear market duration and recovery time to the starting level</li>
+<li>Combine multiple scenarios: worst case (OR) or cumulative effect (AND)</li>
+<li>Margin loan check: does the crash trigger a margin call? With interest cost and remaining buffer</li>
+<li>Direct access to the Komplex Analysis for an even deeper look</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- HIGHLIGHT: Komplex Analysis -->
+<section class="highlight fade-in">
+<div class="highlight-inner reverse">
+<div class="highlight-img-wrap">
+<img alt="Komplex Analysis" class="clickable-img" data-src-de="screenshots/komplex_DE.png" data-src-en="screenshots/komplex_EN.png" onerror="this.parentElement.style.minHeight='300px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/komplex_EN.png"/>
+</div>
+<div class="highlight-text">
+<span class="tag tag-gold">Pro Risk Analysis</span>
+<h3>🧠 Komplex Analysis — institutional-grade risk analysis in 7 tabs</h3>
+<p>Stock Monitor's professional risk tool — institutional-grade metrics as used by wealth managers and fund managers. Accessible via Stress Test → Komplex, built for advanced users.</p>
+<ul class="feature-list">
+<li>Factor exposure: beta &amp; R² against 5 benchmarks (S&amp;P 500, bonds, gold, real estate, commodities)</li>
+<li>Rolling correlation (30/60/90 days) — shows when diversification breaks down in a crisis</li>
+<li>VaR/CVaR: historical Value at Risk &amp; Expected Shortfall, plus Calmar Ratio, skewness, kurtosis, Tail Ratio</li>
+<li>Drawdown analysis: underwater chart and the 5 worst drawdown periods with recovery time</li>
+<li>Stress &amp; correlation: how beta and correlation shift during crisis periods</li>
+<li>Sector stress test by GICS sector — 15 historical scenarios or fully custom</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- HIGHLIGHT: Stock Screener -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
+<div class="highlight-img-wrap">
+<img alt="Stock Screener" class="clickable-img" data-src-de="screenshots/screener_DE.png" data-src-en="screenshots/screener_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/screener_EN.png"/>
+</div>
+<div class="highlight-text">
+<span class="tag tag-green">Find Stocks</span>
+<h3>🔎 Stock Screener — filter 11 indices by performance &amp; P/E</h3>
+<p>Filter entire indices by performance and valuation instead of looking up stocks one by one. Results go straight into the zoom chart or your favorites with one click.</p>
+<ul class="feature-list">
+<li>11 indices: S&amp;P 500, Nasdaq 100, DAX, SMI, CAC 40, FTSE 100, Nikkei 225, TSX, ASX 200, Russell 2000 and more</li>
+<li>Filter by 1-year performance band and optional max P/E — AND/OR freely combinable</li>
+<li>Up to 25 results, add directly to favorites or open the zoom chart</li>
+<li>Results stay saved until the next app start</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- HIGHLIGHT: Stock Rating -->
+<section class="highlight fade-in">
+<div class="highlight-inner reverse">
+<div class="highlight-img-wrap">
+<img alt="Stock Rating" class="clickable-img" data-src-de="screenshots/bewertung_DE.png" data-src-en="screenshots/bewertung_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/bewertung_EN.png"/>
+</div>
+<div class="highlight-text">
+<span class="tag tag-blue">Star Rating</span>
+<h3>⭐ Stock Rating — 6 categories, one glance</h3>
+<p>Right in the fullscreen chart via the «⭐ Rating» button: an overall rating from 6 weighted categories sums up how a stock currently stands. A quick read, not a buy recommendation.</p>
+<ul class="feature-list">
+<li>6 categories: performance, risk, technical, suitable for trading, long-term suitability, analyst recommendation</li>
+<li>Up to 5 stars per category, half-star increments possible</li>
+<li>Missing metrics are cleanly excluded instead of skewing the result</li>
+<li>Methodology button explains every scoring rule in detail</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- HIGHLIGHT: Zoomed Chart -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
+<div class="highlight-img-wrap">
+<img alt="Zoomed Chart" class="clickable-img" data-src-de="screenshots/zoom_DE.png" data-src-en="screenshots/zoom_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/zoom_EN.png"/>
+</div>
+<div class="highlight-text">
+
+<span class="tag tag-blue">Chart Detail</span>
+
+<h3>🔍 Zoomed Chart — all metrics at a glance</h3>
+
+<p>One click on a position opens the detail chart: moving averages, trend line, price target, 52-week high/low, Bollinger Bands and RSI — plus Sharpe, Sortino, Alpha and Beta right in the header line.</p>
+<ul class="feature-list">
+
+<li>MA 20/50/200, trend line and Bollinger Bands</li>
+
+<li>Price target and 52-week high/low plotted</li>
+
+<li>RSI(14) and drawdown chart synchronized below</li>
+
+<li>Sharpe, Sortino, Alpha &amp; Beta right in the chart header</li>
 </ul>
 </div>
 </div>
@@ -1345,17 +1600,17 @@ footer a:hover { color: var(--green); }
 </div>
 </section>
 <!-- DOWNLOAD -->
-<section id="download">
+<section id="download" style="scroll-margin-top:70px;">
 <div class="coming-soon fade-in">
 <div class="coming-soon-card">
 <span class="cs-icon">⬇️</span>
 
-<h2>Download — v5.4.4</h2>
+<h2>Download — v5.6.0</h2>
 
 <p>Free, open source, no installation required.</p>
 <!-- WINDOWS -->
 <div style="width:100%; margin-bottom:28px;">
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.4/stock_monitor.zip" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.6.0/stock_monitor.zip" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
 <span style="font-size:1.5em; line-height:1;">🪟</span> <span>Download for Windows</span> <span style="font-size:1em; opacity:0.7;">→</span>
 </a>
 
@@ -1363,26 +1618,36 @@ footer a:hover { color: var(--green); }
           Extract ZIP → run <code style="background:var(--bg3); padding:1px 6px; border-radius:4px; font-family:'DM Mono',monospace;">stock_monitor.exe</code> — that's it. No installation required. First launch: ~20 sec. loading time.
         </div>
 </div>
+<!-- APP STORE -->
+<div style="width:100%; margin-bottom:28px;">
+<a href="https://apps.apple.com/app/id6797549450" class="btn-primary" style="width:100%; background:transparent; padding:0; box-shadow:none;">
+<img src="appstore-badge-en.svg" alt="Download on the App Store" style="height:54px; width:auto; display:block; margin:0 auto;">
+</a>
+<div style="font-size:1rem; color:var(--text); line-height:1.6; text-align:center; padding:0 4px; margin-top:10px;">
+          Install directly from the Mac App Store.
+        </div>
+</div>
+<!-- MACOS -->
+<div style="width:100%; margin-bottom:28px;">
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.6.0/StockMonitor-5.6.0.dmg" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12.3 8.2c-2.9 0-5.3 2.5-5.3 6.4 0 3.4 2.1 6.6 4 6.6.9 0 1.3-.6 2.1-.6.8 0 1.2.6 2.2.6 1.6 0 3.9-3.1 3.9-6.9 0-3.6-2.5-6.1-5.1-6.1-.6 0-1.2.2-1.8 0zM12.7 7.3c-.4 0-.7-.1-.9-.2.1-1.1.6-2.1 1.3-2.8.7-.7 1.7-1.1 2.6-1.1.1 1-.2 2.1-.9 2.9-.6.7-1.4 1.2-2.1 1.2z"/></svg>
+<span>Download for macOS</span>
+<span style="font-size:1em; opacity:0.7;">→</span>
+</a>
+<div style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
+          Download .dmg → open → drag the app into Applications. Notarized by Apple. For Macs with M-series chips.
+        </div>
+</div>
 <!-- LINUX -->
 <div style="width:100%; margin-bottom:28px;">
-
-<div style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:left; margin-bottom:10px; padding:0 4px;">🐧 Linux</div>
-<!-- RPM -->
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.4/stock-monitor-5.4.4.x86_64.rpm" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.6.0/StockMonitor-5.6.0.flatpak" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
 <span style="font-size:1.3em; line-height:1;">🐧</span>
-<span>Download .rpm (Fedora, openSUSE, Nobara &amp; more)</span>
+<span>Download for Linux</span>
 <span style="font-size:1em; opacity:0.7;">→</span>
 </a>
-<div style="font-size:0.88rem; color:var(--text3); line-height:1.5; text-align:center; padding:0 4px; margin-bottom:16px;">Fedora, openSUSE, Nobara, RHEL-based distributions</div>
-
-<!-- FLATPAK -->
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.4.4/StockMonitor-5.4.4.flatpak" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
-<span style="font-size:1.3em; line-height:1;">📦</span>
-<span>Download .flatpak (all Linux distributions)</span>
-<span style="font-size:1em; opacity:0.7;">→</span>
-</a>
-<div style="font-size:0.88rem; color:var(--text3); line-height:1.5; text-align:center; padding:0 4px; margin-bottom:16px;">Ubuntu, Debian, Fedora, Arch, openSUSE & more — universal</div>
-
+<div style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
+          Download .flatpak → install via double-click or <code style="background:var(--bg3); padding:1px 6px; border-radius:4px; font-family:'DM Mono',monospace;">flatpak install</code>. For Ubuntu, Debian, Fedora, Arch, openSUSE & more — universal.
+        </div>
 </div>
 <!-- ANDROID / FX-CALC -->
 <div style="width:100%; margin-top:8px; margin-bottom:28px; border-top:1px solid var(--border); padding-top:24px;">
@@ -1413,24 +1678,30 @@ footer a:hover { color: var(--green); }
 
 <div style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:center; margin-bottom:10px;">📄 Documentation</div>
 <div id="doc-grid-de" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-<a class="btn-secondary" href="docs/StockMonitor_Features_v5.4.4_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Features_v5.6.0_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📋 Feature-Übersicht
           </a>
-<a class="btn-secondary" href="docs/StockMonitor_Anleitung_v5.4.4_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Anleitung_v5.6.0_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📖 Benutzeranleitung
+          </a>
+<a class="btn-secondary" href="/glossary.html" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2); grid-column: 1 / -1;">
+            📚 Glossar – Finanzbegriffe erklärt
           </a>
 </div>
 <div id="doc-grid-en" style="display:none; grid-template-columns:1fr 1fr; gap:8px;">
-<a class="btn-secondary" href="docs/StockMonitor_Features_v5.4.4_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Features_v5.6.0_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📋 Feature List
           </a>
-<a class="btn-secondary" href="docs/StockMonitor_Manual_v5.4.4_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Manual_v5.6.0_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📖 User Manual
+          </a>
+<a class="btn-secondary" href="/glossaryEN.html" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2); grid-column: 1 / -1;">
+            📚 Glossary – Financial Terms Explained
           </a>
 </div>
 </div>
 <!-- EMAIL NOTIFY -->
-<div style="border-top:1px solid var(--border); padding-top:24px; width:100%;">
+<div id="contact" style="border-top:1px solid var(--border); padding-top:24px; width:100%; scroll-margin-top:90px;">
 
 <div style="font-size:1rem; color:var(--text); margin-bottom:14px;">Get notified about new releases:</div>
 <div class="notify-form">
@@ -1449,9 +1720,9 @@ footer a:hover { color: var(--green); }
 </div>
 </section>
 <!-- ÜBER DEN ENTWICKLER -->
-<section class="highlight fade-in" style="background:var(--bg);">
+<section id="about" class="highlight fade-in" style="background:var(--bg); scroll-margin-top:70px;">
 <div style="max-width:700px; margin:0 auto; padding:80px 24px; text-align:center;">
-<img alt="Timm" onerror="this.style.display='none'" src="screenshots/timm.jpg" style="width:130px; height:130px; border-radius:50%; object-fit:cover; object-position:center 82%; border:3px solid var(--border2); margin-bottom:28px; display:block; margin-left:auto; margin-right:auto;"/>
+<img alt="Timm" onerror="this.style.display='none'" src="screenshots/timm.jpg" style="width:130px; height:130px; border-radius:50%; object-fit:cover; object-position:center; border:3px solid var(--border2); margin-bottom:28px; display:block; margin-left:auto; margin-right:auto;"/>
 <div id="about-de">
 <div style="font-size:0.88rem; font-weight:700; color:var(--green); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px;">Über den Entwickler</div>
 <h3 style="font-family:'DM Serif Display',serif; font-size:2rem; color:var(--text); margin-bottom:18px;">Timm — Entwickler &amp; Privatanleger</h3>
@@ -1487,7 +1758,7 @@ footer a:hover { color: var(--green); }
 </div>
 </footer>
 <!-- PRIVACY MODAL -->
-<div id="privacy-modal" onclick="closePrivacy(event)" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9998; align-items:center; justify-content:center; backdrop-filter:blur(6px); animation:lbFadeIn 0.2s ease;">
+<div id="privacy-modal" onclick="closePrivacy(event)" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9998; align-items:center; justify-content:center; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); animation:lbFadeIn 0.2s ease;">
 <div onclick="event.stopPropagation()" style="background:var(--card); border:1px solid var(--border2); border-radius:16px; max-width:480px; width:90%; padding:36px 32px; position:relative; box-shadow:0 32px 80px rgba(0,0,0,0.6);">
 <button onclick="closePrivacy(null, true)" onmouseout="this.style.color='var(--text3)'" onmouseover="this.style.color='var(--text)'" style="position:absolute; top:14px; right:18px; background:none; border:none; color:var(--text3); font-size:1.5rem; cursor:pointer; line-height:1; transition:color 0.15s;">✕</button>
 <div style="font-size:2rem; margin-bottom:14px;">🔒</div>
@@ -1509,6 +1780,48 @@ footer a:hover { color: var(--green); }
 </div>
 </div>
 </div>
+<!-- COFFEE MODAL -->
+<div id="coffee-modal" onclick="closeCoffee(event)" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9998; align-items:center; justify-content:center; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); animation:lbFadeIn 0.2s ease;">
+<div onclick="event.stopPropagation()" style="position:relative; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); max-width:440px; width:90%; padding:32px 32px 28px; max-height:85vh; overflow-y:auto;">
+<button onclick="closeCoffee(null, true)" style="position:absolute; top:14px; right:18px; background:none; border:none; color:var(--text3); font-size:1.5rem; cursor:pointer; line-height:1; transition:color 0.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'">✕</button>
+<div style="font-size:2rem; margin-bottom:14px;">☕</div>
+<div id="coffee-content-de" style="font-family:inherit;">
+<h3 style="font-family:'DM Serif Display',serif; font-size:1.6rem; color:var(--text); margin-bottom:10px;">Danke für deine Unterstützung!</h3>
+<p style="font-size:1rem; color:var(--text2); margin-bottom:22px;">Stock Monitor ist kostenlos. Jede Spende hilft bei der Weiterentwicklung.</p>
+<div style="display:flex; gap:20px; margin-bottom:22px;">
+<div style="text-align:center;">
+<img src="/screenshots/qr-postfinance.png" alt="PostFinance QR" style="width:110px; height:110px; border-radius:6px;">
+<div style="font-size:0.85rem; color:var(--text2); font-weight:600; margin-top:6px;">PostFinance</div>
+</div>
+<div style="text-align:center;">
+<img src="/screenshots/qr-twint.png" alt="TWINT QR" style="width:110px; height:110px; border-radius:6px;">
+<div style="font-size:0.85rem; color:var(--text2); font-weight:600; margin-top:6px;">TWINT</div>
+</div>
+</div>
+<a href="https://www.paypal.com/paypalme/StockMonitor" target="_blank" rel="noopener" style="display:block; text-align:center; background:var(--blue); color:#fff; font-weight:700; font-size:0.95rem; padding:13px 18px; border-radius:8px; text-decoration:none; margin-bottom:22px;">PayPal – paypal.me/StockMonitor</a>
+<div style="font-size:0.95rem; color:var(--text); font-weight:600; margin-bottom:6px;">Banküberweisung (CH):</div>
+<div style="font-size:0.95rem; color:var(--text2); font-family:'DM Mono',monospace; background:var(--card); border:1px solid var(--border); border-radius:6px; padding:8px 12px; user-select:all;">CH81 0900 0000 6010 1573 2</div>
+</div>
+<div id="coffee-content-en" style="display:none; font-family:inherit;">
+<h3 style="font-family:'DM Serif Display',serif; font-size:1.6rem; color:var(--text); margin-bottom:10px;">Thanks for your support!</h3>
+<p style="font-size:1rem; color:var(--text2); margin-bottom:22px;">Stock Monitor is free. Every donation helps its development.</p>
+<div style="display:flex; gap:20px; margin-bottom:22px;">
+<div style="text-align:center;">
+<img src="/screenshots/qr-postfinance.png" alt="PostFinance QR" style="width:110px; height:110px; border-radius:6px;">
+<div style="font-size:0.85rem; color:var(--text2); font-weight:600; margin-top:6px;">PostFinance</div>
+</div>
+<div style="text-align:center;">
+<img src="/screenshots/qr-twint.png" alt="TWINT QR" style="width:110px; height:110px; border-radius:6px;">
+<div style="font-size:0.85rem; color:var(--text2); font-weight:600; margin-top:6px;">TWINT</div>
+</div>
+</div>
+<a href="https://www.paypal.com/paypalme/StockMonitor" target="_blank" rel="noopener" style="display:block; text-align:center; background:var(--blue); color:#fff; font-weight:700; font-size:0.95rem; padding:13px 18px; border-radius:8px; text-decoration:none; margin-bottom:22px;">PayPal – paypal.me/StockMonitor</a>
+<div style="font-size:0.95rem; color:var(--text); font-weight:600; margin-bottom:6px;">Bank transfer (CH):</div>
+<div style="font-size:0.95rem; color:var(--text2); font-family:'DM Mono',monospace; background:var(--card); border:1px solid var(--border); border-radius:6px; padding:8px 12px; user-select:all;">CH81 0900 0000 6010 1573 2</div>
+</div>
+</div>
+</div>
+
 <!-- LIGHTBOX -->
 <div class="lightbox-overlay" id="lightbox" onclick="closeLightbox(event)">
 <img alt="" id="lightbox-img" onclick="closeLightbox(null, true)" src="" style="cursor: zoom-out;"/>
@@ -1516,6 +1829,7 @@ footer a:hover { color: var(--green); }
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 function openPrivacy(e) {
   if (e) e.preventDefault();
+  overlayOpened();
   const isEn = document.body.classList.contains('lang-en');
   document.getElementById('privacy-content-de').style.display = isEn ? 'none' : 'block';
   document.getElementById('privacy-content-en').style.display = isEn ? 'block' : 'none';
@@ -1527,6 +1841,25 @@ function closePrivacy(event, force) {
   if (force || (event && event.target === document.getElementById('privacy-modal'))) {
     document.getElementById('privacy-modal').style.display = 'none';
     document.body.style.overflow = '';
+    overlayClosed();
+  }
+}
+
+function openCoffee(e) {
+  if (e) e.preventDefault();
+  overlayOpened();
+  const isEn = document.body.classList.contains('lang-en');
+  document.getElementById('coffee-content-de').style.display = isEn ? 'none' : 'block';
+  document.getElementById('coffee-content-en').style.display = isEn ? 'block' : 'none';
+  const m = document.getElementById('coffee-modal');
+  m.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeCoffee(event, force) {
+  if (force || (event && event.target === document.getElementById('coffee-modal'))) {
+    document.getElementById('coffee-modal').style.display = 'none';
+    document.body.style.overflow = '';
+    overlayClosed();
   }
 }
 
@@ -1557,23 +1890,53 @@ function setLang(lang) {
 }
 
 // LIGHTBOX
+// MOBILE NAV
+let openOverlayCount = 0;
+function overlayOpened() {
+  openOverlayCount++;
+  document.body.classList.add('overlay-open');
+}
+function overlayClosed() {
+  openOverlayCount = Math.max(0, openOverlayCount - 1);
+  if (openOverlayCount === 0) document.body.classList.remove('overlay-open');
+}
+function toggleMobileNav() {
+  const panel = document.getElementById('mobile-nav-panel');
+  const isOpening = !panel.classList.contains('open');
+  document.getElementById('hamburger-btn').classList.toggle('open');
+  panel.classList.toggle('open');
+  document.getElementById('mobile-nav-backdrop').classList.toggle('open');
+  if (isOpening) { overlayOpened(); } else { overlayClosed(); }
+}
+function closeMobileNav() {
+  const panel = document.getElementById('mobile-nav-panel');
+  const wasOpen = panel.classList.contains('open');
+  document.getElementById('hamburger-btn').classList.remove('open');
+  panel.classList.remove('open');
+  document.getElementById('mobile-nav-backdrop').classList.remove('open');
+  if (wasOpen) overlayClosed();
+}
+
 function openLightbox(src) {
   const lb = document.getElementById('lightbox');
   const lbImg = document.getElementById('lightbox-img');
   lbImg.src = src;
   lb.classList.add('open');
+  overlayOpened();
   document.body.style.overflow = 'hidden';
 }
 function closeLightbox(event, force) {
   if (force || (event && event.target === document.getElementById('lightbox'))) {
     document.getElementById('lightbox').classList.remove('open');
     document.body.style.overflow = '';
+    overlayClosed();
   }
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeLightbox(null, true);
     closePrivacy(null, true);
+    closeCoffee(null, true);
   }
 });
 // Attach click handlers to all clickable images after DOM ready
@@ -1620,6 +1983,10 @@ async function handleNotify() {
 
 // AUTO LANGUAGE DETECTION
 (function() {
+  const params = new URLSearchParams(window.location.search);
+  const langParam = params.get('lang');
+  if (langParam === 'en') { setLang('en'); return; }
+  if (langParam === 'de') { setLang('de'); return; }
   const lang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
   const deLangs = ['de-ch', 'de-de', 'de-at', 'de-li', 'de'];
