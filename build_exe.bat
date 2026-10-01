@@ -78,6 +78,7 @@ for %%f in (
     komplex_translations.py
     screener.py
     stock_rating.py
+    mc_scenarios.py
 ) do (
     if not exist "%%f" (
         echo [FEHLER] Fehlende Datei: %%f
@@ -150,6 +151,7 @@ python -m PyInstaller ^
     --add-data "komplex_translations.py;." ^
     --add-data "screener.py;." ^
     --add-data "stock_rating.py;." ^
+    --add-data "mc_scenarios.py;." ^
     --hidden-import "PyQt6.QtCore" ^
     --hidden-import "PyQt6.QtGui" ^
     --hidden-import "PyQt6.QtWidgets" ^

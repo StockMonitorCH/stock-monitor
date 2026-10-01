@@ -1,5 +1,5 @@
 project('stock-monitor',
-  version: '5.6.0',
+  version: '5.7.0',
   meson_version: '>= 0.59.0',
 )
 
@@ -23,6 +23,7 @@ py_sources = [
   'komplex_translations.py',
   'screener.py',
   'stock_rating.py',
+  'mc_scenarios.py',
 ]
 
 install_data(py_sources,

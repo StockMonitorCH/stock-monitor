@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.6.0
+Version:        5.7.0
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
@@ -188,6 +188,11 @@ update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %changelog
+* Thu Oct 01 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.7.0-1
+- Feature: Monte-Carlo-Szenarien – Portfolios anpassen, vergleichen und als PDF/XLSX/ODS exportieren (mc_scenarios.py)
+- Feature: Schnelle Suche im Screener mit vorberechneten Tagesdaten vom Server
+- Improvement: Hilfe-Texte für Screener (Schnelle Suche) und Monte-Carlo-Szenarien erweitert
+
 * Sun Aug 31 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.6.0-1
 - Feature: Stresstest im Korrelations-Fenster (stress_test.py)
 - Feature: Erweiterte Analyse – 7 Tabs (komplex.py): Faktorexposition, Rollende Korrelation, VaR/CVaR, Drawdown, Stress & Korrelation, Sektor-Stresstest, Historischer Chart

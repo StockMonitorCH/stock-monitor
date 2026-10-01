@@ -51,7 +51,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.6.0"                            # beim Release anpassen
+APP_VERSION  = "5.7.0"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -13619,19 +13619,19 @@ class PortfolioDialog(QMainWindow):
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
         from matplotlib.figure import Figure
 
-        dialog = QDialog(self)
+        dialog = QDialog()
         dialog.setWindowTitle(TR("title_performance"))
+        screen = QApplication.primaryScreen().availableGeometry()
+        dlg_w  = min(int(screen.width()  * 0.82), 1560)
+        dlg_h  = min(int(screen.height() * 0.82), 860)
+        dialog.resize(dlg_w, dlg_h)
+        dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
+                    screen.y() + (screen.height() - dlg_h) // 2)
 
         # Windows: Fokus nach Dialog-Schliessen zurück auf Hauptfenster
         import sys as _sys_fd
         if _sys_fd.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
-        dlg_w  = int(screen.width()  * 0.82)
-        dlg_h  = int(screen.height() * 0.82)
-        dialog.resize(dlg_w, dlg_h)
-        dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
-                    screen.y() + (screen.height() - dlg_h) // 2)
 
         from PyQt6.QtGui import QPalette as _QPalette_ppc
         _dm_ppc = QApplication.palette().color(_QPalette_ppc.ColorRole.Window).lightness() < 128
@@ -13742,6 +13742,9 @@ class PortfolioDialog(QMainWindow):
         fig   = Figure(figsize=(fig_w, fig_h))
         fig.patch.set_facecolor('#ffffff')
         canvas = FigureCanvasQTAgg(fig)
+        canvas.setMinimumSize(0, 0)
+        from PyQt6.QtWidgets import QSizePolicy as _QSP
+        canvas.setSizePolicy(_QSP.Policy.Expanding, _QSP.Policy.Expanding)
         outer.addWidget(canvas, stretch=1)
 
         stats_label = QLabel("")
@@ -14125,6 +14128,12 @@ class PortfolioDialog(QMainWindow):
 
                 fig.tight_layout(pad=1.5)
                 canvas.draw()
+                try:
+                    _dw = dialog.width(); _dh = dialog.height()
+                    dialog.move(screen.x() + (screen.width()  - _dw) // 2,
+                                screen.y() + (screen.height() - _dh) // 2)
+                except RuntimeError:
+                    pass
 
                 # Kennzahlen
                 def _sc(s):
@@ -14251,17 +14260,14 @@ class PortfolioDialog(QMainWindow):
         dialog = QDialog(parent_win)
         dialog.setWindowTitle(TR("title_monte_carlo"))
 
-        # Grösse und Position exakt vom Performance-Fenster übernehmen
-        if perf_dialog is not None:
-            geo = perf_dialog.geometry()
-            dialog.setGeometry(geo)
-        else:
-            screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
-            dlg_w  = int(screen.width()  * 0.82)
-            dlg_h  = int(screen.height() * 0.82)
-            dialog.resize(dlg_w, dlg_h)
-            dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
-                        screen.y() + (screen.height() - dlg_h) // 2)
+        # Grösse und Position zentriert auf dem aktuellen Bildschirm
+        _top_mc = self.window()
+        screen = (_top_mc.screen() or QApplication.primaryScreen()).availableGeometry()
+        dlg_w  = int(screen.width()  * 0.82)
+        dlg_h  = int(screen.height() * 0.82)
+        dialog.resize(dlg_w, dlg_h)
+        dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
+                    screen.y() + (screen.height() - dlg_h) // 2)
 
         # Modal gegenüber dem Performance-Fenster — blockiert es vollständig
         dialog.setWindowModality(Qt.WindowModality.WindowModal)
@@ -14370,6 +14376,32 @@ class PortfolioDialog(QMainWindow):
             if _app: _app.show_help(anchor="monte-carlo-vertiefung", parent_widget=dialog)
         mc_help_btn.clicked.connect(_mc_show_help)
         ctrl.addWidget(mc_help_btn)
+
+        mc_scen_btn = QPushButton(TR("btn_mc_scenarios"))
+        mc_scen_btn.setMinimumHeight(28)
+        self._ef(mc_scen_btn)
+        mc_scen_btn.setToolTip(TR("tip_mc_scenarios"))
+        mc_scen_btn.setStyleSheet(
+            "QPushButton{background:#8e44ad;color:white;font-weight:bold;"
+            "border-radius:4px;padding:2px 12px;}"
+            "QPushButton:hover{background:#6c3483;}")
+        def _open_scenarios():
+            try:
+                from mc_scenarios import ScenarioEditorDialog
+            except ImportError as _exc:
+                QMessageBox.warning(dialog, TR("msg_title_error"),
+                                    f"mc_scenarios.py nicht gefunden:\n{_exc}")
+                return
+            _currency  = getattr(self, '_ov_currency', 'USD')
+            _fx_map    = getattr(self, '_ov_fx', {})
+            _fx_rate   = _fx_map.get(_currency, 1.0)
+            _price_cch = getattr(self, '_price_cache', {}) or {}
+            _scen_dlg  = ScenarioEditorDialog(
+                self.portfolio_data, _price_cch, dialog,
+                currency=_currency, fx_rate=_fx_rate)
+            _scen_dlg.exec()
+        mc_scen_btn.clicked.connect(_open_scenarios)
+        ctrl.addWidget(mc_scen_btn)
 
         mc_close_btn = QPushButton(TR("btn_close"))
         mc_close_btn.setMaximumWidth(120)
@@ -15315,20 +15347,17 @@ class PortfolioDialog(QMainWindow):
             sign = "+" if v >= 0 else ""
             return sign + _fmt(v, decimals)
 
-        # Grösse + Position: vom Performance-Dialog übernehmen wenn vorhanden
+        # Grösse + Position zentriert auf dem aktuellen Bildschirm
         parent_win = perf_dialog if perf_dialog is not None else self
         dialog = QDialog(parent_win)
         dialog.setWindowTitle(TR("title_ecy"))
-        if perf_dialog is not None:
-            geo = perf_dialog.geometry()
-            dialog.setGeometry(geo)
-        else:
-            screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
-            dlg_w  = int(screen.width()  * 0.72)
-            dlg_h  = int(screen.height() * 0.82)
-            dialog.resize(dlg_w, dlg_h)
-            dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
-                        screen.y() + (screen.height() - dlg_h) // 2)
+        _top_ecy = self.window()
+        screen = (_top_ecy.screen() or QApplication.primaryScreen()).availableGeometry()
+        dlg_w  = int(screen.width()  * 0.72)
+        dlg_h  = int(screen.height() * 0.82)
+        dialog.resize(dlg_w, dlg_h)
+        dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
+                    screen.y() + (screen.height() - dlg_h) // 2)
 
         # Modal gegenüber Performance-Fenster
         dialog.setWindowModality(Qt.WindowModality.WindowModal)
@@ -15481,9 +15510,16 @@ class PortfolioDialog(QMainWindow):
 
 
         def _on_done():
+            try:
+                _ = canvas.isVisible()
+            except RuntimeError:
+                return  # Dialog wurde geschlossen bevor Worker fertig wurde
             res = _result[0]
             if res is None or "error" in res:
-                signal_lbl.setText(f"⚠ {res.get('error', TR('msg_ecy_error')) if res else TR('msg_ecy_error')}")
+                try:
+                    signal_lbl.setText(f"⚠ {res.get('error', TR('msg_ecy_error')) if res else TR('msg_ecy_error')}")
+                except RuntimeError:
+                    pass
                 return
 
             ecy_now      = res["ecy_now"]

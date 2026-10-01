@@ -60,6 +60,12 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.7.0" date="2026-10-02">
+      <description>
+        <p>New: Monte Carlo Scenarios – build hypothetical portfolios, run simulations and compare with the real portfolio. Export results as PDF, XLSX or ODS. New: Quick Search in Stock Screener – pre-computed nightly data for instant results across all 18 indices. Improvements: help texts for Screener and Monte Carlo Scenarios, search keyword index updated.</p>
+        <p xml:lang="de">Neu: Monte-Carlo-Szenarien – hypothetische Portfolios erstellen, simulieren und mit dem echten Portfolio vergleichen. Export als PDF, XLSX oder ODS. Neu: Schnelle Suche im Aktien-Screener – vorberechnete Tagesdaten für sofortige Ergebnisse über alle 18 Indizes. Verbesserungen: Hilfe-Texte für Screener und Monte-Carlo-Szenarien, Stichwortverzeichnis ergänzt.</p>
+      </description>
+    </release>
     <release version="5.6.0" date="2026-08-31">
       <description>
         <p>New: Stress test for portfolio correlation analysis. New: Advanced Analysis with 7 tabs (factor exposure, rolling correlation, VaR/CVaR, drawdown, stress &amp; correlation, sector stress test, historical chart). New: Stock Screener accessible from watchlist – 12 indices, filter by performance &amp; P/E. New: Stock Rating in zoom chart (1–5 stars, 6 categories). Fixes: dividend formatting, world map tile service (Esri), sector stress test reset, crash on fast close of advanced analysis, browser focus after closing correlation window (Windows), watchlist centering on Full HD, multi-monitor dialog centering. AI analysis upgraded to gemini-3.5-flash-lite. yfinance updated to 1.7.0.</p>

@@ -481,11 +481,24 @@ _HTML_DE = """
             <li><b>Max. KGV (optional)</b>: Nur Aktien mit einem KGV unterhalb des eingegebenen Wertes</li>
         </ul>
         <h3>Ergebnisse</h3>
-        <p>Maximal 25 Treffer werden angezeigt. Pro Zeile stehen zwei Buttons:</p>
+        <p>Maximal 25 Treffer werden angezeigt. Pro Zeile stehen drei Buttons:</p>
         <ul>
             <li><b>&#9733; Favorit</b>: Symbol zu den Favoriten hinzufügen</li>
+            <li><b>&#128203; Watchlist</b>: Symbol direkt in die Watchlist übernehmen</li>
             <li><b>&#128200; Chart</b>: Zoom-Chart dieser Aktie öffnen (unabhängig von den 16 Haupt-Charts)</li>
         </ul>
+        <h3>&#9889; Schnelle Suche</h3>
+        <p>Neben der normalen Suche (live via Yahoo Finance) gibt es den Button <b>&#9889; Schnelle Suche</b>.
+        Dieser lädt vorberechnete Tagesdaten direkt von <code>stock-monitor.ch</code> – ohne individuellen Download pro Aktie.</p>
+        <table>
+            <tr><th></th><th>Normale Suche</th><th>&#9889; Schnelle Suche</th></tr>
+            <tr><td><b>Daten</b></td><td>Live von Yahoo Finance</td><td>Täglich vorberechnet</td></tr>
+            <tr><td><b>Geschwindigkeit</b></td><td>2–15 Min. je nach Index</td><td>Sekunden</td></tr>
+            <tr><td><b>Aktualität</b></td><td>Sehr aktuell</td><td>Stand: Vortag (ca. 22:00 Uhr)</td></tr>
+            <tr><td><b>Indizes</b></td><td>Alle 18</td><td>Alle 18</td></tr>
+            <tr><td><b>KGV-Filter</b></td><td>&#10003; möglich</td><td>&#10003; möglich (wenn vorhanden)</td></tr>
+        </table>
+        <div class="tip"><b>Tipp:</b> Die Schnelle Suche eignet sich ideal für einen raschen Überblick. Für tagesaktuelle Präzision verwende die normale Suche.</div>
         <div class="tip"><b>Tipp:</b> Ergebnisse bleiben bis zum nächsten App-Start gespeichert – du musst nicht jedes Mal neu suchen.</div>
         <div class="tip"><b>Tipp:</b> <b>Russell 2000 (Ausw.)</b>: ca. 256 Aktien, Suche in 2–5 Min. <b>Russell 2000 (erw.)</b>: ca. 618 Aktien, Suche in 5–15 Min. – mit Abbruch-Option. Mit <b>&#10005; Abbrechen</b> werden alle bisher gefundenen Treffer angezeigt.</div>
 
@@ -1054,6 +1067,39 @@ _HTML_DE = """
         <div class="warning">&#9888; Die Monte Carlo Simulation ist ein <b>Planungshilfsmittel</b>, keine Prognose.
         Vergangene Volatilität garantiert keine zukünftige Entwicklung. Keine Anlageberatung.</div>
 
+        <a name="mc-szenarien"><h2>&#127922; Monte Carlo – Szenarien</h2></a>
+        <h3>Was ist der Szenarien-Modus?</h3>
+        <p>Der Szenarien-Modus ermöglicht es, ein <b>hypothetisches Portfolio</b> zu erstellen und dessen
+        langfristige Entwicklung per Monte Carlo Simulation zu projizieren. Anders als die normale MC-Simulation
+        arbeitet dieser Modus nicht ausschliesslich mit dem echten Portfolio – du kannst Positionen beliebig
+        anpassen, neue hinzufügen oder komplett von Null beginnen.</p>
+        <h3>Tab «Positionen»</h3>
+        <ul>
+            <li><b>Positionen bearbeiten:</b> Den Wert jeder Position direkt in der Tabelle ändern (Feld anklicken, Wert eingeben, Enter oder Tab drücken).</li>
+            <li><b>Position hinzufügen:</b> Symbol und Wert eingeben. Das Symbol muss ein gültiger Yahoo-Finance-Ticker sein (z.B. NVDA, TSLA, BTC-USD).</li>
+            <li><b>Alle löschen:</b> Entfernt alle Positionen – kann mit <i>Rückgängig</i> widerrufen werden, solange das Szenario nicht gespeichert wurde.</li>
+            <li><b>Neues Portfolio:</b> Startet ein leeres Portfolio ohne Bezug zum echten Portfolio.</li>
+            <li><b>±10%-Sperre:</b> Verhindert, dass der Gesamtwert des Szenarios um mehr als 10% vom echten Portfolio abweicht. Nützlich, um realistische Szenarien zu vergleichen.</li>
+        </ul>
+        <h3>Farbige Gesamtwert-Anzeige</h3>
+        <table>
+            <tr><th>Farbe</th><th>Bedeutung</th></tr>
+            <tr><td>&#128994; Grün</td><td>Abweichung ≤ 10% – im erlaubten Bereich</td></tr>
+            <tr><td>&#127993; Orange</td><td>Abweichung 10–15% – leicht ausserhalb des Limits</td></tr>
+            <tr><td>&#128308; Rot</td><td>Abweichung &gt; 15% – stark vom echten Portfolio abweichend</td></tr>
+        </table>
+        <h3>Tab «Monte Carlo»</h3>
+        <p>Die Simulation läuft identisch zur normalen MC-Simulation (Geometric Brownian Motion, historische Daten).
+        Mit der Checkbox <b>«Vergleich mit echtem Portfolio»</b> werden zwei Simulationen übereinander dargestellt:
+        das echte Portfolio (oben) und das Szenario (unten). So lässt sich direkt ablesen, welche Auswirkung
+        die Portfolioänderung langfristig hätte.</p>
+        <h3>Speichern und Laden</h3>
+        <p>Du kannst mehrere Szenarien speichern und jederzeit laden.</p>
+        <div class="tip"><b>Praxis-Tipp:</b> Verwende die Szenarien z.B. um zu sehen, was passieren würde, wenn du
+        einen Tech-lastigen Teil deines Portfolios in Dividendentitel umschichtest – ohne etwas am echten Portfolio
+        zu verändern.</div>
+        <div class="warning">&#9888; Szenarien basieren auf historischen Daten und GBM-Annahmen. Keine Anlageberatung.</div>
+
         <a name="ecy-vertiefung"><h2>&#128202; ECY – Vertiefung</h2></a>
         <h3>Was steckt hinter dem Excess CAPE Yield?</h3>
         <p>Der ECY wurde vom Ökonomen <b>Robert Shiller</b> (Nobelpreisträger 2013) und seinem Team entwickelt
@@ -1599,11 +1645,24 @@ _HTML_EN = """
             <li><b>Max. P/E (optional)</b>: Only stocks with a P/E ratio below the entered value</li>
         </ul>
         <h3>Results</h3>
-        <p>Up to 25 matches are shown. Each row has two buttons:</p>
+        <p>Up to 25 matches are shown. Each row has three buttons:</p>
         <ul>
             <li><b>&#9733; Favourite</b>: Add symbol to favourites</li>
+            <li><b>&#128203; Watchlist</b>: Add symbol directly to the watchlist</li>
             <li><b>&#128200; Chart</b>: Open a zoom chart for this stock (independent of the 16 main charts)</li>
         </ul>
+        <h3>&#9889; Quick Search</h3>
+        <p>In addition to the normal search (live via Yahoo Finance), there is the <b>&#9889; Quick Search</b> button.
+        It loads pre-computed daily data directly from <code>stock-monitor.ch</code> – no individual download per stock.</p>
+        <table>
+            <tr><th></th><th>Normal Search</th><th>&#9889; Quick Search</th></tr>
+            <tr><td><b>Data</b></td><td>Live from Yahoo Finance</td><td>Pre-computed nightly</td></tr>
+            <tr><td><b>Speed</b></td><td>2–15 min. depending on index</td><td>Seconds</td></tr>
+            <tr><td><b>Freshness</b></td><td>Very current</td><td>Previous day (~10 pm)</td></tr>
+            <tr><td><b>Indices</b></td><td>All 18</td><td>All 18</td></tr>
+            <tr><td><b>P/E filter</b></td><td>&#10003; available</td><td>&#10003; available (if present)</td></tr>
+        </table>
+        <div class="tip"><b>Tip:</b> Quick Search is ideal for a fast morning overview. For intraday precision, use the normal search.</div>
         <div class="tip"><b>Tip:</b> Results are kept until the next app launch – no need to search again every time.</div>
         <div class="tip"><b>Tip:</b> <b>Russell 2000 (Ausw.)</b>: ~256 stocks, scan in 2–5 min. <b>Russell 2000 (ext.)</b>: ~618 stocks, scan in 5–15 min. – with abort option. Use <b>&#10005; Abort</b> to display all results found so far.</div>
 
@@ -2165,6 +2224,37 @@ _HTML_EN = """
         <div class="warning">&#9888; The Monte Carlo Simulation is a <b>planning aid</b>, not a forecast.
         Past volatility does not guarantee future performance. Not investment advice.</div>
 
+        <a name="mc-szenarien"><h2>&#127922; Monte Carlo – Scenarios</h2></a>
+        <h3>What is the Scenarios mode?</h3>
+        <p>The Scenarios mode lets you create a <b>hypothetical portfolio</b> and project its long-term development
+        using Monte Carlo simulation. Unlike the standard MC simulation, this mode is not restricted to your real
+        portfolio – you can freely adjust positions, add new ones, or start completely from scratch.</p>
+        <h3>Tab «Positions»</h3>
+        <ul>
+            <li><b>Edit positions:</b> Click any value in the table, type a new number, then press Enter or Tab.</li>
+            <li><b>Add position:</b> Enter a symbol and a value. The symbol must be a valid Yahoo Finance ticker (e.g. NVDA, TSLA, BTC-USD).</li>
+            <li><b>Clear all:</b> Removes all positions – can be undone with the <i>Undo</i> button as long as the scenario has not been saved.</li>
+            <li><b>New portfolio:</b> Starts a blank portfolio with no link to your real portfolio.</li>
+            <li><b>±10% limit:</b> Prevents the total scenario value from deviating more than 10% from your real portfolio. Useful for comparing realistic «what-if» scenarios.</li>
+        </ul>
+        <h3>Colour-coded total bar</h3>
+        <table>
+            <tr><th>Colour</th><th>Meaning</th></tr>
+            <tr><td>&#128994; Green</td><td>Deviation ≤ 10% – within the allowed range</td></tr>
+            <tr><td>&#127993; Orange</td><td>Deviation 10–15% – slightly outside the limit</td></tr>
+            <tr><td>&#128308; Red</td><td>Deviation &gt; 15% – significant departure from the real portfolio</td></tr>
+        </table>
+        <h3>Tab «Monte Carlo»</h3>
+        <p>The simulation runs identically to the standard MC simulation (Geometric Brownian Motion, historical data).
+        Enabling the <b>«Compare with real portfolio»</b> checkbox runs two simulations and displays them
+        stacked vertically: the real portfolio on top, the scenario below. This makes it easy to see what
+        long-term difference the portfolio change would make.</p>
+        <h3>Save and load</h3>
+        <p>You can save multiple scenarios and reload them at any time.</p>
+        <div class="tip"><b>Practical tip:</b> Use scenarios to explore, for example, what would happen if you
+        shifted a tech-heavy part of your portfolio into dividend stocks – without touching your real portfolio.</div>
+        <div class="warning">&#9888; Scenarios are based on historical data and GBM assumptions. Not investment advice.</div>
+
         <a name="ecy-vertiefung"><h2>&#128202; ECY – Deep Dive</h2></a>
         <h3>What is behind the Excess CAPE Yield?</h3>
         <p>The ECY was developed by economist <b>Robert Shiller</b> (Nobel Prize 2013) and published in the
@@ -2419,6 +2509,7 @@ _TOC_DE = [
     "Sharpe-Ratio – Vertiefung",
     "Sortino-Ratio – Vertiefung",
     "Monte Carlo – Vertiefung",
+    "Monte Carlo – Szenarien",
     "ECY – Vertiefung",
     "GICS – Vertiefung",
     "── 💼 PORTFOLIO ──",
@@ -2507,6 +2598,7 @@ _TOC_EN = [
     "Sharpe Ratio – Deep Dive",
     "Sortino Ratio – Deep Dive",
     "Monte Carlo – Deep Dive",
+    "Monte Carlo – Scenarios",
     "GICS – Deep Dive",
     "ECY – Deep Dive",
     "── 💼 PORTFOLIO ──",
@@ -2599,6 +2691,8 @@ _ANCHOR_DE = {
     "sternebewertung":            "aktien-bewertung",
     "stock rating":               "aktien-bewertung",
     "monte carlo – vertiefung":   "monte-carlo-vertiefung",
+    "monte carlo – szenarien":    "mc-szenarien",
+    "szenarien":                  "mc-szenarien",
     "ecy – vertiefung":           "ecy-vertiefung",
     "excess cape yield (ecy)":    "ecy",
     "ecy":                        "ecy",
@@ -2615,6 +2709,7 @@ _ANCHOR_DE = {
     "portfolio performance":      "portfolio_performance",
     "monte carlo simulation":     "monte-carlo",
     "monte carlo – vertiefung":   "monte-carlo-vertiefung",
+    "monte carlo – szenarien":    "mc-szenarien",
     "excess cape yield (ecy)":    "ecy",
     "ecy":                        "ecy",
     "alpha-analyse":              "alpha-analyse",
@@ -2697,6 +2792,8 @@ _ANCHOR_EN = {
     "star rating":                "aktien-bewertung",
     "rating":                     "aktien-bewertung",
     "monte carlo – deep dive":    "monte-carlo-vertiefung",
+    "monte carlo – scenarios":    "mc-szenarien",
+    "scenarios":                  "mc-szenarien",
     "ecy – deep dive":            "ecy-vertiefung",
     "excess cape yield (ecy)":    "ecy",
     "ecy":                        "ecy",
@@ -2713,6 +2810,7 @@ _ANCHOR_EN = {
     "portfolio performance":      "portfolio_performance",
     "monte carlo simulation":     "monte-carlo",
     "monte carlo – deep dive":    "monte-carlo-vertiefung",
+    "monte carlo – scenarios":    "mc-szenarien",
     "alpha analysis":             "alpha-analyse",
     "beta analysis":              "beta-analyse",
     "sharpe ratio (portfolio)":   "sharpe-ratio",
