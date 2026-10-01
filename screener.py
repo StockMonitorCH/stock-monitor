@@ -43,6 +43,46 @@ def _prefs_path() -> str:
 
 _PREFS_FILE = _prefs_path()
 
+# ── Schnelle-Suche: Tagesdaten von stock-monitor.ch ──────────────────────────
+_QUICK_URL = 'https://stock-monitor.ch/data/screener-data.json'
+
+# Mapping: INDICES-Name → JSON-Schlüssel in screener-data.json
+_QUICK_INDEX_MAP: dict[str, str] = {
+    "S&P 500":                "sp500",
+    "Nasdaq 100":             "nasdaq100",
+    "Nasdaq Extra":           "nasdaq_extra",
+    "DAX":                    "dax40",
+    "SMI":                    "smi20",
+    "FTSE 100":               "ftse100",
+    "Russell 2000 (Ausw.)":   "russell1000",
+    "Russell 2000 (erw.)":    "russell1000",
+    "CAC 40":                 "cac40",
+    "Nikkei 225":             "nikkei225",
+    "TSX":                    "tsx",
+    "ASX 200":                "asx200",
+    "STI (Singapur)":         "sti",
+    "Nifty 50 (Indien)":      "nifty50",
+    "Hang Seng (China)":      "hangseng",
+    "EWZ (Brasilien)":        "ewz",
+    "Skandinavien":           "scandinavia",
+    "Osteuropa":              "osteuropa",
+}
+
+_quick_cache: dict = {'data': None, 'fetched_at': 0.0}
+
+def _fetch_quick_data() -> dict:
+    import time, urllib.request, json as _json
+    now = time.time()
+    if _quick_cache['data'] is not None and (now - _quick_cache['fetched_at']) < 3600:
+        return _quick_cache['data']
+    req = urllib.request.Request(_QUICK_URL, headers={'User-Agent': 'StockMonitor/1.0'})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        raw = resp.read().decode('utf-8')
+    data = _json.loads(raw)
+    _quick_cache['data'] = data
+    _quick_cache['fetched_at'] = now
+    return data
+
 # ── Modul-Level Cache (überlebt Dialog-Schliessen innerhalb einer App-Session) ─
 _cache: dict = {
     'index_idx': 0,
@@ -744,6 +784,20 @@ class StockScreenerDialog(QDialog):
         self._abort_btn.clicked.connect(self._on_abort)
         f1.addWidget(self._abort_btn)
 
+        self._quick_btn = QPushButton(TR('scr_btn_quick'))
+        if _ef: self._quick_btn.setFont(_ef)
+        self._quick_btn.setMinimumHeight(32)
+        self._quick_btn.setMinimumWidth(140)
+        self._quick_btn.setToolTip(TR('scr_quick_tip'))
+        self._quick_btn.setStyleSheet(
+            "QPushButton { background:#0e7490; color:white; font-weight:bold; "
+            "border-radius:5px; padding:4px 12px; }"
+            "QPushButton:hover { background:#0c6278; }"
+            "QPushButton:disabled { background:#ccc; color:#888; }"
+        )
+        self._quick_btn.clicked.connect(self._on_quick_search)
+        f1.addWidget(self._quick_btn)
+
         outer.addLayout(f1)
 
         # ── Filterzeile 2: KGV + AND/OR ──────────────────────────────────────
@@ -928,6 +982,94 @@ class StockScreenerDialog(QDialog):
         self._save_cache()
         self._start_worker(symbols, perf_min, perf_max, max_kgv, use_and, use_or)
 
+    def _on_quick_search(self) -> None:
+        from PyQt6.QtWidgets import QApplication as _QApp
+        idx_name = self._idx_combo.currentText()
+        json_key = _QUICK_INDEX_MAP.get(idx_name)
+        if not json_key:
+            self._status_lbl.setText(TR('scr_quick_unavail'))
+            self._table.setVisible(False)
+            return
+
+        perf_i   = self._perf_combo.currentIndex()
+        perf_min, perf_max = PERF_STEPS[perf_i]
+        kgv_text = self._kgv_edit.text().strip()
+        max_kgv  = float(kgv_text) if kgv_text else None
+        logic    = self._current_logic()
+        use_and  = (logic == 'and') and (max_kgv is not None)
+        use_or   = (logic == 'or')  and (max_kgv is not None)
+
+        self._save_cache()
+        self._quick_btn.setEnabled(False)
+        self._search_btn.setEnabled(False)
+        self._table.setVisible(False)
+        self._table.setRowCount(0)
+        self._status_lbl.setText(TR('scr_quick_loading'))
+        _QApp.processEvents()
+
+        try:
+            raw = _fetch_quick_data()
+        except Exception:
+            self._quick_btn.setEnabled(True)
+            self._search_btn.setEnabled(True)
+            self._status_lbl.setText(TR('scr_quick_error'))
+            return
+
+        entries = raw.get('data', {}).get(json_key, [])
+        generated_at = raw.get('generated_at', '')
+
+        def _perf_ok(p: float) -> bool:
+            if perf_min is None and perf_max is None:
+                return True
+            if perf_max is None:
+                return p >= perf_min
+            return perf_min <= p < perf_max
+
+        results = []
+        for e in entries:
+            sym   = e.get('s', '')
+            name  = e.get('n', sym)
+            perf  = float(e.get('r', 0.0))
+            price = float(e.get('p', 0.0))
+            pe    = e.get('pe')
+            kgv_ok = pe is not None and max_kgv is not None and float(pe) <= max_kgv
+            if use_and:
+                passes = _perf_ok(perf) and kgv_ok
+            elif use_or:
+                passes = _perf_ok(perf) or kgv_ok
+            else:
+                passes = _perf_ok(perf)
+            if passes:
+                results.append({'symbol': sym, 'name': name,
+                                 'perf_pct': perf, 'price': price})
+
+        results.sort(key=lambda d: d['perf_pct'], reverse=True)
+        results = results[:25]
+
+        _cache['results']  = results
+        _cache['searched'] = True
+
+        self._quick_btn.setEnabled(True)
+        self._search_btn.setEnabled(True)
+
+        if not results:
+            self._status_lbl.setText(TR('scr_lbl_no_results'))
+            self._table.setVisible(False)
+            return
+
+        ts_str = ''
+        if generated_at:
+            try:
+                from datetime import datetime, timezone as _tz
+                dt = datetime.strptime(generated_at, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=_tz.utc)
+                ts_str = f"  ·  {TR('scr_quick_as_of')} {dt.strftime('%d.%m.%Y %H:%M')} UTC"
+            except Exception:
+                ts_str = f"  ·  {generated_at}"
+
+        n = len(results)
+        self._status_lbl.setText(TR('scr_lbl_results', n=n) + ts_str)
+        self._populate_table(results)
+
     def _start_worker(
         self,
         symbols:  list[str],
@@ -1056,9 +1198,25 @@ class StockScreenerDialog(QDialog):
             fav_btn.setToolTip(TR('scr_tip_add_fav'))
             fav_btn.clicked.connect(lambda _, s=sym, b=fav_btn: self._add_fav(s, b))
 
+        wl_btn = QPushButton("📋")
+        if _ef: wl_btn.setFont(_ef)
+        wl_btn.setFixedSize(30, 26)
+        wl_up = [s.upper() for s in getattr(self._app_ref, '_watchlist_symbols', [])]
+        if sym.upper() in wl_up:
+            wl_btn.setText("✓")
+            wl_btn.setEnabled(False)
+            wl_btn.setToolTip(TR('scr_already_wl'))
+        elif len(wl_up) >= 50:
+            wl_btn.setEnabled(False)
+            wl_btn.setToolTip(TR('scr_wl_full'))
+        else:
+            wl_btn.setToolTip(TR('scr_tip_add_wl'))
+            wl_btn.clicked.connect(lambda _, s=sym, b=wl_btn: self._add_wl(s, b))
+
         h.addStretch()
         h.addWidget(chart_btn)
         h.addWidget(fav_btn)
+        h.addWidget(wl_btn)
         h.addStretch()
         return container
 
@@ -1080,6 +1238,24 @@ class StockScreenerDialog(QDialog):
         btn.setText("✓")
         btn.setEnabled(False)
         btn.setToolTip(TR('scr_already_fav'))
+
+    def _add_wl(self, sym: str, btn: QPushButton) -> None:
+        app = self._app_ref
+        if app is None:
+            return
+        sym_up = sym.upper()
+        if not hasattr(app, '_watchlist_symbols'):
+            app._watchlist_symbols = []
+        wl_up = [s.upper() for s in app._watchlist_symbols]
+        if len(wl_up) >= 50:
+            btn.setEnabled(False)
+            btn.setToolTip(TR('scr_wl_full'))
+            return
+        if sym_up not in wl_up:
+            app._watchlist_symbols.append(sym_up)
+        btn.setText("✓")
+        btn.setEnabled(False)
+        btn.setToolTip(TR('scr_already_wl'))
 
     def _show_info(self) -> None:
         mb = QMessageBox(self)

@@ -7620,7 +7620,12 @@ class StockChartWidget(QFrame):
             def run(self):
                 try:
                     from datetime import datetime as _ddt, timezone as _tz
-                    raw = yf.Ticker(self._sym).news or []
+                    import requests as _req, urllib.parse as _up
+                    # yfinance ≥ 1.7.0: interner Endpunkt liefert HTTP 500 → direkt v1 API nutzen
+                    _url = (f"https://query1.finance.yahoo.com/v1/finance/search"
+                            f"?q={_up.quote(self._sym)}&quotesCount=1&newsCount=20")
+                    _r = _req.get(_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+                    raw = _r.json().get('news', []) if _r.status_code == 200 else []
                     result = []
                     for item in raw:
                         c = item.get('content', item)
@@ -7689,22 +7694,23 @@ class StockChartWidget(QFrame):
             def run(self):
                 try:
                     from datetime import datetime as _ddt, timezone as _tz
-                    raw = yf.Ticker(self._sym).news or []
+                    import requests as _req, urllib.parse as _up
+                    # yfinance ≥ 1.7.0: interner Endpunkt liefert HTTP 500 → direkt v1 API nutzen
+                    _url = (f"https://query1.finance.yahoo.com/v1/finance/search"
+                            f"?q={_up.quote(self._sym)}&quotesCount=1&newsCount=20")
+                    _r = _req.get(_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+                    raw = _r.json().get('news', []) if _r.status_code == 200 else []
                     result = []
                     for item in raw:
-                        # yfinance ≥ 0.2.50: verschachtelte Struktur {id, content:{...}}
                         c = item.get('content', item)
                         title = c.get('title', '')
                         if not title:
                             continue
-                        # Link
                         link = (c.get('clickThroughUrl') or {}).get('url', '') \
                             or (c.get('canonicalUrl') or {}).get('url', '') \
                             or c.get('link', '')
-                        # Publisher
                         publisher = (c.get('provider') or {}).get('displayName', '') \
                             or c.get('publisher', '')
-                        # Zeitstempel: ISO-String oder Unix-Int
                         ts = 0
                         pub = c.get('pubDate') or c.get('displayTime', '')
                         if pub:
@@ -13138,11 +13144,19 @@ class PortfolioDialog(QMainWindow):
                         chart_win.setWindowModality(Qt.WindowModality.NonModal)
                         layout_cw = QVBoxLayout(chart_win)
                         layout_cw.setContentsMargins(4, 4, 4, 4)
+                        top_row_p = QHBoxLayout()
                         close_btn = QPushButton(TR("btn_close"))
                         close_btn.setMaximumWidth(160)
                         self._ef(close_btn)
                         close_btn.clicked.connect(chart_win.close)
-                        layout_cw.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignLeft)
+                        rating_btn_p = QPushButton(TR("btn_stock_rating"))
+                        rating_btn_p.setToolTip(TR("tip_stock_rating"))
+                        rating_btn_p.setMaximumWidth(130)
+                        StockRatingDialog._apply_emoji_font(rating_btn_p)
+                        top_row_p.addWidget(close_btn)
+                        top_row_p.addWidget(rating_btn_p)
+                        top_row_p.addStretch()
+                        layout_cw.addLayout(top_row_p)
                         chart_widget = StockChartWidget(sym, zoom_mode=True,
                             avg_buy_price=avg_usd if price_usd else None,
                             demo_watermark=bool(_DEMO_CUTOFF))
@@ -13150,6 +13164,7 @@ class PortfolioDialog(QMainWindow):
                         chart_widget.own_stop    = _sym_lim.get('stop')
                         chart_widget.own_target  = _sym_lim.get('target')
                         chart_widget._portfolio_ref = self  # für direkte Persistenz
+                        rating_btn_p.clicked.connect(lambda _checked, cw=chart_widget, pw=chart_win: StockRatingDialog(cw, pw).exec())
                         chart_widget.maximize_requested.connect(lambda cw: chart_win.showMaximized())
                         layout_cw.addWidget(chart_widget)
                         if not hasattr(self, '_chart_windows'):
@@ -31890,8 +31905,13 @@ class StockMonitorApp(QMainWindow):
                 lay = QVBoxLayout(chart_dlg)
                 lay.setContentsMargins(6, 6, 6, 6)
                 lay.setSpacing(4)
-                # Schliessen-Button oben
+                # Schliessen-Button + Bewertungs-Button oben
                 top_row = QHBoxLayout()
+                rating_btn_wl = QPushButton(TR("btn_stock_rating"))
+                rating_btn_wl.setToolTip(TR("tip_stock_rating"))
+                rating_btn_wl.setMaximumWidth(130)
+                StockRatingDialog._apply_emoji_font(rating_btn_wl)
+                top_row.addWidget(rating_btn_wl)
                 top_row.addStretch()
                 close_c = QPushButton(TR("btn_close"))
                 close_c.setMaximumWidth(120)
@@ -31900,6 +31920,7 @@ class StockMonitorApp(QMainWindow):
                 lay.addLayout(top_row)
                 # Chart-Widget einbetten
                 cwidget = StockChartWidget(sym, zoom_mode=True)
+                rating_btn_wl.clicked.connect(lambda _checked, cw=cwidget, pw=chart_dlg: StockRatingDialog(cw, pw).exec())
                 lay.addWidget(cwidget, stretch=1)
                 chart_dlg.exec()
 

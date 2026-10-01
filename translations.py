@@ -1809,6 +1809,15 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
         "scr_tip_show_chart":   "Chart anzeigen",
         "scr_already_fav":      "Bereits in Favoriten",
         "scr_fav_added":        "{sym} zu Favoriten hinzugefügt",
+        "scr_tip_add_wl":       "Zur Watchlist hinzufügen",
+        "scr_already_wl":       "Bereits in Watchlist",
+        "scr_wl_full":          "Watchlist ist voll (max. 50 Symbole)",
+        "scr_btn_quick":        "⚡ Schnelle Suche",
+        "scr_quick_tip":        "Vorberechnete Tagesdaten – sofortiges Ergebnis, keine Live-Abfrage",
+        "scr_quick_loading":    "Lade Tagesdaten …",
+        "scr_quick_error":      "Fehler beim Laden der Tagesdaten. Bitte 'Suchen' verwenden.",
+        "scr_quick_unavail":    "Für diesen Index keine Tagesdaten verfügbar – bitte 'Suchen' verwenden.",
+        "scr_quick_as_of":      "Stand:",
         "scr_disclaimer":       "Kein Anlageberatung. Immer eigene Recherche durchführen.",
         "scr_info_title":       "ℹ Wie funktioniert der Screener?",
         "scr_info_body":        (
@@ -1825,7 +1834,12 @@ mehr als ausreichend für den persönlichen Einsatz.</p>
             "OR: Mindestens eine Bedingung muss erfüllt sein.\n\n"
             "5. Ergebnisse\n"
             "Die Top 25 Aktien werden nach Performance sortiert angezeigt. "
-            "Direkt zum Chart oder zu den Favoriten hinzufügen.\n\n"
+            "Direkt zum Chart, zu den Favoriten oder zur Watchlist hinzufügen.\n\n"
+            "⚡ Schnelle Suche\n"
+            "Verwendet vorberechnete Tagesdaten von stock-monitor.ch – "
+            "Ergebnisse sind sofort verfügbar, ohne Live-Abfragen. "
+            "Die Daten werden täglich nachts aktualisiert. "
+            "Unterstützt alle Indizes. Für den aktuellsten Stand 'Suchen' verwenden.\n\n"
             "Hinweis: Datenverfügbarkeit variiert je nach Index und Börse. "
             "Aktien ohne ausreichende Daten werden übersprungen."
         ),
@@ -3617,6 +3631,15 @@ more than enough for personal use.</p>
         "scr_tip_show_chart":   "Show chart",
         "scr_already_fav":      "Already in favorites",
         "scr_fav_added":        "{sym} added to favorites",
+        "scr_tip_add_wl":       "Add to watchlist",
+        "scr_already_wl":       "Already in watchlist",
+        "scr_wl_full":          "Watchlist is full (max. 50 symbols)",
+        "scr_btn_quick":        "⚡ Quick Search",
+        "scr_quick_tip":        "Pre-computed daily data – instant results, no live API calls",
+        "scr_quick_loading":    "Loading daily data …",
+        "scr_quick_error":      "Failed to load daily data. Please use 'Search'.",
+        "scr_quick_unavail":    "No daily data available for this index – please use 'Search'.",
+        "scr_quick_as_of":      "as of",
         "scr_disclaimer":       "Not financial advice. Always do your own research.",
         "scr_info_title":       "ℹ How does the Screener work?",
         "scr_info_body":        (
@@ -3633,7 +3656,12 @@ more than enough for personal use.</p>
             "OR: At least one condition must be met.\n\n"
             "5. Results\n"
             "The top 25 stocks are shown sorted by performance. "
-            "Open the chart directly or add to favorites.\n\n"
+            "Open the chart directly or add to favorites or the watchlist.\n\n"
+            "⚡ Quick Search\n"
+            "Uses pre-computed daily data from stock-monitor.ch – "
+            "results are available instantly without live API calls. "
+            "Data is updated every night. "
+            "Supports all indices. Use 'Search' for the most up-to-date results.\n\n"
             "Note: Data availability varies by index and exchange. "
             "Stocks with insufficient data are skipped."
         ),
