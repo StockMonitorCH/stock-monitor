@@ -52,7 +52,7 @@ for f in stock_monitor.py portfolio_db.py config.py market_data.py \
           world_map.py etf_holdings.py dividend_lists.json Demo.smpf \
           portfolio_analysis.py portfolio_analysis_extended.py portfolio_analysis_texts.py \
           stress_test.py stress_test_translations.py komplex.py komplex_translations.py \
-          screener.py stock_rating.py; do
+          screener.py stock_rating.py mc_scenarios.py; do
     install -m 0644 app/$f %{buildroot}/opt/stock-monitor/app/$f
 done
 
