@@ -51,7 +51,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.6.0"                            # beim Release anpassen
+APP_VERSION  = "5.7.1"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -7620,7 +7620,12 @@ class StockChartWidget(QFrame):
             def run(self):
                 try:
                     from datetime import datetime as _ddt, timezone as _tz
-                    raw = yf.Ticker(self._sym).news or []
+                    import requests as _req, urllib.parse as _up
+                    # yfinance ≥ 1.7.0: interner Endpunkt liefert HTTP 500 → direkt v1 API nutzen
+                    _url = (f"https://query1.finance.yahoo.com/v1/finance/search"
+                            f"?q={_up.quote(self._sym)}&quotesCount=1&newsCount=20")
+                    _r = _req.get(_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+                    raw = _r.json().get('news', []) if _r.status_code == 200 else []
                     result = []
                     for item in raw:
                         c = item.get('content', item)
@@ -7689,22 +7694,23 @@ class StockChartWidget(QFrame):
             def run(self):
                 try:
                     from datetime import datetime as _ddt, timezone as _tz
-                    raw = yf.Ticker(self._sym).news or []
+                    import requests as _req, urllib.parse as _up
+                    # yfinance ≥ 1.7.0: interner Endpunkt liefert HTTP 500 → direkt v1 API nutzen
+                    _url = (f"https://query1.finance.yahoo.com/v1/finance/search"
+                            f"?q={_up.quote(self._sym)}&quotesCount=1&newsCount=20")
+                    _r = _req.get(_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+                    raw = _r.json().get('news', []) if _r.status_code == 200 else []
                     result = []
                     for item in raw:
-                        # yfinance ≥ 0.2.50: verschachtelte Struktur {id, content:{...}}
                         c = item.get('content', item)
                         title = c.get('title', '')
                         if not title:
                             continue
-                        # Link
                         link = (c.get('clickThroughUrl') or {}).get('url', '') \
                             or (c.get('canonicalUrl') or {}).get('url', '') \
                             or c.get('link', '')
-                        # Publisher
                         publisher = (c.get('provider') or {}).get('displayName', '') \
                             or c.get('publisher', '')
-                        # Zeitstempel: ISO-String oder Unix-Int
                         ts = 0
                         pub = c.get('pubDate') or c.get('displayTime', '')
                         if pub:
@@ -8636,7 +8642,7 @@ class PortfolioDialog(QMainWindow):
 
                 import concurrent.futures as _cf
                 _failed_syms = []   # Symbole die nicht geladen werden konnten
-                with ThreadPoolExecutor(max_workers=20) as pool:
+                with ThreadPoolExecutor(max_workers=6) as pool:   # max. 6 wegen Yahoo-Sperre
                     futures = {pool.submit(_fetch_sym, s): s for s in all_syms_to_fetch}
                     # Hartes Gesamt-Timeout: 15s pro Symbol, max. 120s insgesamt
                     try:
@@ -8736,7 +8742,7 @@ class PortfolioDialog(QMainWindow):
 
                     done_sectors = 0
                     try:
-                        with ThreadPoolExecutor(max_workers=16) as pool:
+                        with ThreadPoolExecutor(max_workers=6) as pool:   # max. 6 wegen Yahoo-Sperre
                             future_map = {pool.submit(_fetch_sector_fast, s): s
                                           for s in missing_sectors}
                             # Hartes Gesamt-Timeout: 90s für alle Symbole
@@ -13138,11 +13144,19 @@ class PortfolioDialog(QMainWindow):
                         chart_win.setWindowModality(Qt.WindowModality.NonModal)
                         layout_cw = QVBoxLayout(chart_win)
                         layout_cw.setContentsMargins(4, 4, 4, 4)
+                        top_row_p = QHBoxLayout()
                         close_btn = QPushButton(TR("btn_close"))
                         close_btn.setMaximumWidth(160)
                         self._ef(close_btn)
                         close_btn.clicked.connect(chart_win.close)
-                        layout_cw.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignLeft)
+                        rating_btn_p = QPushButton(TR("btn_stock_rating"))
+                        rating_btn_p.setToolTip(TR("tip_stock_rating"))
+                        rating_btn_p.setMaximumWidth(130)
+                        StockRatingDialog._apply_emoji_font(rating_btn_p)
+                        top_row_p.addWidget(close_btn)
+                        top_row_p.addWidget(rating_btn_p)
+                        top_row_p.addStretch()
+                        layout_cw.addLayout(top_row_p)
                         chart_widget = StockChartWidget(sym, zoom_mode=True,
                             avg_buy_price=avg_usd if price_usd else None,
                             demo_watermark=bool(_DEMO_CUTOFF))
@@ -13150,6 +13164,7 @@ class PortfolioDialog(QMainWindow):
                         chart_widget.own_stop    = _sym_lim.get('stop')
                         chart_widget.own_target  = _sym_lim.get('target')
                         chart_widget._portfolio_ref = self  # für direkte Persistenz
+                        rating_btn_p.clicked.connect(lambda _checked, cw=chart_widget, pw=chart_win: StockRatingDialog(cw, pw).exec())
                         chart_widget.maximize_requested.connect(lambda cw: chart_win.showMaximized())
                         layout_cw.addWidget(chart_widget)
                         if not hasattr(self, '_chart_windows'):
@@ -13606,17 +13621,18 @@ class PortfolioDialog(QMainWindow):
 
         dialog = QDialog(self)
         dialog.setWindowTitle(TR("title_performance"))
+        dialog.setWindowFlag(Qt.WindowType.Window, True)
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
+        dlg_w  = min(int(screen.width()  * 0.82), 1560)
+        dlg_h  = min(int(screen.height() * 0.82), 860)
+        dialog.resize(dlg_w, dlg_h)
+        dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
+                    screen.y() + (screen.height() - dlg_h) // 2)
 
         # Windows: Fokus nach Dialog-Schliessen zurück auf Hauptfenster
         import sys as _sys_fd
         if _sys_fd.platform == 'win32':
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
-        dlg_w  = int(screen.width()  * 0.82)
-        dlg_h  = int(screen.height() * 0.82)
-        dialog.resize(dlg_w, dlg_h)
-        dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
-                    screen.y() + (screen.height() - dlg_h) // 2)
 
         from PyQt6.QtGui import QPalette as _QPalette_ppc
         _dm_ppc = QApplication.palette().color(_QPalette_ppc.ColorRole.Window).lightness() < 128
@@ -13727,6 +13743,9 @@ class PortfolioDialog(QMainWindow):
         fig   = Figure(figsize=(fig_w, fig_h))
         fig.patch.set_facecolor('#ffffff')
         canvas = FigureCanvasQTAgg(fig)
+        canvas.setMinimumSize(0, 0)
+        from PyQt6.QtWidgets import QSizePolicy as _QSP
+        canvas.setSizePolicy(_QSP.Policy.Expanding, _QSP.Policy.Expanding)
         outer.addWidget(canvas, stretch=1)
 
         stats_label = QLabel("")
@@ -14110,6 +14129,12 @@ class PortfolioDialog(QMainWindow):
 
                 fig.tight_layout(pad=1.5)
                 canvas.draw()
+                try:
+                    _dw = dialog.width(); _dh = dialog.height()
+                    dialog.move(screen.x() + (screen.width()  - _dw) // 2,
+                                screen.y() + (screen.height() - _dh) // 2)
+                except RuntimeError:
+                    pass
 
                 # Kennzahlen
                 def _sc(s):
@@ -14236,17 +14261,14 @@ class PortfolioDialog(QMainWindow):
         dialog = QDialog(parent_win)
         dialog.setWindowTitle(TR("title_monte_carlo"))
 
-        # Grösse und Position exakt vom Performance-Fenster übernehmen
-        if perf_dialog is not None:
-            geo = perf_dialog.geometry()
-            dialog.setGeometry(geo)
-        else:
-            screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
-            dlg_w  = int(screen.width()  * 0.82)
-            dlg_h  = int(screen.height() * 0.82)
-            dialog.resize(dlg_w, dlg_h)
-            dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
-                        screen.y() + (screen.height() - dlg_h) // 2)
+        # Grösse und Position zentriert auf dem aktuellen Bildschirm
+        _top_mc = self.window()
+        screen = (_top_mc.screen() or QApplication.primaryScreen()).availableGeometry()
+        dlg_w  = int(screen.width()  * 0.82)
+        dlg_h  = int(screen.height() * 0.82)
+        dialog.resize(dlg_w, dlg_h)
+        dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
+                    screen.y() + (screen.height() - dlg_h) // 2)
 
         # Modal gegenüber dem Performance-Fenster — blockiert es vollständig
         dialog.setWindowModality(Qt.WindowModality.WindowModal)
@@ -14355,6 +14377,32 @@ class PortfolioDialog(QMainWindow):
             if _app: _app.show_help(anchor="monte-carlo-vertiefung", parent_widget=dialog)
         mc_help_btn.clicked.connect(_mc_show_help)
         ctrl.addWidget(mc_help_btn)
+
+        mc_scen_btn = QPushButton(TR("btn_mc_scenarios"))
+        mc_scen_btn.setMinimumHeight(28)
+        self._ef(mc_scen_btn)
+        mc_scen_btn.setToolTip(TR("tip_mc_scenarios"))
+        mc_scen_btn.setStyleSheet(
+            "QPushButton{background:#8e44ad;color:white;font-weight:bold;"
+            "border-radius:4px;padding:2px 12px;}"
+            "QPushButton:hover{background:#6c3483;}")
+        def _open_scenarios():
+            try:
+                from mc_scenarios import ScenarioEditorDialog
+            except ImportError as _exc:
+                QMessageBox.warning(dialog, TR("msg_title_error"),
+                                    f"mc_scenarios.py nicht gefunden:\n{_exc}")
+                return
+            _currency  = getattr(self, '_ov_currency', 'USD')
+            _fx_map    = getattr(self, '_ov_fx', {})
+            _fx_rate   = _fx_map.get(_currency, 1.0)
+            _price_cch = getattr(self, '_price_cache', {}) or {}
+            _scen_dlg  = ScenarioEditorDialog(
+                self.portfolio_data, _price_cch, dialog,
+                currency=_currency, fx_rate=_fx_rate)
+            _scen_dlg.exec()
+        mc_scen_btn.clicked.connect(_open_scenarios)
+        ctrl.addWidget(mc_scen_btn)
 
         mc_close_btn = QPushButton(TR("btn_close"))
         mc_close_btn.setMaximumWidth(120)
@@ -15300,20 +15348,17 @@ class PortfolioDialog(QMainWindow):
             sign = "+" if v >= 0 else ""
             return sign + _fmt(v, decimals)
 
-        # Grösse + Position: vom Performance-Dialog übernehmen wenn vorhanden
+        # Grösse + Position zentriert auf dem aktuellen Bildschirm
         parent_win = perf_dialog if perf_dialog is not None else self
         dialog = QDialog(parent_win)
         dialog.setWindowTitle(TR("title_ecy"))
-        if perf_dialog is not None:
-            geo = perf_dialog.geometry()
-            dialog.setGeometry(geo)
-        else:
-            screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
-            dlg_w  = int(screen.width()  * 0.72)
-            dlg_h  = int(screen.height() * 0.82)
-            dialog.resize(dlg_w, dlg_h)
-            dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
-                        screen.y() + (screen.height() - dlg_h) // 2)
+        _top_ecy = self.window()
+        screen = (_top_ecy.screen() or QApplication.primaryScreen()).availableGeometry()
+        dlg_w  = int(screen.width()  * 0.72)
+        dlg_h  = int(screen.height() * 0.82)
+        dialog.resize(dlg_w, dlg_h)
+        dialog.move(screen.x() + (screen.width()  - dlg_w) // 2,
+                    screen.y() + (screen.height() - dlg_h) // 2)
 
         # Modal gegenüber Performance-Fenster
         dialog.setWindowModality(Qt.WindowModality.WindowModal)
@@ -15466,9 +15511,16 @@ class PortfolioDialog(QMainWindow):
 
 
         def _on_done():
+            try:
+                _ = canvas.isVisible()
+            except RuntimeError:
+                return  # Dialog wurde geschlossen bevor Worker fertig wurde
             res = _result[0]
             if res is None or "error" in res:
-                signal_lbl.setText(f"⚠ {res.get('error', TR('msg_ecy_error')) if res else TR('msg_ecy_error')}")
+                try:
+                    signal_lbl.setText(f"⚠ {res.get('error', TR('msg_ecy_error')) if res else TR('msg_ecy_error')}")
+                except RuntimeError:
+                    pass
                 return
 
             ecy_now      = res["ecy_now"]
@@ -19729,7 +19781,7 @@ class PortfolioDialog(QMainWindow):
                             ln = ''
                         return sym, a_score, a_raw, n_score, n_raw, ln
 
-                    with ThreadPoolExecutor(max_workers=8) as pool:
+                    with ThreadPoolExecutor(max_workers=6) as pool:   # max. 6 wegen Yahoo-Sperre
                         futs = {pool.submit(fetch_ai, e['sym']): e['sym'] for e in self._syms}
                         for fut in as_completed(futs):
                             sym, a_score, a_raw, n_score, n_raw, ln = fut.result()
@@ -29171,23 +29223,25 @@ class StockMonitorApp(QMainWindow):
         QApplication.setActiveWindow(dlg)
 
     def _do_flatpak_install(self, version, flatpak_url):
-        """Lädt die .flatpak-Datei herunter (0-85 % real) und installiert sie (85-100 % animiert)."""
-        import subprocess, threading, urllib.request, ssl
+        """Lädt die .flatpak-Datei herunter (0-85 % real) und installiert sie (pulsierend)."""
+        import subprocess, threading, urllib.request, ssl, queue as _queue
         from PyQt6.QtCore import pyqtSignal, QObject
 
         class _Sigs(QObject):
-            progress    = pyqtSignal(int, str)   # Prozent, Statustext
-            start_anim  = pyqtSignal()           # Installation gestartet → Animation im GUI-Thread
-            finished    = pyqtSignal(bool, str)  # ok, stderr
+            # v=-1 → pulsierend (setRange 0,0); v>=0 → determinate
+            progress      = pyqtSignal(int, str)
+            start_install = pyqtSignal()   # GUI-Thread: auf Install-Phase umschalten
+            tick          = pyqtSignal(str)  # Elapsed-Zeit-Update
+            finished      = pyqtSignal(bool, str)
 
         sigs = _Sigs(self)
 
         prog_dlg = QDialog(self)
         prog_dlg.setWindowTitle(TR("title_flatpak_install"))
-        prog_dlg.setFixedWidth(440)
+        prog_dlg.setFixedWidth(460)
         prog_dlg.setWindowModality(Qt.WindowModality.ApplicationModal)
         lay = QVBoxLayout(prog_dlg)
-        lay.setContentsMargins(20, 16, 20, 14)
+        lay.setContentsMargins(20, 16, 20, 16)
         lay.setSpacing(8)
 
         title_lbl = QLabel(TR("lbl_flatpak_downloading", version=version))
@@ -29203,31 +29257,60 @@ class StockMonitorApp(QMainWindow):
         status_lbl.setStyleSheet("color:#888; font-size:11px;")
         lay.addWidget(status_lbl)
 
+        elapsed_lbl = QLabel("")
+        elapsed_lbl.setStyleSheet("color:#aaa; font-size:10px;")
+        elapsed_lbl.setVisible(False)
+        lay.addWidget(elapsed_lbl)
+
+        close_btn = QPushButton("Im Hintergrund fortsetzen")
+        close_btn.setVisible(False)
+        close_btn.clicked.connect(lambda: prog_dlg.accept())
+        lay.addWidget(close_btn)
+
         prog_dlg.show()
 
         _state = {'done': False}
+        _elapsed_timer = QTimer(prog_dlg)
 
-        sigs.progress.connect(
-            lambda v, t: (prog.setValue(v), status_lbl.setText(t)),
-            Qt.ConnectionType.QueuedConnection
-        )
+        def _on_progress(v, t):
+            if v == -1:
+                prog.setRange(0, 0)   # pulsierend
+            else:
+                if prog.maximum() == 0:
+                    prog.setRange(0, 100)
+                prog.setValue(v)
+            status_lbl.setText(t)
 
-        def _start_install_animation():
+        sigs.progress.connect(_on_progress, Qt.ConnectionType.QueuedConnection)
+
+        def _on_start_install():
             if _state['done']:
                 return
             title_lbl.setText(TR("lbl_flatpak_installing"))
-            # Qt-eigener pulsender Balken – zuverlässiger als Timer-Simulation
             prog.setRange(0, 0)
             status_lbl.setText("")
+            elapsed_lbl.setVisible(True)
+            close_btn.setVisible(True)
+            prog_dlg.adjustSize()
+            # Elapsed-Timer: zählt Sekunden seit Install-Start
+            _t0 = [__import__('time').monotonic()]
+            def _tick():
+                if _state['done']:
+                    _elapsed_timer.stop()
+                    return
+                s = int(__import__('time').monotonic() - _t0[0])
+                elapsed_lbl.setText(f"Läuft seit {s} s…")
+            _elapsed_timer.timeout.connect(_tick)
+            _elapsed_timer.start(1000)
 
-        sigs.start_anim.connect(_start_install_animation, Qt.ConnectionType.QueuedConnection)
+        sigs.start_install.connect(_on_start_install, Qt.ConnectionType.QueuedConnection)
 
         def _on_finished(ok, err):
             _state['done'] = True
+            _elapsed_timer.stop()
             prog.setRange(0, 100)
             prog.setValue(100)
             prog_dlg.close()
-            from PyQt6.QtWidgets import QMessageBox
             mb = QMessageBox(self)
             mb.setWindowTitle(TR("title_flatpak_install"))
             if ok:
@@ -29246,8 +29329,6 @@ class StockMonitorApp(QMainWindow):
         def _run():
             try:
                 import time as _time
-                # XDG_CACHE_HOME zeigt auf den echten Dateisystempfad (nicht Sandbox-Overlay)
-                # ~/.cache/io.github.StockMonitorCH.stock-monitor/ ist vom Host aus erreichbar
                 xdg_cache = os.environ.get(
                     "XDG_CACHE_HOME",
                     os.path.join(os.path.expanduser("~"), ".cache",
@@ -29255,7 +29336,7 @@ class StockMonitorApp(QMainWindow):
                 tmpdir = os.path.join(xdg_cache, "stockmonitor-update")
                 os.makedirs(tmpdir, exist_ok=True)
                 fpath = os.path.join(tmpdir, f"StockMonitor-{version}.flatpak")
-                sigs.progress.emit(0, "Verbindung wird hergestellt…")
+                sigs.progress.emit(-1, "Verbindung wird hergestellt…")
 
                 # ── Phase 1: Download (0–85 %) ────────────────────────────
                 downloaded = False
@@ -29288,17 +29369,17 @@ class StockMonitorApp(QMainWindow):
                                         f"{done/1_048_576:.0f} / {total/1_048_576:.0f} MB{speed_str}"
                                     )
                                 else:
+                                    # Unbekannte Größe → pulsierend + MB-Zähler
                                     sigs.progress.emit(
-                                        0,
-                                        f"{done/1_048_576:.1f} MB …{speed_str}"
+                                        -1,
+                                        f"{done/1_048_576:.1f} MB heruntergeladen…{speed_str}"
                                     )
                     downloaded = True
                 except Exception:
                     pass   # Fallback: curl via Host
 
                 if not downloaded:
-                    # SSL-Fallback innerhalb Flatpak-Sandbox: curl auf dem Host
-                    # Zuerst Dateigrösse via HEAD ermitteln für echten Fortschritt
+                    # SSL-Fallback: curl auf dem Host, Fortschritt via Dateigröße
                     curl_total = 0
                     try:
                         head = subprocess.run(
@@ -29313,51 +29394,65 @@ class StockMonitorApp(QMainWindow):
                     except Exception:
                         pass
 
-                    sigs.progress.emit(0, "")
-                    proc = subprocess.Popen(
+                    sigs.progress.emit(-1 if curl_total == 0 else 0, "")
+                    dl_proc = subprocess.Popen(
                         ['flatpak-spawn', '--host', 'curl', '-L', '--fail',
                          '-A', 'StockMonitor', '-o', fpath, flatpak_url],
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                     )
-                    while proc.poll() is None:
-                        if curl_total > 0 and os.path.exists(fpath):
+                    t0 = _time.monotonic()
+                    while dl_proc.poll() is None:
+                        if os.path.exists(fpath):
                             done = os.path.getsize(fpath)
-                            pct  = int(done / curl_total * 85)
-                            sigs.progress.emit(
-                                pct,
-                                f"{done/1_048_576:.0f} / {curl_total/1_048_576:.0f} MB"
-                            )
-                        elif os.path.exists(fpath):
-                            done = os.path.getsize(fpath)
-                            sigs.progress.emit(0, f"{done/1_048_576:.1f} MB …")
+                            elapsed = _time.monotonic() - t0
+                            speed = done / elapsed if elapsed > 0 else 0
+                            speed_str = f"  {speed/1_048_576:.1f} MB/s" if speed > 0 else ""
+                            if curl_total > 0:
+                                pct = int(done / curl_total * 85)
+                                sigs.progress.emit(
+                                    pct,
+                                    f"{done/1_048_576:.0f} / {curl_total/1_048_576:.0f} MB{speed_str}"
+                                )
+                            else:
+                                sigs.progress.emit(-1, f"{done/1_048_576:.1f} MB…{speed_str}")
                         _time.sleep(0.3)
-                    if proc.returncode != 0:
-                        QTimer.singleShot(0, lambda: _on_error("curl error"))
+                    if dl_proc.returncode != 0:
+                        sigs.finished.emit(False, "Download fehlgeschlagen (curl error).")
                         return
                     sigs.progress.emit(85, "")
 
-                # ── Phase 2: Install (indeterminate, via Signal) ───────────
+                # ── Phase 2: Install ──────────────────────────────────────
+                # flatpak-spawn schließt die stderr-Pipe nicht zuverlässig nach Exit →
+                # proc.communicate() würde hängen. Lösung: stderr in eigenem Thread
+                # lesen, Hauptschleife pollt proc.poll() alle 500 ms.
                 sigs.progress.emit(85, "")
-                sigs.start_anim.emit()
+                sigs.start_install.emit()
 
-                proc = subprocess.Popen(
+                install_proc = subprocess.Popen(
                     ['flatpak-spawn', '--host', 'flatpak', 'install',
                      '--user', '--bundle', '--assumeyes', '--noninteractive', fpath],
                     stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True
                 )
-                try:
-                    _, stderr = proc.communicate(timeout=600)
-                    if proc.returncode == 0:
-                        sigs.finished.emit(True, "")
-                    else:
-                        sigs.finished.emit(False, (stderr or "").strip())
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                    try:
-                        proc.communicate(timeout=5)
-                    except Exception:
-                        pass
-                    sigs.finished.emit(False, "Timeout: Installation hat zu lange gedauert.")
+
+                stderr_lines = []
+                def _drain():
+                    for line in install_proc.stderr:
+                        stderr_lines.append(line)
+
+                drain_t = threading.Thread(target=_drain, daemon=True)
+                drain_t.start()
+
+                while install_proc.poll() is None:
+                    _time.sleep(0.5)
+
+                drain_t.join(timeout=5)
+                stderr = "".join(stderr_lines).strip()
+
+                if install_proc.returncode == 0:
+                    sigs.finished.emit(True, "")
+                else:
+                    sigs.finished.emit(False, stderr)
+
             except Exception as e:
                 sigs.finished.emit(False, str(e))
 
@@ -31847,8 +31942,13 @@ class StockMonitorApp(QMainWindow):
                 lay = QVBoxLayout(chart_dlg)
                 lay.setContentsMargins(6, 6, 6, 6)
                 lay.setSpacing(4)
-                # Schliessen-Button oben
+                # Schliessen-Button + Bewertungs-Button oben
                 top_row = QHBoxLayout()
+                rating_btn_wl = QPushButton(TR("btn_stock_rating"))
+                rating_btn_wl.setToolTip(TR("tip_stock_rating"))
+                rating_btn_wl.setMaximumWidth(130)
+                StockRatingDialog._apply_emoji_font(rating_btn_wl)
+                top_row.addWidget(rating_btn_wl)
                 top_row.addStretch()
                 close_c = QPushButton(TR("btn_close"))
                 close_c.setMaximumWidth(120)
@@ -31857,6 +31957,7 @@ class StockMonitorApp(QMainWindow):
                 lay.addLayout(top_row)
                 # Chart-Widget einbetten
                 cwidget = StockChartWidget(sym, zoom_mode=True)
+                rating_btn_wl.clicked.connect(lambda _checked, cw=cwidget, pw=chart_dlg: StockRatingDialog(cw, pw).exec())
                 lay.addWidget(cwidget, stretch=1)
                 chart_dlg.exec()
 
@@ -32612,6 +32713,25 @@ def main():
         os.chmod(_self, _cur | stat.S_IXUSR | stat.S_IXGRP)
     except Exception:
         pass
+
+    # Datei-Deskriptor-Limit anheben: macOS-Default ist 256. Viele parallele
+    # Worker (curl-Sockets, SQLite, Thread-Pipes von QThreads) können das
+    # ausschöpfen → Qt bricht beim Start eines QThread mit qFatal ab
+    # ("Cannot continue without a thread pipe"). Crash 5.7.0, 2026-10-06.
+    try:
+        if sys.platform == "win32":
+            raise ImportError  # Windows kennt kein RLIMIT_NOFILE
+        import resource
+        _soft, _hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        _target = 10240 if _hard == resource.RLIM_INFINITY else min(_hard, 10240)
+        if _soft < _target:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (_target, _hard))
+        _log.info(f"Datei-Limit (RLIMIT_NOFILE): {_soft} -> "
+                  f"{resource.getrlimit(resource.RLIMIT_NOFILE)[0]}")
+    except ImportError:
+        pass
+    except Exception as _e:
+        _log.warning(f"Datei-Limit konnte nicht angehoben werden: {_e}")
 
     app = QApplication(sys.argv)
     app.setApplicationName("Stock Monitor")

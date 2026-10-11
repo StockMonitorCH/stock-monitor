@@ -7,7 +7,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="5.6.0"
+VERSION="5.7.1"
 PKG="stock-monitor-${VERSION}"
 RPMBUILD="$HOME/rpmbuild"
 
@@ -37,7 +37,7 @@ for f in stock_monitor.py portfolio_db.py config.py market_data.py \
           world_map.py etf_holdings.py dividend_lists.json Demo.smpf LICENSE \
           portfolio_analysis.py portfolio_analysis_extended.py portfolio_analysis_texts.py \
           stress_test.py stress_test_translations.py komplex.py komplex_translations.py \
-          screener.py stock_rating.py; do
+          screener.py stock_rating.py mc_scenarios.py; do
     if [ -f "$f" ]; then
         cp "$f" "$SRCDIR/app/$f"
     else

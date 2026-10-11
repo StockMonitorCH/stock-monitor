@@ -51,7 +51,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.7.0"                            # beim Release anpassen
+APP_VERSION  = "5.7.1"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -8642,7 +8642,7 @@ class PortfolioDialog(QMainWindow):
 
                 import concurrent.futures as _cf
                 _failed_syms = []   # Symbole die nicht geladen werden konnten
-                with ThreadPoolExecutor(max_workers=20) as pool:
+                with ThreadPoolExecutor(max_workers=6) as pool:   # max. 6 wegen Yahoo-Sperre
                     futures = {pool.submit(_fetch_sym, s): s for s in all_syms_to_fetch}
                     # Hartes Gesamt-Timeout: 15s pro Symbol, max. 120s insgesamt
                     try:
@@ -8742,7 +8742,7 @@ class PortfolioDialog(QMainWindow):
 
                     done_sectors = 0
                     try:
-                        with ThreadPoolExecutor(max_workers=16) as pool:
+                        with ThreadPoolExecutor(max_workers=6) as pool:   # max. 6 wegen Yahoo-Sperre
                             future_map = {pool.submit(_fetch_sector_fast, s): s
                                           for s in missing_sectors}
                             # Hartes Gesamt-Timeout: 90s für alle Symbole
@@ -13619,9 +13619,10 @@ class PortfolioDialog(QMainWindow):
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
         from matplotlib.figure import Figure
 
-        dialog = QDialog()
+        dialog = QDialog(self)
         dialog.setWindowTitle(TR("title_performance"))
-        screen = QApplication.primaryScreen().availableGeometry()
+        dialog.setWindowFlag(Qt.WindowType.Window, True)
+        screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
         dlg_w  = min(int(screen.width()  * 0.82), 1560)
         dlg_h  = min(int(screen.height() * 0.82), 860)
         dialog.resize(dlg_w, dlg_h)
@@ -19780,7 +19781,7 @@ class PortfolioDialog(QMainWindow):
                             ln = ''
                         return sym, a_score, a_raw, n_score, n_raw, ln
 
-                    with ThreadPoolExecutor(max_workers=8) as pool:
+                    with ThreadPoolExecutor(max_workers=6) as pool:   # max. 6 wegen Yahoo-Sperre
                         futs = {pool.submit(fetch_ai, e['sym']): e['sym'] for e in self._syms}
                         for fut in as_completed(futs):
                             sym, a_score, a_raw, n_score, n_raw, ln = fut.result()
@@ -32712,6 +32713,25 @@ def main():
         os.chmod(_self, _cur | stat.S_IXUSR | stat.S_IXGRP)
     except Exception:
         pass
+
+    # Datei-Deskriptor-Limit anheben: macOS-Default ist 256. Viele parallele
+    # Worker (curl-Sockets, SQLite, Thread-Pipes von QThreads) können das
+    # ausschöpfen → Qt bricht beim Start eines QThread mit qFatal ab
+    # ("Cannot continue without a thread pipe"). Crash 5.7.0, 2026-10-06.
+    try:
+        if sys.platform == "win32":
+            raise ImportError  # Windows kennt kein RLIMIT_NOFILE
+        import resource
+        _soft, _hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        _target = 10240 if _hard == resource.RLIM_INFINITY else min(_hard, 10240)
+        if _soft < _target:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (_target, _hard))
+        _log.info(f"Datei-Limit (RLIMIT_NOFILE): {_soft} -> "
+                  f"{resource.getrlimit(resource.RLIMIT_NOFILE)[0]}")
+    except ImportError:
+        pass
+    except Exception as _e:
+        _log.warning(f"Datei-Limit konnte nicht angehoben werden: {_e}")
 
     app = QApplication(sys.argv)
     app.setApplicationName("Stock Monitor")

@@ -347,7 +347,7 @@ class _NameLoader(QThread):
             except Exception:
                 return sym, ''
 
-        workers = min(8, max(1, len(self._symbols)))
+        workers = min(6, max(1, len(self._symbols)))   # max. 6 wegen Yahoo-Sperre
         with ThreadPoolExecutor(max_workers=workers) as exe:
             futs = {exe.submit(_fetch_one, s): s for s in self._symbols}
             for fut in as_completed(futs):

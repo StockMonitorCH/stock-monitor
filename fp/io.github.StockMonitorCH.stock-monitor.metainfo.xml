@@ -60,6 +60,12 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.7.1" date="2026-10-11">
+      <description>
+        <p>Bug fixes: macOS crash on startup fixed (file descriptor limit RLIMIT_NOFILE raised to 10240 – Qt could abort with "Cannot continue without a thread pipe" on macOS ≥ 14 and Flatpak). Performance dialog no longer crashes on macOS (proper parent window and Window flag). Screen geometry fallback for multi-monitor setups. Data fetching less aggressive: max. 6 parallel workers to avoid Yahoo rate limiting.</p>
+        <p xml:lang="de">Bugfixes: macOS-Absturz beim Start behoben (Datei-Deskriptor-Limit auf 10 240 angehoben – Qt brach mit „Cannot continue without a thread pipe" ab). Performance-Dialog stürzt auf macOS nicht mehr ab. Bildschirm-Geometrie-Fallback für Multi-Monitor-Setups. Kursabfragen weniger aggressiv: max. 6 parallele Worker. Screener-Hilfe: alle 18 Indizes eingetragen.</p>
+      </description>
+    </release>
     <release version="5.7.0" date="2026-10-02">
       <description>
         <p>New: Monte Carlo Scenarios – build hypothetical portfolios, run simulations and compare with the real portfolio. Export results as PDF, XLSX or ODS. New: Quick Search in Stock Screener – pre-computed nightly data for instant results across all 18 indices. Improvements: help texts for Screener and Monte Carlo Scenarios, search keyword index updated.</p>

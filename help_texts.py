@@ -476,7 +476,7 @@ _HTML_DE = """
         <p>Watchlist-Fenster öffnen &rarr; <b>&#128225; Screener</b>-Button klicken.</p>
         <h3>Filter</h3>
         <ul>
-            <li><b>Index</b>: S&amp;P 500, Nasdaq 100, Nasdaq Extra, DAX, SMI, CAC 40, FTSE 100, Nikkei 225, TSX, ASX 200, Russell 2000</li>
+            <li><b>Index</b>: S&amp;P 500, Nasdaq 100, Nasdaq Extra, DAX, SMI, CAC 40, FTSE 100, Nikkei 225, TSX, ASX 200, STI (Singapur), Nifty 50 (Indien), Hang Seng (China), EWZ (Brasilien), Skandinavien, Osteuropa, Russell 2000 (Auswahl / erweitert)</li>
             <li><b>1-Jahres-Performance</b>: Kein Filter oder ein Prozentband (z.&nbsp;B. 10–19&nbsp;%, 20–29&nbsp;%)</li>
             <li><b>Max. KGV (optional)</b>: Nur Aktien mit einem KGV unterhalb des eingegebenen Wertes</li>
         </ul>
@@ -1640,7 +1640,7 @@ _HTML_EN = """
         <p>Open the Watchlist window &rarr; click the <b>&#128225; Screener</b> button.</p>
         <h3>Filters</h3>
         <ul>
-            <li><b>Index</b>: S&amp;P 500, Nasdaq 100, Nasdaq Extra, DAX, SMI, CAC 40, FTSE 100, Nikkei 225, TSX, ASX 200, Russell 2000</li>
+            <li><b>Index</b>: S&amp;P 500, Nasdaq 100, Nasdaq Extra, DAX, SMI, CAC 40, FTSE 100, Nikkei 225, TSX, ASX 200, STI (Singapore), Nifty 50 (India), Hang Seng (China), EWZ (Brazil), Scandinavia, Eastern Europe, Russell 2000 (selection / extended)</li>
             <li><b>1-Year Performance</b>: No filter or a percentage band (e.g. 10–19&nbsp;%, 20–29&nbsp;%)</li>
             <li><b>Max. P/E (optional)</b>: Only stocks with a P/E ratio below the entered value</li>
         </ul>
