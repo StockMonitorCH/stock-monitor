@@ -93,23 +93,20 @@ rm -f "$RPMBUILD/SRPMS/stock-monitor-${VERSION}"*.rpm
 
 # ── RPM bauen ─────────────────────────────────────────────────────────────────
 echo "→ Baue RPM (das kann 1-2 Minuten dauern)..."
-rpmbuild -ba "$RPMBUILD/SPECS/stock-monitor.spec" \
+rpmbuild -bb "$RPMBUILD/SPECS/stock-monitor.spec" \
     --define "_topdir $RPMBUILD" \
     2>&1 | grep -v "^Processing\|^Executing\|^Checking\|^warning: bogus" || true
 
 # ── Ergebnis ins Projektverzeichnis kopieren ──────────────────────────────────
 RPM_FILE=$(find "$RPMBUILD/RPMS" -name "stock-monitor-${VERSION}*.rpm" -newer "$RPMBUILD/SPECS/stock-monitor.spec" | head -1)
-SRPM_FILE=$(find "$RPMBUILD/SRPMS" -name "stock-monitor-${VERSION}*.rpm" -newer "$RPMBUILD/SPECS/stock-monitor.spec" | head -1)
 
 if [ -n "$RPM_FILE" ]; then
     # Ausgabedatei ohne Release-Zähler (-1) benennen
     CLEAN_NAME="stock-monitor-${VERSION}.x86_64.rpm"
     cp "$RPM_FILE" "./$CLEAN_NAME"
-    [ -n "$SRPM_FILE" ] && cp "$SRPM_FILE" .
     echo ""
     echo "=== Fertig! ==="
     echo "RPM:  $CLEAN_NAME"
-    [ -n "$SRPM_FILE" ] && echo "SRPM: $(basename "$SRPM_FILE")"
     echo ""
     echo "Installation:"
     echo "  Doppelklick auf $CLEAN_NAME  →  Discover öffnet sich"
