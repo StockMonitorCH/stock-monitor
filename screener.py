@@ -543,7 +543,8 @@ _NAME_WORKERS = 4
 
 class ScreenerWorker(QThread):
     progress = pyqtSignal(int, int, str)   # done, total, phase ('perf'|'kgv')
-    finished = pyqtSignal(list)            # list of result dicts
+    # Nicht 'finished' nennen: würde QThread.finished überdecken (Cleanup-Signal)
+    done     = pyqtSignal(list)            # list of result dicts
 
     def __init__(
         self,
@@ -667,7 +668,7 @@ class ScreenerWorker(QThread):
             for d, name in zip(top, names):
                 d['name'] = name
 
-        self.finished.emit(top)
+        self.done.emit(top)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1093,7 +1094,8 @@ class StockScreenerDialog(QDialog):
             symbols, perf_min, perf_max, max_kgv, use_and, use_or
         )
         self._worker.progress.connect(self._on_progress)
-        self._worker.finished.connect(self._on_finished)
+        self._worker.done.connect(self._on_finished)
+        self._worker.finished.connect(lambda _t=self._worker: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
         self._worker.start()
 
     def _on_abort(self) -> None:

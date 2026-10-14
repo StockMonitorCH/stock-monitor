@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.7.1
+Version:        5.7.2
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
@@ -188,6 +188,16 @@ update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %changelog
+* Wed Oct 14 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.7.2-1
+- Fix: Aktienbewertungs-Dialog – kein Absturz beim schnellen Schließen (Apple/macOS), sicheres QThread-Cleanup und RuntimeError abgefangen
+- Fix: Aktien-Screener – Signal finished → done umbenannt (QThread-Konflikt), sicheres Thread-Cleanup ergänzt
+- Fix: Analyse-Fenster – sicheres Cleanup des URL-Finder-Threads beim Schließen
+
+* Sun Oct 11 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.7.1-1
+- Fix: macOS-Absturz beim Start (RLIMIT_NOFILE auf 10 240 erhöht), Performance-Dialog, Multi-Monitor-Fallback
+- Fix: Yahoo-Worker auf max. 6 gedrosselt (Rate-Limiting)
+- Fix: Screener-Hilfe: alle 18 Indizes eingetragen
+
 * Thu Oct 01 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.7.0-1
 - Feature: Monte-Carlo-Szenarien – Portfolios anpassen, vergleichen und als PDF/XLSX/ODS exportieren (mc_scenarios.py)
 - Feature: Schnelle Suche im Screener mit vorberechneten Tagesdaten vom Server

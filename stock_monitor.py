@@ -51,7 +51,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.7.1"                            # beim Release anpassen
+APP_VERSION  = "5.7.2"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -1122,6 +1122,7 @@ class AnalysisWindow(QDialog):
             self.status_label.setText("🔍 " + TR("status_finment_search"))
             self._url_thread = UrlFinderThread(urls)
             self._url_thread.url_found.connect(self._on_url_found)
+            self._url_thread.finished.connect(lambda _t=self._url_thread: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
             self._url_thread.start()
 
     def _on_url_found(self, url):

@@ -340,16 +340,23 @@ class StockRatingDialog(QDialog):
                 except Exception:
                     self_t.done.emit(None, None)
 
-        self._worker = _RatingWorker()
-        self._worker.done.connect(self._on_data)
-        self._worker.start()
+        w = _RatingWorker()
+        self._worker = w
+        w.done.connect(self._on_data)
+        # Dialog kann vor Ende des Downloads geschlossen werden → ohne diese
+        # Referenz zerstört sich der Thread in run() selbst (Qt fatal / ABRT)
+        w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))  # sicheres Cleanup: starke Ref via Lambda
+        w.start()
 
     def _on_data(self, data_1y, data_5y):
         try:
             self._compute_scores(data_1y, data_5y)
         except Exception as e:
             print(f"[Rating] Fehler bei Score-Berechnung: {e}")
-        self._show_results()
+        try:
+            self._show_results()
+        except RuntimeError:
+            pass  # Dialog wurde bereits geschlossen
 
     def _compute_scores(self, data_1y, data_5y):
         cw   = self.cw
