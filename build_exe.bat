@@ -117,6 +117,7 @@ echo [BUILD] Alte Build-Artefakte werden entfernt...
 if exist "build"                    rmdir /s /q "build"
 if exist "dist\stock_monitor"       rmdir /s /q "dist\stock_monitor"
 if exist "stock_monitor.spec"       del /q "stock_monitor.spec"
+if exist "__pycache__"              rmdir /s /q "__pycache__"
 
 :: ── PyInstaller-Aufruf ───────────────────────────────────────
 echo.
