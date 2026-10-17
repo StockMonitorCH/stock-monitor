@@ -45,7 +45,7 @@
   },
   "url": "https://www.stock-monitor.ch/",
   "downloadUrl": "https://github.com/StockMonitorCH/stock-monitor/releases",
-  "softwareVersion": "5.7.2",
+  "softwareVersion": "5.7.3",
   "screenshot": "https://www.stock-monitor.ch/screenshots/dashboard_DE.png"
 }
 </script>
@@ -755,6 +755,27 @@ body.overlay-open .lang-bar {
   margin-top: 12px;
 }
 
+/* DOWNLOAD GROUPS */
+.dl-group{width:100%;text-align:left;margin-bottom:28px;border:1px solid var(--border);border-radius:14px;padding:20px;background:var(--bg3)}
+.dl-group-title{font-size:.85rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.dl-group.mobile{background:linear-gradient(135deg,rgba(59,130,246,.14),rgba(59,130,246,.04));border-color:rgba(59,130,246,.45)}
+.dl-group.mobile .dl-group-title{color:var(--blue)}
+.dl-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}
+.dl-card:last-child{margin-bottom:0}
+.dl-card-title{font-weight:600;font-size:1.1rem;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.dl-card-desc{font-size:.92rem;color:var(--text2);line-height:1.55;margin-bottom:12px}
+.dl-card-desc code{background:var(--bg3);padding:1px 6px;border-radius:4px;font-family:'DM Mono',monospace}
+.dl-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center}
+.dl-actions .btn-primary{justify-content:center}
+.dl-actions img{height:54px;width:auto;display:block;margin:0 auto}
+.dl-btn{display:flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:12px 18px;border-radius:10px;font-weight:700;font-size:.95rem;text-decoration:none;transition:all .2s}
+.dl-btn.solid{background:var(--green);color:#000}
+.dl-btn.solid:hover{background:var(--green2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(34,197,94,.25)}
+.dl-btn.outline{border:2px solid var(--green);color:var(--green);background:var(--green-dim)}
+.dl-btn.outline:hover{background:rgba(34,197,94,.22);transform:translateY(-2px)}
+.dl-note{font-size:.88rem;color:var(--text2);line-height:1.6;margin-top:14px}
+@media (max-width:560px){.dl-actions{grid-template-columns:1fr}.dl-group{padding:14px}}
+
 /* FOOTER */
 footer {
   padding: 36px 24px;
@@ -1009,7 +1030,7 @@ footer a:hover { color: var(--green); }
 </div>
 <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
 
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.2/StockMonitor-5.7.2.flatpak"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.3/StockMonitor-5.7.3.flatpak"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
 
 <div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.flatpak<br>(Ubuntu, Debian, Fedora, Arch & more)</div>
 </div>
@@ -1117,7 +1138,7 @@ footer a:hover { color: var(--green); }
 <div class="placeholder" style="display:none; height:320px; align-items:center; justify-content:center; color:var(--text3); font-family:'DM Mono',monospace; font-size:0.85rem;">[ screenshot: 16-chart dashboard ]</div>
 </div>
 
-<div class="screenshot-caption-below">Stock Monitor v5.7.2 · 16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Correlation Matrix · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
+<div class="screenshot-caption-below">Stock Monitor v5.7.3 · 16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Correlation Matrix · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
 </section>
 <!-- FEATURES ALS HIGHLIGHT-SECTIONS -->
 <div id="features" style="padding-top:1px; margin-top:-1px;"></div>
@@ -1607,82 +1628,63 @@ footer a:hover { color: var(--green); }
 <div class="coming-soon-card">
 <span class="cs-icon">⬇️</span>
 
-<h2>Download — v5.7.2</h2>
+<h2>Download — v5.7.3</h2>
 
 <p>Free, open source, no installation required.</p>
-<!-- WINDOWS -->
-<div style="width:100%; margin-bottom:28px;">
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/latest/download/stock_monitor.zip" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
-<span style="font-size:1.5em; line-height:1;">🪟</span> <span>Download for Windows</span> <span style="font-size:1em; opacity:0.7;">→</span>
-</a>
+<!-- DESKTOP -->
+<div class="dl-group desktop">
+  <div class="dl-group-title">💻 Desktop</div>
 
-<div style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
-          Extract ZIP → run <code style="background:var(--bg3); padding:1px 6px; border-radius:4px; font-family:'DM Mono',monospace;">stock_monitor.exe</code> — that's it. No installation required. First launch: ~20 sec. loading time.
-        </div>
-</div>
-<!-- APP STORE -->
-<div style="width:100%; margin-bottom:28px;">
-<a href="https://apps.apple.com/app/id6797549450" class="btn-primary" style="width:100%; background:transparent; padding:0; box-shadow:none;">
-<img src="appstore-badge-en.svg" alt="Download on the App Store" style="height:54px; width:auto; display:block; margin:0 auto;">
-</a>
-<div style="font-size:1rem; color:var(--text); line-height:1.6; text-align:center; padding:0 4px; margin-top:10px;">
-          Install directly from the Mac App Store.
-        </div>
-</div>
-<!-- MACOS -->
-<div style="width:100%; margin-bottom:28px;">
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.2/StockMonitor-5.7.2.dmg" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12.3 8.2c-2.9 0-5.3 2.5-5.3 6.4 0 3.4 2.1 6.6 4 6.6.9 0 1.3-.6 2.1-.6.8 0 1.2.6 2.2.6 1.6 0 3.9-3.1 3.9-6.9 0-3.6-2.5-6.1-5.1-6.1-.6 0-1.2.2-1.8 0zM12.7 7.3c-.4 0-.7-.1-.9-.2.1-1.1.6-2.1 1.3-2.8.7-.7 1.7-1.1 2.6-1.1.1 1-.2 2.1-.9 2.9-.6.7-1.4 1.2-2.1 1.2z"/></svg>
-<span>Download for macOS</span>
-<span style="font-size:1em; opacity:0.7;">→</span>
-</a>
-<div style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
-          Download .dmg → open → drag the app into Applications. Notarized by Apple. For Macs with M-series chips.
-        </div>
-</div>
-<!-- LINUX -->
-<div style="width:100%; margin-bottom:28px;">
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.2/StockMonitor-5.7.2.flatpak" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px;">
-<span style="font-size:1.3em; line-height:1;">🐧</span>
-<span>Download for Linux</span>
-<span style="font-size:1em; opacity:0.7;">→</span>
-</a>
-<div style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
-          Download .flatpak → install via double-click or <code style="background:var(--bg3); padding:1px 6px; border-radius:4px; font-family:'DM Mono',monospace;">flatpak install</code>. For Ubuntu, Debian, Fedora, Arch, openSUSE & more — universal.
-        </div>
-</div>
-<!-- ANDROID / FX-CALC -->
-<div style="width:100%; margin-top:8px; margin-bottom:28px; border-top:1px solid var(--border); padding-top:24px;">
-  <!-- CHART MONITOR iOS (App Store) -->
-  <a href="https://apps.apple.com/app/id6819226275" target="_blank" rel="noopener" class="btn-primary" style="width:100%; justify-content:center; background:transparent; padding:0; box-shadow:none;">
-    <img src="appstore-badge-en.svg" alt="Chart Monitor – Download on the App Store" style="height:54px; width:auto; display:block; margin:0 auto;">
-  </a>
-  <div style="font-size:1rem; color:var(--text); line-height:1.6; text-align:center; padding:0 4px; margin-top:10px; margin-bottom:22px;">
-    Chart Monitor for iOS – install directly from the App Store.
+  <!-- WINDOWS -->
+  <div class="dl-card">
+    <div class="dl-card-title"><span style="font-size:1.3em; line-height:1;">🪟</span> Windows</div>
+    <div class="dl-card-desc">Extract ZIP → run <code>stock_monitor.exe</code> — that's it. No installation required. First launch: ~20 sec. loading time.</div>
+    <a href="https://github.com/StockMonitorCH/stock-monitor/releases/latest/download/stock_monitor.zip" class="dl-btn solid">Download for Windows <span style="opacity:0.7;">→</span></a>
   </div>
-  <a href="https://github.com/StockMonitorCH/chart-monitor/releases/latest/download/chart-monitor-android.apk"
-     class="btn-secondary" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:14px; display:flex; gap:10px; border:2px solid var(--gold); color:#ffc14d; background:rgba(245,158,11,0.18); font-weight:700; box-shadow:0 2px 10px rgba(245,158,11,0.15);">
-    <span style="font-size:1.3em; line-height:1;">📊</span>
-    <span>Download Chart Monitor (Android)</span>
-    <span style="font-size:1em; opacity:0.7;">→</span>
-  </a>
-  <!-- FX-CALC iOS (App Store) -->
-  <a href="https://apps.apple.com/app/id6821723631" target="_blank" rel="noopener" class="btn-primary" style="width:100%; justify-content:center; background:transparent; padding:0; box-shadow:none;">
-    <img src="appstore-badge-en.svg" alt="FX-Calc – Download on the App Store" style="height:54px; width:auto; display:block; margin:0 auto;">
-  </a>
-  <div style="font-size:1rem; color:var(--text); line-height:1.6; text-align:center; padding:0 4px; margin-top:10px; margin-bottom:22px;">
-    FX-Calc for iOS – install directly from the App Store.
+
+  <!-- MACOS -->
+  <div class="dl-card">
+    <div class="dl-card-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12.3 8.2c-2.9 0-5.3 2.5-5.3 6.4 0 3.4 2.1 6.6 4 6.6.9 0 1.3-.6 2.1-.6.8 0 1.2.6 2.2.6 1.6 0 3.9-3.1 3.9-6.9 0-3.6-2.5-6.1-5.1-6.1-.6 0-1.2.2-1.8 0zM12.7 7.3c-.4 0-.7-.1-.9-.2.1-1.1.6-2.1 1.3-2.8.7-.7 1.7-1.1 2.6-1.1.1 1-.2 2.1-.9 2.9-.6.7-1.4 1.2-2.1 1.2z"/></svg> macOS</div>
+    <div class="dl-card-desc">Install from the Mac App Store — or download the .dmg, open it and drag the app into Applications. Notarized by Apple. For Macs with M-series chips.</div>
+    <div class="dl-actions">
+      <a href="https://apps.apple.com/app/id6797549450" class="btn-primary" style="background:transparent; padding:0; box-shadow:none;"><img src="appstore-badge-en.svg" alt="Download on the App Store"></a>
+      <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.3/StockMonitor-5.7.3.dmg" class="dl-btn outline">Download .dmg <span style="opacity:0.7;">→</span></a>
+    </div>
   </div>
-  <a href="https://github.com/StockMonitorCH/fx-calc/releases/latest/download/fx-calc-android.apk"
-     class="btn-secondary" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; margin-bottom:10px; display:flex; gap:10px; border:2px solid var(--gold); color:#ffc14d; background:rgba(245,158,11,0.18); font-weight:700; box-shadow:0 2px 10px rgba(245,158,11,0.15);">
-    <span style="font-size:1.3em; line-height:1;">📱</span>
-    <span>Download FX-Calc (Android)</span>
-    <span style="font-size:1em; opacity:0.7;">→</span>
-  </a>
-  <div style="font-size:1rem; color:var(--text); line-height:1.6; text-align:left; padding:0 4px;">
-    Open the file and tap "Install". Allow installation from unknown sources.
+
+  <!-- LINUX -->
+  <div class="dl-card">
+    <div class="dl-card-title"><span style="font-size:1.3em; line-height:1;">🐧</span> Linux</div>
+    <div class="dl-card-desc">Download .flatpak → install via double-click or <code>flatpak install</code>. For Ubuntu, Debian, Fedora, Arch, openSUSE &amp; more — universal.</div>
+    <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.3/StockMonitor-5.7.3.flatpak" class="dl-btn solid">Download for Linux <span style="opacity:0.7;">→</span></a>
   </div>
 </div>
+
+<!-- MOBILE -->
+<div class="dl-group mobile">
+  <div class="dl-group-title">📱 Mobile Apps</div>
+
+  <!-- CHART MONITOR -->
+  <div class="dl-card">
+    <div class="dl-card-title"><span style="font-size:1.3em; line-height:1;">📊</span> Chart Monitor</div>
+    <div class="dl-actions">
+      <a href="https://apps.apple.com/app/id6819226275" target="_blank" rel="noopener" class="btn-primary" style="background:transparent; padding:0; box-shadow:none;"><img src="appstore-badge-en.svg" alt="Chart Monitor – Download on the App Store"></a>
+      <a href="https://github.com/StockMonitorCH/chart-monitor/releases/latest/download/chart-monitor-android.apk" class="dl-btn outline">🤖 Android (APK) <span style="opacity:0.7;">→</span></a>
+    </div>
+  </div>
+
+  <!-- FX-CALC -->
+  <div class="dl-card">
+    <div class="dl-card-title"><span style="font-size:1.3em; line-height:1;">💱</span> FX-Calc</div>
+    <div class="dl-actions">
+      <a href="https://apps.apple.com/app/id6821723631" target="_blank" rel="noopener" class="btn-primary" style="background:transparent; padding:0; box-shadow:none;"><img src="appstore-badge-en.svg" alt="FX-Calc – Download on the App Store"></a>
+      <a href="https://github.com/StockMonitorCH/fx-calc/releases/latest/download/fx-calc-android.apk" class="dl-btn outline">🤖 Android (APK) <span style="opacity:0.7;">→</span></a>
+    </div>
+  </div>
+
+  <div class="dl-note">🤖 Android: open the APK file and tap "Install". Allow installation from unknown sources.</div>
+</div>
+
 <!-- SOURCE -->
 <div style="width:100%; margin-bottom:32px;">
 <a class="btn-secondary" href="https://github.com/StockMonitorCH/stock-monitor" style="width:100%; justify-content:center; font-size:1rem; padding:15px 24px; border-radius:10px; display:flex; background:var(--card2);" target="_blank">
@@ -1694,10 +1696,10 @@ footer a:hover { color: var(--green); }
 
 <div style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:center; margin-bottom:10px;">📄 Documentation</div>
 <div id="doc-grid-de" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-<a class="btn-secondary" href="docs/StockMonitor_Features_v5.7.2_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Features_v5.7.3_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📋 Feature-Übersicht
           </a>
-<a class="btn-secondary" href="docs/StockMonitor_Anleitung_v5.7.2_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Anleitung_v5.7.3_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📖 Benutzeranleitung
           </a>
 <a class="btn-secondary" href="/glossary.html" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2); grid-column: 1 / -1;">
@@ -1705,10 +1707,10 @@ footer a:hover { color: var(--green); }
           </a>
 </div>
 <div id="doc-grid-en" style="display:none; grid-template-columns:1fr 1fr; gap:8px;">
-<a class="btn-secondary" href="docs/StockMonitor_Features_v5.7.2_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Features_v5.7.3_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📋 Feature List
           </a>
-<a class="btn-secondary" href="docs/StockMonitor_Manual_v5.7.2_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="docs/StockMonitor_Manual_v5.7.3_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📖 User Manual
           </a>
 <a class="btn-secondary" href="/glossaryEN.html" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2); grid-column: 1 / -1;">
