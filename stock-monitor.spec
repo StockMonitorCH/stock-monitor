@@ -4,7 +4,7 @@
 %global dist %{nil}
 
 Name:           stock-monitor
-Version:        5.7.2
+Version:        5.7.3
 Release:        1
 Summary:        Aktien-Portfolio Monitor und Verwaltung
 License:        MIT
@@ -188,6 +188,9 @@ update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 
 
 %changelog
+* Sat Oct 17 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.7.3-1
+- Fix: AI-Balance – News-Abfrage nutzt jetzt direkt die Yahoo-Finance-v1-API (ticker.news lieferte HTTP 500 mit yfinance ≥ 1.7.0)
+
 * Wed Oct 14 2026 StockMonitorCH <noreply@stockmonitor.ch> - 5.7.2-1
 - Fix: Aktienbewertungs-Dialog – kein Absturz beim schnellen Schließen (Apple/macOS), sicheres QThread-Cleanup und RuntimeError abgefangen
 - Fix: Aktien-Screener – Signal finished → done umbenannt (QThread-Konflikt), sicheres Thread-Cleanup ergänzt

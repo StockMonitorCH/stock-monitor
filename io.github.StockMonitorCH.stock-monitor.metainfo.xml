@@ -60,6 +60,18 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.7.3" date="2026-10-17">
+      <description>
+        <p>Fix: AI-Balance news fetching now uses the Yahoo Finance v1 API directly (ticker.news returned HTTP 500 with yfinance ≥ 1.7.0, resulting in 0/N news shown). Non-US stocks (e.g. ABBN.SW, SIE.DE) now also show news via company name fallback search.</p>
+        <p xml:lang="de">Fix: AI-Balance-News-Abfrage nutzt jetzt direkt die Yahoo-Finance-v1-API (ticker.news lieferte HTTP 500 mit yfinance ≥ 1.7.0). Nicht-US-Aktien (z.B. ABBN.SW, SIE.DE) zeigen jetzt ebenfalls News über Company-Name-Fallback.</p>
+      </description>
+    </release>
+    <release version="5.7.2" date="2026-10-14">
+      <description>
+        <p>Fixes: Stock Rating and Stock Screener dialogs no longer crash when closed quickly on Apple/macOS. Safe QThread cleanup added. URL finder thread in the analysis window also cleaned up safely.</p>
+        <p xml:lang="de">Fixes: Aktienbewertungs- und Screener-Dialog stürzen nicht mehr ab, wenn sie schnell geschlossen werden (Apple/macOS). Sicheres QThread-Cleanup ergänzt.</p>
+      </description>
+    </release>
     <release version="5.7.1" date="2026-10-11">
       <description>
         <p>Bug fixes: macOS crash on startup fixed (file descriptor limit RLIMIT_NOFILE raised to 10240 – Qt could abort with "Cannot continue without a thread pipe" on macOS ≥ 14 and Flatpak). Performance dialog no longer crashes on macOS (proper parent window and Window flag). Screen geometry fallback for multi-monitor setups. Data fetching less aggressive: max. 6 parallel workers to avoid Yahoo rate limiting.</p>
