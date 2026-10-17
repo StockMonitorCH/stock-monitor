@@ -51,7 +51,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.7.2"                            # beim Release anpassen
+APP_VERSION  = "5.7.3"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -7622,35 +7622,47 @@ class StockChartWidget(QFrame):
                 try:
                     from datetime import datetime as _ddt, timezone as _tz
                     import requests as _req, urllib.parse as _up
-                    # yfinance ≥ 1.7.0: interner Endpunkt liefert HTTP 500 → direkt v1 API nutzen
-                    _url = (f"https://query1.finance.yahoo.com/v1/finance/search"
-                            f"?q={_up.quote(self._sym)}&quotesCount=1&newsCount=20")
-                    _r = _req.get(_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
-                    raw = _r.json().get('news', []) if _r.status_code == 200 else []
-                    result = []
-                    for item in raw:
-                        c = item.get('content', item)
-                        title = c.get('title', '')
-                        if not title:
-                            continue
-                        link = (c.get('clickThroughUrl') or {}).get('url', '') \
-                            or (c.get('canonicalUrl') or {}).get('url', '') \
-                            or c.get('link', '')
-                        publisher = (c.get('provider') or {}).get('displayName', '') \
-                            or c.get('publisher', '')
-                        ts = 0
-                        pub = c.get('pubDate') or c.get('displayTime', '')
-                        if pub:
-                            try:
-                                dt = _ddt.strptime(pub, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=_tz.utc)
-                                ts = dt.timestamp()
-                            except Exception:
-                                pass
-                        if not ts:
-                            ts = c.get('providerPublishTime', 0) or 0
-                        if ts >= self._cutoff:
-                            result.append({'title': title, 'link': link,
-                                           'publisher': publisher, 'ts': ts})
+
+                    def _fetch(query):
+                        _url = (f"https://query1.finance.yahoo.com/v1/finance/search"
+                                f"?q={_up.quote(query)}&quotesCount=1&newsCount=20")
+                        _r = _req.get(_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+                        if _r.status_code != 200:
+                            return [], ''
+                        data = _r.json()
+                        raw    = data.get('news', [])
+                        quotes = data.get('quotes', [])
+                        cname  = (quotes[0].get('longname') or
+                                  quotes[0].get('shortname', '')) if quotes else ''
+                        items = []
+                        for item in raw:
+                            c = item.get('content', item)
+                            title = c.get('title', '')
+                            if not title:
+                                continue
+                            link = (c.get('clickThroughUrl') or {}).get('url', '') \
+                                or (c.get('canonicalUrl') or {}).get('url', '') \
+                                or c.get('link', '')
+                            publisher = (c.get('provider') or {}).get('displayName', '') \
+                                or c.get('publisher', '')
+                            ts = 0
+                            pub = c.get('pubDate') or c.get('displayTime', '')
+                            if pub:
+                                try:
+                                    dt = _ddt.strptime(pub, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=_tz.utc)
+                                    ts = dt.timestamp()
+                                except Exception:
+                                    pass
+                            if not ts:
+                                ts = c.get('providerPublishTime', 0) or 0
+                            if ts >= self._cutoff:
+                                items.append({'title': title, 'link': link,
+                                              'publisher': publisher, 'ts': ts})
+                        return items, cname
+
+                    result, company_name = _fetch(self._sym)
+                    if not result and '.' in self._sym and company_name:
+                        result, _ = _fetch(company_name)
                     self.done.emit(result)
                 except Exception:
                     self.done.emit([])
@@ -7696,35 +7708,47 @@ class StockChartWidget(QFrame):
                 try:
                     from datetime import datetime as _ddt, timezone as _tz
                     import requests as _req, urllib.parse as _up
-                    # yfinance ≥ 1.7.0: interner Endpunkt liefert HTTP 500 → direkt v1 API nutzen
-                    _url = (f"https://query1.finance.yahoo.com/v1/finance/search"
-                            f"?q={_up.quote(self._sym)}&quotesCount=1&newsCount=20")
-                    _r = _req.get(_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
-                    raw = _r.json().get('news', []) if _r.status_code == 200 else []
-                    result = []
-                    for item in raw:
-                        c = item.get('content', item)
-                        title = c.get('title', '')
-                        if not title:
-                            continue
-                        link = (c.get('clickThroughUrl') or {}).get('url', '') \
-                            or (c.get('canonicalUrl') or {}).get('url', '') \
-                            or c.get('link', '')
-                        publisher = (c.get('provider') or {}).get('displayName', '') \
-                            or c.get('publisher', '')
-                        ts = 0
-                        pub = c.get('pubDate') or c.get('displayTime', '')
-                        if pub:
-                            try:
-                                dt = _ddt.strptime(pub, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=_tz.utc)
-                                ts = dt.timestamp()
-                            except Exception:
-                                pass
-                        if not ts:
-                            ts = c.get('providerPublishTime', 0) or 0
-                        if ts >= self._cutoff:
-                            result.append({'title': title, 'link': link,
-                                           'publisher': publisher, 'ts': ts})
+
+                    def _fetch(query):
+                        _url = (f"https://query1.finance.yahoo.com/v1/finance/search"
+                                f"?q={_up.quote(query)}&quotesCount=1&newsCount=20")
+                        _r = _req.get(_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+                        if _r.status_code != 200:
+                            return [], ''
+                        data = _r.json()
+                        raw    = data.get('news', [])
+                        quotes = data.get('quotes', [])
+                        cname  = (quotes[0].get('longname') or
+                                  quotes[0].get('shortname', '')) if quotes else ''
+                        items = []
+                        for item in raw:
+                            c = item.get('content', item)
+                            title = c.get('title', '')
+                            if not title:
+                                continue
+                            link = (c.get('clickThroughUrl') or {}).get('url', '') \
+                                or (c.get('canonicalUrl') or {}).get('url', '') \
+                                or c.get('link', '')
+                            publisher = (c.get('provider') or {}).get('displayName', '') \
+                                or c.get('publisher', '')
+                            ts = 0
+                            pub = c.get('pubDate') or c.get('displayTime', '')
+                            if pub:
+                                try:
+                                    dt = _ddt.strptime(pub, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=_tz.utc)
+                                    ts = dt.timestamp()
+                                except Exception:
+                                    pass
+                            if not ts:
+                                ts = c.get('providerPublishTime', 0) or 0
+                            if ts >= self._cutoff:
+                                items.append({'title': title, 'link': link,
+                                              'publisher': publisher, 'ts': ts})
+                        return items, cname
+
+                    result, company_name = _fetch(self._sym)
+                    if not result and '.' in self._sym and company_name:
+                        result, _ = _fetch(company_name)
                     self.done.emit(result)
                 except Exception as ex:
                     self.error.emit(str(ex))
@@ -19620,30 +19644,52 @@ class PortfolioDialog(QMainWindow):
                 def _get_news_score(self, sym):
                     """Gibt (score -1..+1, raw_text) zurück. Positiv=gute News."""
                     try:
-                        import yfinance as yf
-                        ticker = yf.Ticker(sym)
-                        news = ticker.news or []
+                        import requests as _req, urllib.parse as _up, time as _time, datetime as _dt
+
+                        def _fetch_news(query):
+                            _url = (f"https://query1.finance.yahoo.com/v1/finance/search"
+                                    f"?q={_up.quote(query)}&quotesCount=1&newsCount=20")
+                            _r = _req.get(_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+                            if _r.status_code != 200:
+                                return [], None
+                            data = _r.json()
+                            raw = data.get('news', [])
+                            quotes = data.get('quotes', [])
+                            company_name = (quotes[0].get('longname') or
+                                            quotes[0].get('shortname', '')) if quotes else ''
+                            result = []
+                            for item in raw:
+                                c = item.get('content', item)
+                                title = c.get('title', '')
+                                if not title:
+                                    continue
+                                pub = c.get('pubDate') or c.get('displayTime', '')
+                                ts = 0
+                                if pub:
+                                    try:
+                                        ts = _dt.datetime.strptime(
+                                            pub, '%Y-%m-%dT%H:%M:%SZ').timestamp()
+                                    except Exception:
+                                        try:
+                                            ts = _dt.datetime.fromisoformat(
+                                                pub.replace('Z', '+00:00')).timestamp()
+                                        except Exception:
+                                            pass
+                                if not ts:
+                                    ts = c.get('providerPublishTime', 0) or 0
+                                result.append({'title': title, 'providerPublishTime': ts})
+                            return result, company_name
+
+                        news, company_name = _fetch_news(sym)
+                        # Nicht-US-Aktien (Symbol enthält '.') liefern oft keine News per Symbol-Suche
+                        # → Fallback: Company-Name aus dem quotes-Ergebnis verwenden
+                        if not news and '.' in sym and company_name:
+                            news, _ = _fetch_news(company_name)
                         if not news:
                             return None, "Keine News gefunden"
 
-                        # Nur News der letzten 30 Tage – verschiedene Zeitstempel-Felder abfangen
-                        import time as _time
                         cutoff = _time.time() - 30 * 86400
-                        def _news_ts(n):
-                            # Neue Struktur: content.pubDate (ISO-String)
-                            content = n.get('content') or {}
-                            if isinstance(content, dict):
-                                pub = content.get('pubDate') or content.get('publishedAt') or ''
-                                if pub:
-                                    try:
-                                        import datetime as _dt
-                                        return _dt.datetime.fromisoformat(
-                                            pub.replace('Z', '+00:00')).timestamp()
-                                    except Exception:
-                                        pass
-                            # Alte Struktur: providerPublishTime (Unix-Timestamp)
-                            return n.get('providerPublishTime', 0)
-                        recent = [n for n in news if _news_ts(n) > cutoff]
+                        recent = [n for n in news if n.get('providerPublishTime', 0) > cutoff]
                         if not recent:
                             recent = news[:5]   # Fallback: neueste 5
 
@@ -19671,19 +19717,7 @@ class PortfolioDialog(QMainWindow):
                         scores = []
                         titles = []
                         for n in recent[:15]:
-                            # yfinance API hat sich geändert – verschiedene Strukturen abfangen
-                            title = ''
-                            if isinstance(n, dict):
-                                # Neue yfinance-Struktur: content.title oder content.summary
-                                content = n.get('content') or {}
-                                if isinstance(content, dict):
-                                    title = (content.get('title') or content.get('summary') or
-                                             content.get('headline') or '')
-                                # Alte Struktur: direkt 'title'
-                                if not title:
-                                    title = (n.get('title') or n.get('headline') or
-                                             n.get('summary') or '')
-                            title = str(title).strip()
+                            title = str(n.get('title', '')).strip()
                             if title:
                                 titles.append(title)
                             title_lower = title.lower()
