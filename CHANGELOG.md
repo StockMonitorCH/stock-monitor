@@ -171,4 +171,4 @@ Initial public release of Stock Monitor v5.
 - World market map
 - Export to Excel, PDF, ODS
 - Full German and English UI
-- Available for Windows (EXE), Linux (deb, rpm, Flatpak)
+- Available for Windows (EXE), Linux (deb, Flatpak)

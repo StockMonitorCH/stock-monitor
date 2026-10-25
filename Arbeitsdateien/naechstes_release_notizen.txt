@@ -1,0 +1,122 @@
+Notizen für das nächste Release
+================================
+
+
+NOTICE: RPM wird eingestellt
+-----------------------------
+Ab diesem Release werden keine RPM-Pakete mehr bereitgestellt.
+Fedora-/openSUSE-User wird empfohlen, auf Flatpak umzusteigen.
+
+Changelog-Text (Vorschlag für Release Notes):
+  "RPM packages are no longer provided. Linux users are recommended
+   to use the Flatpak version, which is available on Flathub and
+   works on Fedora, openSUSE, and other distributions."
+
+
+BUGFIX: GV-Sortierung (Gesamtansicht / Portfolio-Übersicht)
+------------------------------------------------------------
+Problem:
+  Beim Sortieren nach der GV-Spalte (Klick auf Spalten-Header) wurden
+  Aktien mit negativem CHF-G&V fälschlicherweise unter den Gewinnen
+  einsortiert (z.B. WM zwischen positiven Werten).
+
+Ursache:
+  Die Sortierung verwendete intern immer den USD-G&V
+  (value_usd - cost_usd), während die Anzeige (Farbe rot/grün und
+  Prozentwert) den CHF-G&V (val_chf - cost_chf) nutzt. Bei einer
+  CHF-Aufwertung gegenüber dem USD kann der USD-G&V positiv sein,
+  obwohl der CHF-G&V negativ ist.
+
+Fix (stock_monitor.py, Funktion sort_key, ca. Zeile 12579):
+  sort_key für col == 'pnl' verwendet jetzt val_chf - cost_chf
+  (sofern CHF-Daten vorhanden), damit Sortierung und Anzeige
+  dieselbe Basis haben. Fallback auf USD wenn keine CHF-Daten
+  vorhanden (z.B. Kryptowährungen).
+
+Changelog-Text (Vorschlag für Release Notes):
+  "Fixed: Sorting by the G/V column in the portfolio overview now
+   correctly reflects the displayed CHF gain/loss values. Previously,
+   positions with a negative CHF gain could appear among the winners
+   due to currency effects (USD vs. CHF)."
+
+
+BUGFIX: Perf-Beitrag – Berechnung und Sortierung (Gesamtansicht)
+------------------------------------------------------------------------------
+Problem:
+  Beim Sortieren nach der Perf-Beitrag-Spalte erscheinen Aktien mit
+  negativem CHF-G&V fälschlicherweise im positiven Bereich (z.B. WM
+  mit GV% = -3.1% landet zwischen den Gewinnern).
+
+Ursache:
+  Dieselbe USD-vs-CHF-Problematik wie bei der GV-Sortierung, aber
+  eine Ebene tiefer: Der angezeigte Perf-Beitrag-Wert wird mit
+  pnl_usd / total_cost_usd berechnet (USD-Basis), statt mit
+  pnl_chf / total_cost_chf wenn CHF ausgewählt ist. Dadurch stimmen
+  Anzeige und Sortierung zwar intern überein, der Wert selbst
+  spiegelt aber nicht die CHF-Realität wider.
+
+Fix (stock_monitor.py):
+  Perf-Beitrag-Berechnung (Anzeige + sort_key) verwendet jetzt
+  pnl_chf / total_cost_chf wenn CHF-Daten vorhanden sind.
+  Fallback auf USD (z.B. Kryptowährungen).
+  Betrifft: Zeile ~12660 (Anzeige) und ~12591 (sort_key).
+
+Changelog-Text (Vorschlag für Release Notes):
+  "Fixed: The Performance Contribution column in the portfolio
+   overview now correctly uses CHF-based gain/loss values when CHF
+   currency is selected. Previously, positions losing in CHF (due to
+   currency effects) could appear with a positive contribution."
+
+
+BUGFIX KRITISCH: SIGABRT / Signal 6 Crash beim Portfolio-Öffnen / App-Schließen
+----------------------------------------------------------------------------------
+Problem:
+  Die App stürzt mit SIGABRT (Signal 6) ab, reproduzierbar beim Öffnen
+  des Portfolios oder beim Schließen der App während ein Portfolio-Ladevorgang
+  aktiv war. Crash-Meldung: sipQThread::~sipQThread – QThread: Destroyed while
+  thread is still running.
+
+Ursache:
+  Zwei unabhängige Fehler:
+
+  1) QThread.terminate() auf Python-Threads:
+     Die closeEvent()-Funktion rief QThread.terminate() auf, was intern
+     pthread_cancel() aufruft. Das Abbrechen eines Python-Threads mit
+     pthread_cancel() kann zu undefiniertem Verhalten führen, wenn der Thread
+     gerade Python-Code ausführt (GIL gehalten) und die Qt-internen
+     Cleanup-Handler (QThreadPrivate::finish → d->running = false) nicht
+     sauber laufen, bevor Qt den QThread-Destruktor aufruft.
+
+  2) Update-Worker mit done.connect(deleteLater) statt finished.connect(deleteLater):
+     Der _start_update_worker() verknüpfte worker.done (ein benutzerdefiniertes
+     Signal, das während run() emittiert wird) mit worker.deleteLater. Dadurch
+     konnte der C++-Destruktor aufgerufen werden, bevor QThreadPrivate::finish()
+     d->running = false setzte – Race Condition → SIGABRT.
+
+Fix (stock_monitor.py):
+  1) closeEvent(): terminate() + wait(300) durch requestInterruption() +
+     wait(3000) ersetzt (kein pthread_cancel() mehr).
+
+  2) MasterWorker.run(), OverviewWorker.run(), PortfolioWorker.run():
+     self.isInterruptionRequested()-Checks in die Symbol-Loops eingefügt,
+     damit requestInterruption() kooperativ wirkt.
+
+  3) _start_update_worker(): worker.done.connect(worker.deleteLater) durch
+     worker.finished.connect(worker.deleteLater) ersetzt (finished wird erst
+     nach d->running = false emittiert).
+
+  4) MasterWorker, PortfolioWorker, OverviewWorker: finished.connect(deleteLater)
+     und finished.connect(lambda: self._xxx = None) hinzugefügt für sauberes
+     Lifetime-Management.
+
+  5) _master_load(): Guard gegen Doppelstart hinzugefügt (verhindert zwei
+     MasterWorker gleichzeitig wenn Portfolio schnell zweimal geöffnet wird).
+
+  6) _invalidate_cache(): requestInterruption() vor quit() und wait().
+
+Changelog-Text (Vorschlag für Release Notes):
+  "Fixed: Critical crash (SIGABRT / Signal 6) when opening the portfolio
+   or closing the app while portfolio data was loading. The crash was caused
+   by unsafe thread termination (pthread_cancel on Python threads) and a
+   race condition in the update checker. Workers now use cooperative
+   cancellation (requestInterruption) for safe shutdown."
