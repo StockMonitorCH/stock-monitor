@@ -93,7 +93,7 @@ rm -f "$RPMBUILD/SRPMS/stock-monitor-${VERSION}"*.rpm
 
 # ── RPM bauen ─────────────────────────────────────────────────────────────────
 echo "→ Baue RPM (das kann 1-2 Minuten dauern)..."
-rpmbuild -ba "$RPMBUILD/SPECS/stock-monitor.spec" \
+rpmbuild -bb "$RPMBUILD/SPECS/stock-monitor.spec" \
     --define "_topdir $RPMBUILD" \
     2>&1 | grep -v "^Processing\|^Executing\|^Checking\|^warning: bogus" || true
 
