@@ -1,5 +1,5 @@
 project('stock-monitor',
-  version: '5.7.3',
+  version: '5.7.4',
   meson_version: '>= 0.59.0',
 )
 

@@ -928,9 +928,9 @@ class StockScreenerDialog(QDialog):
         elif logic is None:
             hint = ""
         elif logic == 'and':
-            hint = "Performance UND KGV müssen erfüllt sein"
+            hint = TR('scr_logic_hint_and')
         else:
-            hint = "Performance ODER KGV muss erfüllt sein"
+            hint = TR('scr_logic_hint_or')
         if hasattr(self, '_logic_hint'):
             self._logic_hint.setText(hint)
 
@@ -1118,6 +1118,9 @@ class StockScreenerDialog(QDialog):
         self._progress_bar.setVisible(False)
         self._progress_lbl.setVisible(False)
 
+        was_aborted = bool(self._worker and self._worker._abort)
+        self._worker = None  # Referenz löschen bevor deleteLater() den C++-Teil entfernt
+
         _cache['results'] = results
         _cache['searched'] = True
 
@@ -1127,8 +1130,7 @@ class StockScreenerDialog(QDialog):
             self._table.setVisible(False)
             return
 
-        # Abbruch oder vollständige Ergebnisse unterscheiden
-        if self._worker and self._worker._abort:
+        if was_aborted:
             self._status_lbl.setText(TR('scr_lbl_aborted', n=n))
         else:
             self._status_lbl.setText(TR('scr_lbl_results', n=n))
@@ -1269,7 +1271,15 @@ class StockScreenerDialog(QDialog):
     # ── Aufräumen beim Schliessen ─────────────────────────────────────────────
 
     def closeEvent(self, event) -> None:
-        if self._worker and self._worker.isRunning():
-            self._worker.abort()
-            self._worker.wait(3000)
+        worker = self._worker
+        self._worker = None
+        if worker is not None:
+            try:
+                if worker.isRunning():
+                    worker.progress.disconnect()
+                    worker.done.disconnect()
+                    worker.abort()
+                    worker.wait(3000)
+            except RuntimeError:
+                pass
         super().closeEvent(event)

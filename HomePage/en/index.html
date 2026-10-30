@@ -18,7 +18,7 @@
 <meta content="Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, dividend calendar, tax assistant (CH/DE/AT/UK/US) and CSV import. Cryptocurrencies &amp; precious metals. Windows, macOS &amp; Linux. Open Source." property="og:description"/>
 <meta content="https://www.stock-monitor.ch/screenshots/dashboard_DE.png" property="og:image"/>
 <meta content="en_US" property="og:locale"/>
-<meta content="en_US" property="og:locale:alternate"/>
+<meta content="de_CH" property="og:locale:alternate"/>
 <meta content="Stock Monitor" property="og:site_name"/>
 <!-- TWITTER / X -->
 <meta content="summary_large_image" name="twitter:card"/>
@@ -45,7 +45,7 @@
   },
   "url": "https://www.stock-monitor.ch/",
   "downloadUrl": "https://github.com/StockMonitorCH/stock-monitor/releases",
-  "softwareVersion": "5.7.3",
+  "softwareVersion": "5.7.4",
   "screenshot": "https://www.stock-monitor.ch/screenshots/dashboard_DE.png"
 }
 </script>
@@ -977,7 +977,7 @@ footer a:hover { color: var(--green); }
 <!-- LANG BAR -->
 <div class="lang-bar">
 <div class="logo-small" style="display:flex; align-items:center; gap:10px;">
-    <img src="screenshots/logo.png" alt="Stock Monitor Logo" style="height:34px; width:auto; display:block;">
+    <img src="/screenshots/logo.png" alt="Stock Monitor Logo" style="height:34px; width:auto; display:block;">
     Stock<span>Monitor</span>
   </div>
 <nav class="main-nav">
@@ -994,7 +994,7 @@ footer a:hover { color: var(--green); }
 <button class="coffee-btn" id="coffee-btn" onclick="openCoffee(event)" aria-label="Buy me a coffee" style="font-size:1.3rem; line-height:1;">
     ☕
   </button>
-  <button class="lang-btn active" id="btn-de" onclick="setLang('de')">
+  <button class="lang-btn active" id="btn-de" onclick="location.href='/?lang=de'">
 <span class="flag"><svg class="flag-svg" width="20" height="15" viewBox="0 0 20 15"><rect width="20" height="5" fill="#000"/><rect width="20" height="5" y="5" fill="#D00"/><rect width="20" height="5" y="10" fill="#FFCE00"/></svg></span> DE
   </button>
 <button class="lang-btn" id="btn-en" onclick="setLang('en')">
@@ -1030,13 +1030,13 @@ footer a:hover { color: var(--green); }
 </div>
 <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
 
-<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.3/StockMonitor-5.7.3.flatpak"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
+<a class="btn-primary" href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.4/StockMonitor-5.7.4.flatpak"><span style="font-size:1.4em; line-height:1;">🐧</span> Download for Linux</a>
 
 <div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">.flatpak<br>(Ubuntu, Debian, Fedora, Arch & more)</div>
 </div>
 <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
 
-<a class="btn-primary" href="https://apps.apple.com/app/id6797549450" style="background:transparent; padding:0; box-shadow:none;"><img src="appstore-badge-en.svg" alt="Download on the App Store" style="height:50px; width:auto; display:block;"></a>
+<a class="btn-primary" href="https://apps.apple.com/app/id6797549450" style="background:transparent; padding:0; box-shadow:none;"><img src="/appstore-badge-en.svg" alt="Download on the App Store" style="height:50px; width:auto; display:block;"></a>
 
 <div style="font-size:0.78rem; color:var(--text3); line-height:1.5; text-align:center;">Install directly<br>from the Mac App Store</div>
 </div>
@@ -1134,11 +1134,11 @@ footer a:hover { color: var(--green); }
 
 <p class="section-sub">Monitor all your positions simultaneously — with Moving Averages, trend lines, RSI, Bollinger Bands, Beta, Alpha and Sharpe Ratio. Zoom into any chart for detailed analysis.</p>
 <div class="main-screenshot">
-<img alt="Stock Monitor Dashboard" class="clickable-img" data-src-de="screenshots/dashboard_DE.png" data-src-en="screenshots/dashboard_EN.png" onerror="this.parentElement.style.background='var(--card)'; this.style.display='none'; this.parentElement.querySelector('.placeholder').style.display='flex'" src="screenshots/dashboard_DE.png"/>
+<img alt="Stock Monitor Dashboard" class="clickable-img" data-src-de="/screenshots/dashboard_DE.png" data-src-en="/screenshots/dashboard_EN.png" onerror="this.parentElement.style.background='var(--card)'; this.style.display='none'; this.parentElement.querySelector('.placeholder').style.display='flex'" src="/screenshots/dashboard_DE.png"/>
 <div class="placeholder" style="display:none; height:320px; align-items:center; justify-content:center; color:var(--text3); font-family:'DM Mono',monospace; font-size:0.85rem;">[ screenshot: 16-chart dashboard ]</div>
 </div>
 
-<div class="screenshot-caption-below">Stock Monitor v5.7.3 · 16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Correlation Matrix · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
+<div class="screenshot-caption-below">Stock Monitor v5.7.4 · 16 Charts · MA 20/50/200 · Trend · Beta · AI Analysis · Correlation Matrix · Yahoo Finance · Tax Assistant CH/DE/AT/UK/US</div>
 </section>
 <!-- FEATURES ALS HIGHLIGHT-SECTIONS -->
 <div id="features" style="padding-top:1px; margin-top:-1px;"></div>
@@ -1146,7 +1146,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner">
 <div class="highlight-img-wrap">
-<img alt="Portfolio" class="clickable-img" data-src-de="screenshots/portfolio_DE.png" data-src-en="screenshots/portfolio_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/portfolio_DE.png"/>
+<img alt="Portfolio" class="clickable-img" data-src-de="/screenshots/portfolio_DE.png" data-src-en="/screenshots/portfolio_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/portfolio_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1162,7 +1162,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in" style="background: linear-gradient(135deg, rgba(245,158,11,0.05) 0%, var(--bg2) 60%); border-top: 1px solid rgba(245,158,11,0.2); border-bottom: 1px solid rgba(245,158,11,0.2);">
 <div class="highlight-inner reverse">
 <div class="highlight-img-wrap" style="box-shadow: 0 24px 80px rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.2);">
-<img alt="Portfolio Assessment" class="clickable-img" data-src-de="screenshots/pf_bewertung_DE.png" data-src-en="screenshots/pf_bewertung_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/pf_bewertung_EN.png"/>
+<img alt="Portfolio Assessment" class="clickable-img" data-src-de="/screenshots/pf_bewertung_DE.png" data-src-en="/screenshots/pf_bewertung_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/pf_bewertung_EN.png"/>
 </div>
 <div class="highlight-text">
 <span class="tag tag-gold">Portfolio Assessment</span>
@@ -1181,7 +1181,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner reverse">
 <div class="highlight-img-wrap">
-<img alt="Performance" class="clickable-img" data-src-de="screenshots/performance_DE.png" data-src-en="screenshots/performance_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/performance_DE.png"/>
+<img alt="Performance" class="clickable-img" data-src-de="/screenshots/performance_DE.png" data-src-en="/screenshots/performance_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/performance_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1197,7 +1197,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner">
 <div class="highlight-img-wrap">
-<img alt="AI Balance" class="clickable-img" data-src-de="screenshots/ai-balance_DE.png" data-src-en="screenshots/ai-balance_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/ai-balance_DE.png"/>
+<img alt="AI Balance" class="clickable-img" data-src-de="/screenshots/ai-balance_DE.png" data-src-en="/screenshots/ai-balance_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/ai-balance_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1213,7 +1213,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner reverse">
 <div class="highlight-img-wrap">
-<img alt="Dividends" class="clickable-img" data-src-de="screenshots/dividends_DE.png" data-src-en="screenshots/dividends_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/dividends_DE.png"/>
+<img alt="Dividends" class="clickable-img" data-src-de="/screenshots/dividends_DE.png" data-src-en="/screenshots/dividends_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/dividends_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1230,7 +1230,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner">
 <div class="highlight-img-wrap">
-<img alt="Dividend History" class="clickable-img" data-src-de="screenshots/dividend_history_DE.png" data-src-en="screenshots/dividend_history_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/dividend_history_DE.png"/>
+<img alt="Dividend History" class="clickable-img" data-src-de="/screenshots/dividend_history_DE.png" data-src-en="/screenshots/dividend_history_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/dividend_history_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1254,7 +1254,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner reverse">
 <div class="highlight-img-wrap">
-<img alt="World Map" class="clickable-img" data-src-de="screenshots/worldmap_DE.png" data-src-en="screenshots/worldmap_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/worldmap_DE.png"/>
+<img alt="World Map" class="clickable-img" data-src-de="/screenshots/worldmap_DE.png" data-src-en="/screenshots/worldmap_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/worldmap_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1270,7 +1270,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight highlight-featured fade-in">
 <div class="highlight-inner reverse">
 <div class="highlight-img-wrap">
-<img alt="Monte Carlo Simulation" class="clickable-img" data-src-de="screenshots/montecarlo_DE.png" data-src-en="screenshots/montecarlo_EN.png" onerror="this.parentElement.style.minHeight='300px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/montecarlo_DE.png"/>
+<img alt="Monte Carlo Simulation" class="clickable-img" data-src-de="/screenshots/montecarlo_DE.png" data-src-en="/screenshots/montecarlo_EN.png" onerror="this.parentElement.style.minHeight='300px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/montecarlo_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1298,7 +1298,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner">
 <div class="highlight-img-wrap">
-<img alt="Excess CAPE Yield" class="clickable-img" data-src-de="screenshots/ECY_DE.png" data-src-en="screenshots/ECY_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/ECY_DE.png"/>
+<img alt="Excess CAPE Yield" class="clickable-img" data-src-de="/screenshots/ECY_DE.png" data-src-en="/screenshots/ECY_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/ECY_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1322,7 +1322,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner">
 <div class="highlight-img-wrap">
-<img alt="Sharpe Ratio" class="clickable-img" data-src-de="screenshots/sharpe_DE.png" data-src-en="screenshots/sharpe_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/sharpe_DE.png"/>
+<img alt="Sharpe Ratio" class="clickable-img" data-src-de="/screenshots/sharpe_DE.png" data-src-en="/screenshots/sharpe_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/sharpe_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1348,7 +1348,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner reverse">
 <div class="highlight-img-wrap">
-<img alt="Correlation Matrix" class="clickable-img" data-src-de="screenshots/correlation_DE.png" data-src-en="screenshots/correlation_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/correlation_EN.png"/>
+<img alt="Correlation Matrix" class="clickable-img" data-src-de="/screenshots/correlation_DE.png" data-src-en="/screenshots/correlation_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/correlation_EN.png"/>
 </div>
 <div class="highlight-text">
 <h3>🔗 Correlation Matrix</h3>
@@ -1365,7 +1365,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner">
 <div class="highlight-img-wrap">
-<img alt="Stress Test" class="clickable-img" data-src-de="screenshots/stresstest_DE.png" data-src-en="screenshots/stresstest_EN.png" onerror="this.parentElement.style.minHeight='300px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/stresstest_EN.png"/>
+<img alt="Stress Test" class="clickable-img" data-src-de="/screenshots/stresstest_DE.png" data-src-en="/screenshots/stresstest_EN.png" onerror="this.parentElement.style.minHeight='300px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/stresstest_EN.png"/>
 </div>
 <div class="highlight-text">
 <span class="tag tag-gold">Crisis Simulation</span>
@@ -1385,7 +1385,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner reverse">
 <div class="highlight-img-wrap">
-<img alt="Komplex Analysis" class="clickable-img" data-src-de="screenshots/komplex_DE.png" data-src-en="screenshots/komplex_EN.png" onerror="this.parentElement.style.minHeight='300px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/komplex_EN.png"/>
+<img alt="Komplex Analysis" class="clickable-img" data-src-de="/screenshots/komplex_DE.png" data-src-en="/screenshots/komplex_EN.png" onerror="this.parentElement.style.minHeight='300px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/komplex_EN.png"/>
 </div>
 <div class="highlight-text">
 <span class="tag tag-gold">Pro Risk Analysis</span>
@@ -1406,7 +1406,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner">
 <div class="highlight-img-wrap">
-<img alt="Stock Screener" class="clickable-img" data-src-de="screenshots/screener_DE.png" data-src-en="screenshots/screener_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/screener_EN.png"/>
+<img alt="Stock Screener" class="clickable-img" data-src-de="/screenshots/screener_DE.png" data-src-en="/screenshots/screener_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/screener_EN.png"/>
 </div>
 <div class="highlight-text">
 <span class="tag tag-green">Find Stocks</span>
@@ -1425,7 +1425,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner reverse">
 <div class="highlight-img-wrap">
-<img alt="Stock Rating" class="clickable-img" data-src-de="screenshots/bewertung_DE.png" data-src-en="screenshots/bewertung_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/bewertung_EN.png"/>
+<img alt="Stock Rating" class="clickable-img" data-src-de="/screenshots/bewertung_DE.png" data-src-en="/screenshots/bewertung_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/bewertung_EN.png"/>
 </div>
 <div class="highlight-text">
 <span class="tag tag-blue">Star Rating</span>
@@ -1444,7 +1444,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner">
 <div class="highlight-img-wrap">
-<img alt="Zoomed Chart" class="clickable-img" data-src-de="screenshots/zoom_DE.png" data-src-en="screenshots/zoom_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/zoom_EN.png"/>
+<img alt="Zoomed Chart" class="clickable-img" data-src-de="/screenshots/zoom_DE.png" data-src-en="/screenshots/zoom_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/zoom_EN.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1470,7 +1470,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner reverse">
 <div class="highlight-img-wrap">
-<img alt="Vergleichs-Charts" class="clickable-img" data-src-de="screenshots/compare_DE.png" data-src-en="screenshots/compare_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/compare_DE.png"/>
+<img alt="Vergleichs-Charts" class="clickable-img" data-src-de="/screenshots/compare_DE.png" data-src-en="/screenshots/compare_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/compare_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1497,7 +1497,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner">
 <div class="highlight-img-wrap">
-<img alt="Currency Converter" class="clickable-img" data-src-de="screenshots/currency_DE.png" data-src-en="screenshots/currency_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="screenshots/currency_DE.png"/>
+<img alt="Currency Converter" class="clickable-img" data-src-de="/screenshots/currency_DE.png" data-src-en="/screenshots/currency_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/currency_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1522,7 +1522,7 @@ footer a:hover { color: var(--green); }
 <section class="highlight fade-in">
 <div class="highlight-inner reverse">
 <div class="highlight-img-wrap">
-<img alt="Tax Module" class="clickable-img" data-src-de="screenshots/tax_DE.png" data-src-en="screenshots/tax_EN.png" onerror="
+<img alt="Tax Module" class="clickable-img" data-src-de="/screenshots/tax_DE.png" data-src-en="/screenshots/tax_EN.png" onerror="
           this.style.display='none';
           this.parentElement.style.background='var(--bg3)';
           this.parentElement.style.minHeight='340px';
@@ -1530,7 +1530,7 @@ footer a:hover { color: var(--green); }
           this.parentElement.style.alignItems='center';
           this.parentElement.style.justifyContent='center';
           this.parentElement.innerHTML='&lt;div style=\'text-align:center; padding:32px\'&gt;&lt;div style=\'font-size:3rem; margin-bottom:16px\'&gt;🧾&lt;/div&gt;&lt;div style=\'font-family:DM Serif Display,serif; font-size:1.3rem; color:var(--text); margin-bottom:20px\' data-lang=\'de\'&gt;Steuer-Assistent · PDF-Export&lt;/div&gt;&lt;div style=\'font-size:2rem; letter-spacing:0.3em\'&gt;CH · DE · AT · GB · US&lt;/div&gt;&lt;div style=\'font-family:DM Mono,monospace; font-size:0.78rem; color:var(--text3); margin-top:14px; line-height:1.8\'&gt;DA-1  ·  Anlage KAP  ·  E1kv  ·  SA108  ·  Form 1040&lt;/div&gt;&lt;/div&gt;'
-        " src="screenshots/tax_DE.png"/>
+        " src="/screenshots/tax_DE.png"/>
 </div>
 <div class="highlight-text">
 
@@ -1628,7 +1628,7 @@ footer a:hover { color: var(--green); }
 <div class="coming-soon-card">
 <span class="cs-icon">⬇️</span>
 
-<h2>Download — v5.7.3</h2>
+<h2>Download — v5.7.4</h2>
 
 <p>Free, open source, no installation required.</p>
 <!-- DESKTOP -->
@@ -1647,8 +1647,8 @@ footer a:hover { color: var(--green); }
     <div class="dl-card-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12.3 8.2c-2.9 0-5.3 2.5-5.3 6.4 0 3.4 2.1 6.6 4 6.6.9 0 1.3-.6 2.1-.6.8 0 1.2.6 2.2.6 1.6 0 3.9-3.1 3.9-6.9 0-3.6-2.5-6.1-5.1-6.1-.6 0-1.2.2-1.8 0zM12.7 7.3c-.4 0-.7-.1-.9-.2.1-1.1.6-2.1 1.3-2.8.7-.7 1.7-1.1 2.6-1.1.1 1-.2 2.1-.9 2.9-.6.7-1.4 1.2-2.1 1.2z"/></svg> macOS</div>
     <div class="dl-card-desc">Install from the Mac App Store — or download the .dmg, open it and drag the app into Applications. Notarized by Apple. For Macs with M-series chips.</div>
     <div class="dl-actions">
-      <a href="https://apps.apple.com/app/id6797549450" class="btn-primary" style="background:transparent; padding:0; box-shadow:none;"><img src="appstore-badge-en.svg" alt="Download on the App Store"></a>
-      <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.3/StockMonitor-5.7.3.dmg" class="dl-btn outline">Download .dmg <span style="opacity:0.7;">→</span></a>
+      <a href="https://apps.apple.com/app/id6797549450" class="btn-primary" style="background:transparent; padding:0; box-shadow:none;"><img src="/appstore-badge-en.svg" alt="Download on the App Store"></a>
+      <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.4/StockMonitor-5.7.4.dmg" class="dl-btn outline">Download .dmg <span style="opacity:0.7;">→</span></a>
     </div>
   </div>
 
@@ -1656,7 +1656,7 @@ footer a:hover { color: var(--green); }
   <div class="dl-card">
     <div class="dl-card-title"><span style="font-size:1.3em; line-height:1;">🐧</span> Linux</div>
     <div class="dl-card-desc">Download .flatpak → install via double-click or <code>flatpak install</code>. For Ubuntu, Debian, Fedora, Arch, openSUSE &amp; more — universal.</div>
-    <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.3/StockMonitor-5.7.3.flatpak" class="dl-btn solid">Download for Linux <span style="opacity:0.7;">→</span></a>
+    <a href="https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.7.4/StockMonitor-5.7.4.flatpak" class="dl-btn solid">Download for Linux <span style="opacity:0.7;">→</span></a>
   </div>
 </div>
 
@@ -1668,7 +1668,7 @@ footer a:hover { color: var(--green); }
   <div class="dl-card">
     <div class="dl-card-title"><span style="font-size:1.3em; line-height:1;">📊</span> Chart Monitor</div>
     <div class="dl-actions">
-      <a href="https://apps.apple.com/app/id6819226275" target="_blank" rel="noopener" class="btn-primary" style="background:transparent; padding:0; box-shadow:none;"><img src="appstore-badge-en.svg" alt="Chart Monitor – Download on the App Store"></a>
+      <a href="https://apps.apple.com/app/id6819226275" target="_blank" rel="noopener" class="btn-primary" style="background:transparent; padding:0; box-shadow:none;"><img src="/appstore-badge-en.svg" alt="Chart Monitor – Download on the App Store"></a>
       <a href="https://github.com/StockMonitorCH/chart-monitor/releases/latest/download/chart-monitor-android.apk" class="dl-btn outline">🤖 Android (APK) <span style="opacity:0.7;">→</span></a>
     </div>
   </div>
@@ -1677,7 +1677,7 @@ footer a:hover { color: var(--green); }
   <div class="dl-card">
     <div class="dl-card-title"><span style="font-size:1.3em; line-height:1;">💱</span> FX-Calc</div>
     <div class="dl-actions">
-      <a href="https://apps.apple.com/app/id6821723631" target="_blank" rel="noopener" class="btn-primary" style="background:transparent; padding:0; box-shadow:none;"><img src="appstore-badge-en.svg" alt="FX-Calc – Download on the App Store"></a>
+      <a href="https://apps.apple.com/app/id6821723631" target="_blank" rel="noopener" class="btn-primary" style="background:transparent; padding:0; box-shadow:none;"><img src="/appstore-badge-en.svg" alt="FX-Calc – Download on the App Store"></a>
       <a href="https://github.com/StockMonitorCH/fx-calc/releases/latest/download/fx-calc-android.apk" class="dl-btn outline">🤖 Android (APK) <span style="opacity:0.7;">→</span></a>
     </div>
   </div>
@@ -1696,10 +1696,10 @@ footer a:hover { color: var(--green); }
 
 <div style="font-size:0.92rem; font-weight:600; color:var(--text2); text-align:center; margin-bottom:10px;">📄 Documentation</div>
 <div id="doc-grid-de" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-<a class="btn-secondary" href="docs/StockMonitor_Features_v5.7.3_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="/docs/StockMonitor_Features_v5.7.4_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📋 Feature-Übersicht
           </a>
-<a class="btn-secondary" href="docs/StockMonitor_Anleitung_v5.7.3_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="/docs/StockMonitor_Anleitung_v5.7.4_DE.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📖 Benutzeranleitung
           </a>
 <a class="btn-secondary" href="/glossary.html" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2); grid-column: 1 / -1;">
@@ -1707,10 +1707,10 @@ footer a:hover { color: var(--green); }
           </a>
 </div>
 <div id="doc-grid-en" style="display:none; grid-template-columns:1fr 1fr; gap:8px;">
-<a class="btn-secondary" href="docs/StockMonitor_Features_v5.7.3_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="/docs/StockMonitor_Features_v5.7.4_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📋 Feature List
           </a>
-<a class="btn-secondary" href="docs/StockMonitor_Manual_v5.7.3_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
+<a class="btn-secondary" href="/docs/StockMonitor_Manual_v5.7.4_EN.pdf" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2);" target="_blank">
             📖 User Manual
           </a>
 <a class="btn-secondary" href="/glossaryEN.html" style="justify-content:center; font-size:0.88rem; padding:10px 14px; border-radius:10px; display:flex; gap:6px; background:var(--card2); grid-column: 1 / -1;">
@@ -1740,7 +1740,7 @@ footer a:hover { color: var(--green); }
 <!-- ÜBER DEN ENTWICKLER -->
 <section id="about" class="highlight fade-in" style="background:var(--bg); scroll-margin-top:70px;">
 <div style="max-width:700px; margin:0 auto; padding:80px 24px; text-align:center;">
-<img alt="Timm" onerror="this.style.display='none'" src="screenshots/timm.jpg" style="width:130px; height:130px; border-radius:50%; object-fit:cover; object-position:center; border:3px solid var(--border2); margin-bottom:28px; display:block; margin-left:auto; margin-right:auto;"/>
+<img alt="Timm" onerror="this.style.display='none'" src="/screenshots/timm.jpg" style="width:130px; height:130px; border-radius:50%; object-fit:cover; object-position:center; border:3px solid var(--border2); margin-bottom:28px; display:block; margin-left:auto; margin-right:auto;"/>
 <div id="about-de">
 <div style="font-size:0.88rem; font-weight:700; color:var(--green); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px;">Über den Entwickler</div>
 <h3 style="font-family:'DM Serif Display',serif; font-size:2rem; color:var(--text); margin-bottom:18px;">Timm — Entwickler &amp; Privatanleger</h3>

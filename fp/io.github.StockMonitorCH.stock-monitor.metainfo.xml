@@ -60,6 +60,12 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.7.4" date="2026-10-30">
+      <description>
+        <p>Bug fixes: Screener no longer shows German text in English mode. Race condition (RuntimeError: wrapped C++ object deleted) fixed in Screener and Monte Carlo Scenarios when closing quickly. 5D candlestick chart now uses a gapless integer index axis (no overnight/weekend gaps). Monte Carlo Scenarios: Y-axes synced in dual-chart mode, side-by-side comparison table, ±10% limit replaced by a visual warning showing the real deviation. Advanced Analysis – Stress Correlation: threshold lowered to ≥5 crisis periods, asterisk footnote added for sparse data.</p>
+        <p xml:lang="de">Bugfixes: Screener zeigt im Englisch-Modus keinen deutschen Text mehr. Race Condition (RuntimeError: C++-Objekt bereits gelöscht) im Screener und Monte-Carlo-Szenarien beim schnellen Schließen behoben. 5D-Candlestick-Chart nutzt jetzt eine ganzzahlige Index-Achse ohne Lücken. MC-Szenarien: Y-Achsen synchronisiert, Vergleichstabelle nebeneinander, ±10%-Sperre als Warnhinweis statt Hartklemme. Komplex-Analyse Stress-Korrelation: Schwellwert auf ≥5 Krisenperioden gesenkt, Fussnote bei knapper Datenbasis.</p>
+      </description>
+    </release>
     <release version="5.7.3" date="2026-10-17">
       <description>
         <p>Fix: AI-Balance news fetching now uses the Yahoo Finance v1 API directly (ticker.news returned HTTP 500 with yfinance ≥ 1.7.0, resulting in 0/N news shown).</p>

@@ -1080,6 +1080,8 @@ class ScenarioEditorDialog(QDialog):
                f"{self._cur_sym}{_fmt(total_disp, 0)}  /  "
                f"{self._cur_sym}{_fmt(ref_disp, 0)} "
                f"({sign}{diff_pct:.1f}%)")
+        if self._locked and abs(diff_pct) > 10:
+            txt += f"  {TR('scen_warn_over_limit')}"
 
         if not self._locked:
             bg = '#1a3a1a' if self._dm else '#e8f5e9'
@@ -1115,18 +1117,6 @@ class ScenarioEditorDialog(QDialog):
 
     def _on_value_changed(self, sym: str, disp_val: float) -> None:
         new_usd = disp_val / self._fx if self._fx > 0 else disp_val
-        if self._locked and self._real_total > 0:
-            new_total = (sum(self._positions.values()) - self._positions.get(sym, 0)
-                         + new_usd)
-            diff_pct = abs(new_total - self._real_total) / self._real_total * 100
-            if diff_pct > 10:
-                max_usd = self._real_total * 1.10 - (
-                    sum(self._positions.values()) - self._positions.get(sym, 0))
-                min_usd = max(0.01,
-                              self._real_total * 0.90 - (
-                                  sum(self._positions.values())
-                                  - self._positions.get(sym, 0)))
-                new_usd = max(min_usd, min(max_usd, new_usd))
         self._positions[sym] = new_usd
         self._is_dirty = True
         self._refresh_total_bar()
@@ -1462,7 +1452,7 @@ class ScenarioEditorDialog(QDialog):
         real_vals = self._real_values if compare else None
         w = ScenarioMCWorker(
             self._positions, years, n_sims,
-            inc_crypto, inc_commod, real_vals, parent=self)
+            inc_crypto, inc_commod, real_vals)
         self._worker_ref[0] = w
         w.finished.connect(lambda _t=w: (_t.wait(), _t.deleteLater()))
         w.done.connect(self._on_mc_done, Qt.ConnectionType.QueuedConnection)
@@ -1472,9 +1462,13 @@ class ScenarioEditorDialog(QDialog):
         import matplotlib.ticker as mticker
         import matplotlib.dates as mdates
 
-        self._anim_timer.stop()
-        self._mc_stack.setCurrentIndex(0)
-        self._run_btn.setEnabled(True)
+        self._worker_ref[0] = None  # Referenz löschen bevor deleteLater() den C++-Teil entfernt
+        try:
+            self._anim_timer.stop()
+            self._mc_stack.setCurrentIndex(0)
+            self._run_btn.setEnabled(True)
+        except RuntimeError:
+            return
 
         if 'error' in result:
             try: self._mc_status.setText(f"❌  {result['error']}")
@@ -1550,6 +1544,11 @@ class ScenarioEditorDialog(QDialog):
             ax1.set_facecolor('#ffffff'); ax2.set_facecolor('#ffffff')
             _draw_mc(ax1, real, f"{TR('scen_mc_title_real')} – {TR('mc_title_chart', n=n_sims, h=years)}")
             _draw_mc(ax2, scen, scen_title)
+            # Gemeinsame Y-Achse: beide Charts auf denselben Bereich setzen
+            _y_min = min(ax1.get_ylim()[0], ax2.get_ylim()[0])
+            _y_max = max(ax1.get_ylim()[1], ax2.get_ylim()[1])
+            ax1.set_ylim(_y_min, _y_max)
+            ax2.set_ylim(_y_min, _y_max)
             self._fig.tight_layout(pad=1.8, h_pad=2.5)
         else:
             ax = self._fig.add_subplot(111)
@@ -1559,54 +1558,101 @@ class ScenarioEditorDialog(QDialog):
 
         self._canvas.draw()
 
-        # Ergebnistabelle (Szenario)
+        # Ergebnistabelle
         p10_, p25_, p50_, p75_, p90_, v0_ = (
             scen['p10'][-1]*fx, scen['p25'][-1]*fx, scen['p50'][-1]*fx,
             scen['p75'][-1]*fx, scen['p90'][-1]*fx, scen['portfolio_value']*fx)
 
-        ROWS = [
-            (TR('mc_row_today'),  v0_,  v0_),
-            (TR('mc_row_p10'),    p10_, v0_),
-            (TR('mc_row_p25'),    p25_, v0_),
-            (TR('mc_row_median'), p50_, v0_),
-            (TR('mc_row_p75'),    p75_, v0_),
-            (TR('mc_row_p90'),    p90_, v0_),
-        ]
-        if real is not None:
-            rv0 = real['portfolio_value']*fx
-            ROWS += [
-                (f"── {TR('scen_mc_title_real')} ──", rv0, rv0),
-                (TR('mc_row_p10'),    real['p10'][-1]*fx,  rv0),
-                (TR('mc_row_median'), real['p50'][-1]*fx,  rv0),
-                (TR('mc_row_p90'),    real['p90'][-1]*fx,  rv0),
-            ]
+        RC_BASE = ['#f8f9fa','#fdecea','#fef5ec','#eaf6fb','#eafaf1','#d5f5e3']
 
-        RC = (['#f8f9fa','#fdecea','#fef5ec','#eaf6fb','#eafaf1','#d5f5e3']
-              + ['#e8e8e8','#fdecea','#eaf6fb','#d5f5e3'])
-        self._result_table.setRowCount(len(ROWS))
-        for i, (lbl, val, base) in enumerate(ROWS):
-            pct     = (val - base)/base*100 if base > 0 and i not in (0, 6) else 0
-            pct_str = f"{_fmt(pct, 1)}%" if i not in (0, 6) else '—'
-            pct_col = '#27ae60' if pct >= 0 else '#e74c3c'
-            bg = QColor(RC[i] if i < len(RC) else '#f8f9fa')
-            for ci, text in enumerate((lbl, f"{sym}{_fmt(val, 0)}", pct_str)):
-                item = QTableWidgetItem(text)
-                item.setBackground(bg)
-                if ci == 2 and i not in (0, 6): item.setForeground(QColor(pct_col))
-                if ci > 0: item.setTextAlignment(
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                self._result_table.setItem(i, ci, item)
+        if real is not None:
+            # Vergleichsmodus: 4 Spalten – Kennzahl | Szenario | Echtes Portfolio | Differenz
+            rv0   = real['portfolio_value']*fx
+            rp10_ = real['p10'][-1]*fx
+            rp25_ = real['p25'][-1]*fx
+            rp50_ = real['p50'][-1]*fx
+            rp75_ = real['p75'][-1]*fx
+            rp90_ = real['p90'][-1]*fx
+
+            CMP_ROWS = [
+                (TR('mc_row_today'),  v0_,  rv0),
+                (TR('mc_row_p10'),    p10_, rp10_),
+                (TR('mc_row_p25'),    p25_, rp25_),
+                (TR('mc_row_median'), p50_, rp50_),
+                (TR('mc_row_p75'),    p75_, rp75_),
+                (TR('mc_row_p90'),    p90_, rp90_),
+            ]
+            self._result_table.setColumnCount(4)
+            self._result_table.setHorizontalHeaderLabels([
+                TR('mc_table_header'), TR('mc_table_value'),
+                TR('mc_table_real'),   TR('mc_table_diff')])
+            self._result_table.setRowCount(len(CMP_ROWS))
+            for i, (lbl, sv, rv) in enumerate(CMP_ROWS):
+                diff     = sv - rv
+                diff_pct = diff / rv * 100 if rv != 0 else 0
+                sign     = '+' if diff >= 0 else ''
+                diff_str = f"{sign}{sym}{_fmt(diff, 0)} ({sign}{diff_pct:.1f}%)"
+                diff_col = '#27ae60' if diff >= 0 else '#e74c3c'
+                bg = QColor(RC_BASE[i] if i < len(RC_BASE) else '#f8f9fa')
+                for ci, text in enumerate((lbl, f"{sym}{_fmt(sv, 0)}", f"{sym}{_fmt(rv, 0)}", diff_str)):
+                    itm = QTableWidgetItem(text)
+                    itm.setBackground(bg)
+                    if ci == 3 and i > 0:
+                        itm.setForeground(QColor(diff_col))
+                    if ci > 0:
+                        itm.setTextAlignment(
+                            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                    self._result_table.setItem(i, ci, itm)
+        else:
+            # Normalmodus: 3 Spalten – Szenario | Portfoliowert | Veränderung
+            ROWS = [
+                (TR('mc_row_today'),  v0_,  v0_),
+                (TR('mc_row_p10'),    p10_, v0_),
+                (TR('mc_row_p25'),    p25_, v0_),
+                (TR('mc_row_median'), p50_, v0_),
+                (TR('mc_row_p75'),    p75_, v0_),
+                (TR('mc_row_p90'),    p90_, v0_),
+            ]
+            self._result_table.setColumnCount(3)
+            self._result_table.setHorizontalHeaderLabels([
+                TR('mc_table_header'), TR('mc_table_value'), TR('mc_table_change')])
+            self._result_table.setRowCount(len(ROWS))
+            for i, (lbl, val, base) in enumerate(ROWS):
+                pct     = (val - base)/base*100 if base > 0 and i > 0 else 0
+                pct_str = f"{_fmt(pct, 1)}%" if i > 0 else '—'
+                pct_col = '#27ae60' if pct >= 0 else '#e74c3c'
+                bg = QColor(RC_BASE[i] if i < len(RC_BASE) else '#f8f9fa')
+                for ci, text in enumerate((lbl, f"{sym}{_fmt(val, 0)}", pct_str)):
+                    itm = QTableWidgetItem(text)
+                    itm.setBackground(bg)
+                    if ci == 2 and i > 0: itm.setForeground(QColor(pct_col))
+                    if ci > 0: itm.setTextAlignment(
+                        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                    self._result_table.setItem(i, ci, itm)
+
         self._result_table.resizeRowsToContents()
         self._result_table.setVisible(True)
 
         # Export-Daten
-        export_rows = [(TR('mc_row_today'), f"{sym}{_fmt(v0_, 0)}", '—')]
-        for lbl, val, base in ROWS[1:]:
-            pct = (val-base)/base*100 if base > 0 and base != val else 0
-            export_rows.append((lbl, f"{sym}{_fmt(val, 0)}", f"{_fmt(pct,1)}%"))
+        if real is not None:
+            export_rows = []
+            for lbl, sv, rv in CMP_ROWS:
+                diff = sv - rv
+                diff_pct = diff / rv * 100 if rv != 0 else 0
+                sign = '+' if diff >= 0 else ''
+                export_rows.append((lbl, f"{sym}{_fmt(sv, 0)}", f"{sym}{_fmt(rv, 0)}",
+                                    f"{sign}{sym}{_fmt(diff, 0)} ({sign}{diff_pct:.1f}%)"))
+            export_hdrs = [TR('mc_table_header'), TR('mc_table_value'),
+                           TR('mc_table_real'),   TR('mc_table_diff')]
+        else:
+            export_rows = [(TR('mc_row_today'), f"{sym}{_fmt(v0_, 0)}", '—')]
+            for lbl, val, base in ROWS[1:]:
+                pct = (val-base)/base*100 if base > 0 and base != val else 0
+                export_rows.append((lbl, f"{sym}{_fmt(val, 0)}", f"{_fmt(pct,1)}%"))
+            export_hdrs = [TR('mc_table_header'), TR('mc_table_value'), TR('mc_table_change')]
         self._mc_export_data[0] = {
             'title':   scen_title,
-            'headers': [TR('mc_table_header'), TR('mc_table_value'), TR('mc_table_change')],
+            'headers': export_hdrs,
             'rows':    export_rows,
             'fig':     self._fig,
         }
@@ -1619,3 +1665,15 @@ class ScenarioEditorDialog(QDialog):
                 p90=f"{sym}{_fmt(p90_, 0)}"))
         except RuntimeError:
             pass
+
+    def closeEvent(self, event) -> None:
+        worker = self._worker_ref[0]
+        self._worker_ref[0] = None
+        if worker is not None:
+            try:
+                if worker.isRunning():
+                    worker.done.disconnect()
+                    worker.wait(3000)
+            except RuntimeError:
+                pass
+        super().closeEvent(event)

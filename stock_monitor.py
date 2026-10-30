@@ -51,7 +51,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.7.3"                            # beim Release anpassen
+APP_VERSION  = "5.7.4"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -4881,7 +4881,7 @@ class StockChartWidget(QFrame):
     TIMEFRAMES = {
         TR('period_1d'): ('1d', '5m'),
         TR('period_5d'): ('5d', '15m'),
-        TR('period_1mo'): ('1mo', '1h'),
+        TR('period_1mo'): ('1mo', '1d'),
         TR('period_3mo'): ('3mo', '1d'),
         TR('period_6mo'): ('6mo', '1d'),
         'YTD': ('ytd', '1d'),
@@ -6418,6 +6418,10 @@ class StockChartWidget(QFrame):
             pen_color = (0, 200, 0) if abs_change >= 0 else (200, 0, 0)
 
             use_candles = self.zoom_mode and getattr(self, 'candle_checkbox', None) and self.candle_checkbox.isChecked()
+            # Gapless-Modus: 5D-Intraday bekommt Integer-Indizes als X-Achse
+            # (verhindert die grossen Lücken zwischen Handelssessions)
+            use_gapless = use_candles and getattr(self, '_current_period', '') == '5d'
+            x_plot = np.arange(len(times_clean), dtype=float) if use_gapless else times_clean
 
             if use_candles and all(c in self.data.columns for c in ['Open', 'High', 'Low', 'Close']):
                 opens  = self.data['Open'].values[valid_mask]
@@ -6425,8 +6429,10 @@ class StockChartWidget(QFrame):
                 lows   = self.data['Low'].values[valid_mask]
                 closes = prices_clean
 
-                # Kerzenbreite: ~60% des mittleren Zeitabstands
-                if len(times_clean) > 1:
+                # Kerzenbreite: ~60% des mittleren Abstands
+                if use_gapless:
+                    candle_w = 0.6
+                elif len(times_clean) > 1:
                     candle_w = np.median(np.diff(times_clean)) * 0.6
                 else:
                     candle_w = 3600.0
@@ -6434,11 +6440,12 @@ class StockChartWidget(QFrame):
                 valid = ~np.isnan(opens) & ~np.isnan(highs) & ~np.isnan(lows) & ~np.isnan(closes)
                 t_v = times_clean[valid]; o_v = opens[valid]; h_v = highs[valid]
                 l_v = lows[valid]; c_v = closes[valid]
+                x_v = x_plot[valid]  # Integer-Indizes (gapless) oder Timestamps
 
                 # Alle Dochte in einem einzigen Plot (NaN als Trenner)
-                wick_x = np.empty(len(t_v) * 3); wick_x[2::3] = np.nan
-                wick_y = np.empty(len(t_v) * 3); wick_y[2::3] = np.nan
-                wick_x[0::3] = t_v; wick_x[1::3] = t_v
+                wick_x = np.empty(len(x_v) * 3); wick_x[2::3] = np.nan
+                wick_y = np.empty(len(x_v) * 3); wick_y[2::3] = np.nan
+                wick_x[0::3] = x_v; wick_x[1::3] = x_v
                 wick_y[0::3] = l_v; wick_y[1::3] = h_v
                 self.plot_widget.plot(wick_x, wick_y, pen=pg.mkPen(color=(150, 150, 150), width=1), connect='finite')
 
@@ -6447,16 +6454,18 @@ class StockChartWidget(QFrame):
                 down = ~up
                 body_lo = np.minimum(o_v, c_v)
                 body_hi = np.maximum(o_v, c_v)
-                heights = np.where(body_hi - body_lo < 1e-10, candle_w * 0.05, body_hi - body_lo)
+                # Preisbasiertes Minimum – candle_w ist in Sekunden, nicht in Preis-Einheiten
+                _min_body_h = np.median(h_v - l_v) * 0.05 if len(h_v) > 0 else 0.001
+                heights = np.where(body_hi - body_lo < 1e-10, _min_body_h, body_hi - body_lo)
 
                 if up.any():
                     self.plot_widget.addItem(pg.BarGraphItem(
-                        x=t_v[up], height=heights[up], width=candle_w,
+                        x=x_v[up], height=heights[up], width=candle_w,
                         y0=body_lo[up], brush=pg.mkBrush(0, 180, 0),
                         pen=pg.mkPen(color=(0, 150, 0), width=1)))
                 if down.any():
                     self.plot_widget.addItem(pg.BarGraphItem(
-                        x=t_v[down], height=heights[down], width=candle_w,
+                        x=x_v[down], height=heights[down], width=candle_w,
                         y0=body_lo[down], brush=pg.mkBrush(200, 0, 0),
                         pen=pg.mkPen(color=(160, 0, 0), width=1)))
             else:
@@ -6464,23 +6473,23 @@ class StockChartWidget(QFrame):
 
             if self.ma20_checkbox.isChecked() and len(prices_clean) >= 20:
                 ma20 = self.calculate_ma(prices_clean, 20)
-                self.plot_widget.plot(times_clean, ma20, pen=pg.mkPen(color=(255, 140, 0), width=1.5, style=Qt.PenStyle.DashLine), name='MA20')
+                self.plot_widget.plot(x_plot, ma20, pen=pg.mkPen(color=(255, 140, 0), width=1.5, style=Qt.PenStyle.DashLine), name='MA20')
 
             if self.ma50_checkbox.isChecked() and len(prices_clean) >= 50:
                 ma50 = self.calculate_ma(prices_clean, 50)
-                self.plot_widget.plot(times_clean, ma50, pen=pg.mkPen(color=(0, 150, 255), width=1.5, style=Qt.PenStyle.DashLine), name='MA50')
+                self.plot_widget.plot(x_plot, ma50, pen=pg.mkPen(color=(0, 150, 255), width=1.5, style=Qt.PenStyle.DashLine), name='MA50')
 
             if self.ma200_checkbox.isChecked() and len(prices_clean) >= 200:
                 ma200 = self.calculate_ma(prices_clean, 200)
-                self.plot_widget.plot(times_clean, ma200, pen=pg.mkPen(color=(200, 0, 200), width=2), name='MA200')
+                self.plot_widget.plot(x_plot, ma200, pen=pg.mkPen(color=(200, 0, 200), width=2), name='MA200')
 
             if self.trend_checkbox.isChecked() and len(prices_clean) >= 2:
-                trend_line = self.calculate_trend_line(times_clean, prices_clean)
-                self.plot_widget.plot(times_clean, trend_line, pen=pg.mkPen(color=(0, 0, 0), width=2, style=Qt.PenStyle.DashDotLine), name='Trend')
+                trend_line = self.calculate_trend_line(x_plot, prices_clean)
+                self.plot_widget.plot(x_plot, trend_line, pen=pg.mkPen(color=(0, 0, 0), width=2, style=Qt.PenStyle.DashDotLine), name='Trend')
 
             if self.target_checkbox.isChecked() and target_price and target_price > 0:
                 target_line = np.full(len(times_clean), target_price)
-                self.plot_widget.plot(times_clean, target_line,
+                self.plot_widget.plot(x_plot, target_line,
                                      pen=pg.mkPen(color=(255, 165, 0), width=2, style=Qt.PenStyle.DotLine),
                                      name=f'Ziel: {currency_symbol}{target_price:.2f}')
 
@@ -6498,7 +6507,7 @@ class StockChartWidget(QFrame):
                 _buy_color = (0, 160, 80) if _pnl_pct >= 0 else (180, 40, 40)
                 _sign = "+" if _pnl_pct >= 0 else ""
                 self.plot_widget.plot(
-                    times_clean, avg_line,
+                    x_plot, avg_line,
                     pen=pg.mkPen(color=_buy_color, width=2, style=Qt.PenStyle.DashLine),
                     name=f"{TR('lbl_avg_buy_short')}: {currency_symbol}{_avg_disp:.2f} ({_sign}{_pnl_pct:.1f}%)"
                 )
@@ -6514,7 +6523,7 @@ class StockChartWidget(QFrame):
                 _stop_disp = float(_own_stop) * _lim_fx
                 stop_line = np.full(len(times_clean), _stop_disp)
                 self.plot_widget.plot(
-                    times_clean, stop_line,
+                    x_plot, stop_line,
                     pen=pg.mkPen(color=(200, 40, 40), width=2, style=Qt.PenStyle.DotLine),
                     name=f'Stop: {currency_symbol}{_stop_disp:.2f}'
                 )
@@ -6524,7 +6533,7 @@ class StockChartWidget(QFrame):
                 _tgt_disp = float(_own_target) * _lim_fx
                 tgt_line = np.full(len(times_clean), _tgt_disp)
                 self.plot_widget.plot(
-                    times_clean, tgt_line,
+                    x_plot, tgt_line,
                     pen=pg.mkPen(color=(40, 160, 80), width=2, style=Qt.PenStyle.DotLine),
                     name=f'Ziel: {currency_symbol}{_tgt_disp:.2f}'
                 )
@@ -6538,12 +6547,12 @@ class StockChartWidget(QFrame):
                     _w52h = float(np.nanmax(prices_clean[-252:]))
                     _w52l = float(np.nanmin(prices_clean[-252:]))
                 self.plot_widget.plot(
-                    times_clean, np.full(len(times_clean), _w52h),
+                    x_plot, np.full(len(times_clean), _w52h),
                     pen=pg.mkPen(color=(0, 180, 80), width=1, style=Qt.PenStyle.DashLine),
                     name=f"{TR('col_w52h')}: {currency_symbol}{_w52h:.2f}"
                 )
                 self.plot_widget.plot(
-                    times_clean, np.full(len(times_clean), _w52l),
+                    x_plot, np.full(len(times_clean), _w52l),
                     pen=pg.mkPen(color=(200, 50, 50), width=1, style=Qt.PenStyle.DashLine),
                     name=f"{TR('col_w52l')}: {currency_symbol}{_w52l:.2f}"
                 )
@@ -6553,46 +6562,57 @@ class StockChartWidget(QFrame):
                 bb_mid, bb_upper, bb_lower = self.calculate_bollinger(prices_clean)
                 if bb_mid is not None:
                     # Mittellinie (MA20) – blau gestrichelt
-                    self.plot_widget.plot(times_clean, bb_mid,
+                    self.plot_widget.plot(x_plot, bb_mid,
                         pen=pg.mkPen(color=(30, 100, 220), width=1.5, style=Qt.PenStyle.DashLine),
                         name='BB-Mid(20)')
                     # Oberes Band – cyan
-                    self.plot_widget.plot(times_clean, bb_upper,
+                    self.plot_widget.plot(x_plot, bb_upper,
                         pen=pg.mkPen(color=(0, 180, 200), width=1.5),
                         name=f'BB+2σ: {currency_symbol}{bb_upper[-1]:.2f}')
                     # Unteres Band – orange
-                    self.plot_widget.plot(times_clean, bb_lower,
+                    self.plot_widget.plot(x_plot, bb_lower,
                         pen=pg.mkPen(color=(220, 130, 0), width=1.5),
                         name=f'BB-2σ: {currency_symbol}{bb_lower[-1]:.2f}')
                     # Füllung zwischen den Bändern (leicht blau-transparent)
-                    bb_upper_item = pg.PlotDataItem(times_clean, bb_upper)
-                    bb_lower_item = pg.PlotDataItem(times_clean, bb_lower)
+                    bb_upper_item = pg.PlotDataItem(x_plot, bb_upper)
+                    bb_lower_item = pg.PlotDataItem(x_plot, bb_lower)
                     bb_fill = pg.FillBetweenItem(bb_upper_item, bb_lower_item,
                         brush=pg.mkBrush(30, 140, 255, 25))
                     self.plot_widget.addItem(bb_fill)
 
             axis = self.plot_widget.getAxis('bottom')
-            # Tick-Anzahl aus tatsächlicher Widget-Breite berechnen.
-            # MM.YYYY-Label braucht ~58px, YYYY-Label ~48px (grosszügiger
-            # bemessen als die reine Textbreite, damit bei langen Zeiträumen
-            # nicht zu viele Jahreszahlen dicht an dicht stehen - lieber
-            # z.B. jedes 5. statt jedes 3. Jahr beschriften).
-            _days = (times_clean[-1] - times_clean[0]) / 86400 if len(times_clean) > 1 else 365
-            if _days > 365 * 3:
-                _lbl_px = 48   # YYYY (z.B. 5J/Max)
-            elif _days > 60:
-                _lbl_px = 58   # MM.YYYY (z.B. 2J)
+            if use_gapless:
+                # Gapless: ein Tick pro Handelstag an der ersten Kerze des Tages
+                from datetime import datetime as _dtg
+                _df_fmt = _app_config.get_date_format()
+                _gl_ticks = []
+                _prev_day = None
+                for _gi, _gts in enumerate(times_clean):
+                    _gd = _dtg.fromtimestamp(_gts).date()
+                    if _gd != _prev_day:
+                        _gdt = _dtg.fromtimestamp(_gts)
+                        if _df_fmt == 'EU':   _glbl = _gdt.strftime('%d.%m')
+                        elif _df_fmt == 'ISO': _glbl = _gdt.strftime('%m-%d')
+                        else:                  _glbl = _gdt.strftime('%m/%d')
+                        _gl_ticks.append((float(_gi), _glbl))
+                        _prev_day = _gd
+                axis.setTicks([_gl_ticks])
             else:
-                _lbl_px = 40   # DD.MM / HH:MM
-            _widget_px = self.plot_widget.width()
-            if _widget_px < 100:  # Fallback wenn Widget noch nicht gerendert
-                _widget_px = 380 if self.compact_mode else 900
-            # zoom_mode: immer alle Ticks erlauben (Chart hat volle Breite)
-            if self.zoom_mode:
-                _max_ticks = 20
-            else:
-                _max_ticks = max(2, int(_widget_px / _lbl_px))
-            axis.setTicks([self.generate_time_ticks(times_clean, max_ticks=_max_ticks)])
+                _days = (times_clean[-1] - times_clean[0]) / 86400 if len(times_clean) > 1 else 365
+                if _days > 365 * 3:
+                    _lbl_px = 48
+                elif _days > 60:
+                    _lbl_px = 58
+                else:
+                    _lbl_px = 40
+                _widget_px = self.plot_widget.width()
+                if _widget_px < 100:
+                    _widget_px = 380 if self.compact_mode else 900
+                if self.zoom_mode:
+                    _max_ticks = 20
+                else:
+                    _max_ticks = max(2, int(_widget_px / _lbl_px))
+                axis.setTicks([self.generate_time_ticks(times_clean, max_ticks=_max_ticks)])
             axis.enableAutoSIPrefix(False)
             axis.setStyle(autoExpandTextSpace=False)
 
@@ -6634,8 +6654,9 @@ class StockChartWidget(QFrame):
                         setattr(self, attr, None)
             else:
                 # Zoom-Modus: Crosshair aktivieren
-                self._ch_times  = times
-                self._ch_prices = prices_clean
+                self._ch_times   = x_plot
+                self._ch_ts_arr  = times_clean if use_gapless else None  # für Zeitanzeige im Tooltip
+                self._ch_prices  = prices_clean
                 self._ch_currency_symbol = currency_symbol
 
                 # Alte Crosshair-Elemente entfernen
@@ -6705,8 +6726,11 @@ class StockChartWidget(QFrame):
 
                         from datetime import datetime as _dt
                         try:
-                            dt_obj = _dt.fromtimestamp(snap_x)
-                            time_span_days = (self._ch_times[-1] - self._ch_times[0]) / 86400
+                            _ts_arr = getattr(_self_ref, '_ch_ts_arr', None)
+                            _ts_for_disp = _ts_arr[idx] if _ts_arr is not None else snap_x
+                            dt_obj = _dt.fromtimestamp(_ts_for_disp)
+                            _ts_ref = _ts_arr if _ts_arr is not None else self._ch_times
+                            time_span_days = (_ts_ref[-1] - _ts_ref[0]) / 86400
                             if time_span_days <= 2:
                                 dt_str = _app_config.fmt_date(dt_obj, include_time=True)
                             else:
@@ -6758,7 +6782,7 @@ class StockChartWidget(QFrame):
                     self.rsi_plot_widget.setXLink(self.plot_widget)
                     # Gültige Werte (NaN am Anfang überspringen)
                     valid = ~np.isnan(rsi_vals)
-                    t_rsi = times_clean[valid]
+                    t_rsi = x_plot[valid]  # Integer-Indizes (gapless) oder Timestamps
                     r_rsi = rsi_vals[valid]
                     if len(t_rsi) > 1:
                         # RSI-Linie
@@ -6801,7 +6825,10 @@ class StockChartWidget(QFrame):
                             self.rsi_plot_widget.addItem(txt)
                         # Zeitachse synchron formatieren
                         rsi_axis = self.rsi_plot_widget.getAxis('bottom')
-                        rsi_axis.setTicks([self.generate_time_ticks(t_rsi, max_ticks=_max_ticks)])
+                        if use_gapless:
+                            rsi_axis.setTicks([_gl_ticks])
+                        else:
+                            rsi_axis.setTicks([self.generate_time_ticks(t_rsi, max_ticks=_max_ticks)])
                         rsi_axis.enableAutoSIPrefix(False)
                         self.rsi_plot_widget.setYRange(0, 100)
                         # Aktuellen RSI-Wert im Label zeigen
@@ -6834,20 +6861,23 @@ class StockChartWidget(QFrame):
                     self.dd_plot_widget.setYRange(min(dd_min * 1.1, -1.0), 0.5)
                     # Fülle zwischen 0 und Drawdown (rot-transparent)
                     dd_base = np.zeros(len(times_clean))
-                    dd_curve1 = pg.PlotDataItem(times_clean, dd_vals)
-                    dd_curve2 = pg.PlotDataItem(times_clean, dd_base)
+                    dd_curve1 = pg.PlotDataItem(x_plot, dd_vals)
+                    dd_curve2 = pg.PlotDataItem(x_plot, dd_base)
                     dd_fill = pg.FillBetweenItem(dd_curve1, dd_curve2,
                         brush=pg.mkBrush(200, 50, 50, 80))
                     self.dd_plot_widget.addItem(dd_fill)
                     # Drawdown-Linie
-                    self.dd_plot_widget.plot(times_clean, dd_vals,
+                    self.dd_plot_widget.plot(x_plot, dd_vals,
                         pen=pg.mkPen(color=(180, 30, 30), width=1.5), name='Drawdown')
                     # Nulllinie (grau)
-                    self.dd_plot_widget.plot(times_clean, dd_base,
+                    self.dd_plot_widget.plot(x_plot, dd_base,
                         pen=pg.mkPen(color=(160, 160, 160), width=1))
                     # X-Achse synchron formatieren
                     dd_axis = self.dd_plot_widget.getAxis('bottom')
-                    dd_axis.setTicks([self.generate_time_ticks(times_clean)])
+                    if use_gapless:
+                        dd_axis.setTicks([_gl_ticks])
+                    else:
+                        dd_axis.setTicks([self.generate_time_ticks(times_clean)])
                     dd_axis.enableAutoSIPrefix(False)
                     # Titel mit max. Drawdown
                     max_dd = dd_min
@@ -27876,6 +27906,7 @@ class StockMonitorApp(QMainWindow):
 
         # Signal: wenn Zurück-Button geklickt wird
         back_btn.clicked.connect(_sync_zoom_state_back)
+        self._sync_zoom_state_back_fn = _sync_zoom_state_back  # für save_config beim App-Schließen
 
         # Bewertungs-Button
         rating_btn = QPushButton(TR("btn_stock_rating"))
@@ -27909,6 +27940,7 @@ class StockMonitorApp(QMainWindow):
             self.fullscreen_widget.deleteLater()
             self.fullscreen_widget = None
             self.fullscreen_chart  = None
+            self._sync_zoom_state_back_fn = None
             self.grid_widget.show()
         
     def setup_timer(self):
@@ -28282,13 +28314,22 @@ class StockMonitorApp(QMainWindow):
         """Speichere automatisch als letzte Session beim Schließen"""
         if not self.charts:
             return
-        
+
         try:
             config_dir = os.path.join(_DATA_HOME, ".stock_monitor_configs")
             os.makedirs(config_dir, exist_ok=True)
-            
+
             last_config = os.path.join(config_dir, "_last_session.pkl")
-            
+
+            # Zoom-State zurück ins Grid-Chart schreiben bevor gespeichert wird
+            # (sonst gehen Candle/RSI/BB/DD-Einstellungen beim Schließen aus dem Zoom verloren)
+            _sync_fn = getattr(self, '_sync_zoom_state_back_fn', None)
+            if _sync_fn is not None:
+                try:
+                    _sync_fn()
+                except Exception:
+                    pass
+
             self.save_chart_states()
 
             # Globale Einstellungen in config.json speichern (sprachunabhängig, persistent)

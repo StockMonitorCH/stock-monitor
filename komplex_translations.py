@@ -130,6 +130,7 @@ KOMPLEX_STRINGS: dict[str, dict[str, str]] = {
         "st_normal_beta":       "Norm. β",
         "st_crisis_beta":       "Krisen-β",
         "st_delta_beta":        "Δ β",
+        "st_few_data":          "* Weniger als 10 Krisenperioden – Werte statistisch unsicher",
 
         # Margin-Call Sektion (Tab 5)
         "lbl_mc_grp":           "Lombard-Kredit / Margin-Call-Distanz",
@@ -281,6 +282,7 @@ KOMPLEX_STRINGS: dict[str, dict[str, str]] = {
         "st_normal_beta":       "Normal β",
         "st_crisis_beta":       "Crisis β",
         "st_delta_beta":        "Δ β",
+        "st_few_data":          "* Fewer than 10 crisis periods – values statistically uncertain",
 
         # Margin-Call Section (Tab 5)
         "lbl_mc_grp":           "Lombard Loan / Margin-Call Distance",

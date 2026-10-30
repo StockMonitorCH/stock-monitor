@@ -450,10 +450,10 @@ def _stress_analysis(pf_ret: pd.Series, rets: dict[str, pd.Series]) -> dict:
         normal_m = ~crisis_m
 
         def _sc(mask):
-            return float(comb.loc[mask, "pf"].corr(comb.loc[mask, "bm"])) if mask.sum() > 10 else None
+            return float(comb.loc[mask, "pf"].corr(comb.loc[mask, "bm"])) if mask.sum() >= 5 else None
         def _sb(mask):
             return float(_ols(comb.loc[mask, "bm"].values,
-                              comb.loc[mask, "pf"].values)[0]) if mask.sum() > 10 else None
+                              comb.loc[mask, "pf"].values)[0]) if mask.sum() >= 5 else None
         n_c, c_c = _sc(normal_m), _sc(crisis_m)
         n_b, c_b = _sb(normal_m), _sb(crisis_m)
         result["benchmarks"][bm] = {
@@ -951,6 +951,10 @@ def show_komplex_dialog(parent,
     for c in range(1, 7):
         stress_table.horizontalHeader().setSectionResizeMode(c, QHeaderView.ResizeMode.Stretch)
     t5l.addWidget(stress_table, stretch=1)
+    stress_few_lbl = QLabel(TRK("st_few_data"))
+    stress_few_lbl.setStyleSheet(f"color:{_muted}; font-size:10px; font-style:italic;")
+    stress_few_lbl.setVisible(False)
+    t5l.addWidget(stress_few_lbl)
     mc_grp = QGroupBox(TRK("lbl_mc_grp")); mc_grp.setCheckable(True); mc_grp.setChecked(False)
     mc_form = QFormLayout(mc_grp); mc_form.setSpacing(6); mc_form.setContentsMargins(10, 8, 10, 8)
     loan_spin = QDoubleSpinBox(); loan_spin.setRange(0, 1e9); loan_spin.setValue(0)
@@ -1232,22 +1236,31 @@ def show_komplex_dialog(parent,
         thr  = abs(sd.get("threshold", _CRISIS_THRESHOLD)) * 100
         stress_info_lbl.setText(TRK("stress_info", n_crisis=n_cr, n_total=n_tot, thr=thr))
         bms = sd.get("benchmarks", {}); stress_table.setRowCount(len(bms))
+        has_sparse = False
         for row, (bm, d) in enumerate(bms.items()):
+            sparse = d.get("n_crisis", 0) < 10  # < 10 Krisenperioden → statist. unsicher
+            if sparse: has_sparse = True
             bm_i = QTableWidgetItem(TRK(BENCHMARKS[bm]))
             bm_i.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             stress_table.setItem(row, 0, bm_i)
-            for col, (val, fmt, is_d) in enumerate([
-                (d["normal_corr"], "{:.2f}", False), (d["crisis_corr"], "{:.2f}", False),
-                (d["corr_delta"],  "{:+.2f}", True),
-                (d["normal_beta"], "{:.2f}", False), (d["crisis_beta"], "{:.2f}", False),
-                (d["beta_delta"],  "{:+.2f}", True),
+            for col, (val, fmt, is_d, is_crisis) in enumerate([
+                (d["normal_corr"], "{:.2f}",  False, False),
+                (d["crisis_corr"], "{:.2f}",  False, True),
+                (d["corr_delta"],  "{:+.2f}", True,  True),
+                (d["normal_beta"], "{:.2f}",  False, False),
+                (d["crisis_beta"], "{:.2f}",  False, True),
+                (d["beta_delta"],  "{:+.2f}", True,  True),
             ], start=1):
-                text = fmt.format(val) if val is not None else "—"
+                if val is not None:
+                    text = fmt.format(val) + ("*" if sparse and is_crisis else "")
+                else:
+                    text = "—"
                 item = QTableWidgetItem(text); item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 if is_d and val is not None:
                     br = _delta_brush(val)
                     if br: item.setBackground(br)
                 stress_table.setItem(row, col, item)
+        stress_few_lbl.setVisible(has_sparse)
 
     def _update_mc() -> None:
         if not mc_grp.isChecked(): return

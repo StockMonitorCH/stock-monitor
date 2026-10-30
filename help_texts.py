@@ -306,7 +306,7 @@ _HTML_DE = """
         </ul>
         <div class="tip"><b>Tipp:</b> Candlestick-Charts eignen sich besonders gut für kurzfristige technische Analyse (z.B. Zeitraum 1T &ndash; 1M).</div>
 
-        <a name="aktien-bewertung"></a><h2>&#11088; Aktien-Bewertung (Zoom-Modus)</h2>
+        <a name="aktien-bewertung"><h2>&#11088; Aktien-Bewertung (Zoom-Modus)</h2></a>
         <p>Im <b>Vollbild-Chart</b> erscheint der Button <b>&#11088; Bewertung</b> neben dem Zurück-Button. Ein Klick öffnet das Bewertungsfenster für die aktuelle Aktie.</p>
         <h3>Kategorien (je 1–5 Sterne, halbe Sterne möglich)</h3>
         <table>
@@ -574,7 +574,7 @@ _HTML_DE = """
         <div class="new">&#127381; Feature: Was passiert mit meinem Portfolio im nächsten Crash?</div>
 
         <h3>Was ist ein Stresstest?</h3>
-        <p>Ein Stresstest zeigt, wie stark dein Portfolio in einer historischen Börsenkrise verloren hätte – und wie lange die Erholung gedauert hätte. Er gibt keine Prognose für die Zukunft, aber ein realistisches Gefühl für das eigene Risiko. Ideal für alle, die wissen wollen: <b>«Kann ich einen solchen Crash emotionally und finanziell verkraften?»</b></p>
+        <p>Ein Stresstest zeigt, wie stark dein Portfolio in einer historischen Börsenkrise verloren hätte – und wie lange die Erholung gedauert hätte. Er gibt keine Prognose für die Zukunft, aber ein realistisches Gefühl für das eigene Risiko. Ideal für alle, die wissen wollen: <b>«Kann ich einen solchen Crash emotional und finanziell verkraften?»</b></p>
 
         <h3>Wie starte ich den Stresstest?</h3>
         <ul>
@@ -1382,7 +1382,7 @@ _HTML_EN = """
         and this help. It is saved permanently in <code>~/.stock_monitor_config.json</code>.</div>
 
         <a name="charts_erstellen"><h2>&#128200; Creating Charts</h2></a>
-        <p>Click <b>&#128200; Upd.</b> in the header &rarr; enter a symbol &rarr; press Enter.</p>
+        <p>Click <b>&#128200; Refresh</b> in the header &rarr; enter a symbol &rarr; press Enter.</p>
         <ul>
             <li>Exchange suffixes are detected <b>automatically</b> (e.g. "NESN" &rarr; NESN.SW)</li>
             <li>Multiple layouts: 4 &bull; 6 &bull; 8 &bull; 12 &bull; 16 simultaneous charts &ndash; <i>16 charts (4&times;4) requires a 4K display</i></li>
@@ -1470,7 +1470,7 @@ _HTML_EN = """
         </ul>
         <div class="tip"><b>Tip:</b> Candlestick charts are best suited for short-term technical analysis (e.g. period 1D – 1M).</div>
 
-        <a name="aktien-bewertung"></a><h2>&#11088; Stock Rating (Zoom Mode)</h2>
+        <a name="aktien-bewertung"><h2>&#11088; Stock Rating (Zoom Mode)</h2></a>
         <p>In <b>fullscreen chart mode</b>, the button <b>&#11088; Rating</b> appears next to the back button. Clicking it opens the rating window for the current stock.</p>
         <h3>Categories (1–5 stars each, half-star increments)</h3>
         <table>
@@ -2529,6 +2529,7 @@ _TOC_DE = [
     "Sharpe-Ratio (Portfolio)",
     "Sortino-Ratio (Portfolio)",
     "AI-Balance",
+    "Zielgerichtetes Rebalancing",
     "Portfolio-Vergleich",
     "Dividenden",
     "Dividenden Details",
@@ -2618,6 +2619,7 @@ _TOC_EN = [
     "Sharpe Ratio (Portfolio)",
     "Sortino Ratio (Portfolio)",
     "AI Balance",
+    "Targeted Rebalancing",
     "Portfolio Comparison",
     "Dividends",
     "Dividend Details",
@@ -2708,16 +2710,13 @@ _ANCHOR_DE = {
     "performance-vergleich":      "performance_vergleich",
     "portfolio performance":      "portfolio_performance",
     "monte carlo simulation":     "monte-carlo",
-    "monte carlo – vertiefung":   "monte-carlo-vertiefung",
-    "monte carlo – szenarien":    "mc-szenarien",
-    "excess cape yield (ecy)":    "ecy",
-    "ecy":                        "ecy",
     "alpha-analyse":              "alpha-analyse",
     "beta-analyse":               "beta-analyse",
     "sharpe-ratio (portfolio)":   "sharpe-ratio",
     "sortino-ratio":              "sortino-ratio",
     "sortino-ratio (portfolio)":  "sortino-ratio",
     "ai-balance":                 "ai-balance",
+    "zielgerichtetes rebalancing": "zielgerichtetes-rebalancing",
     "zielgerichtetes-rebalancing": "zielgerichtetes-rebalancing",
     "targeted-rebalancing":        "zielgerichtetes-rebalancing",
     "portfolio-vergleich":        "portfolio-vergleich",
@@ -2809,14 +2808,13 @@ _ANCHOR_EN = {
     "performance comparison":     "performance_vergleich",
     "portfolio performance":      "portfolio_performance",
     "monte carlo simulation":     "monte-carlo",
-    "monte carlo – deep dive":    "monte-carlo-vertiefung",
-    "monte carlo – scenarios":    "mc-szenarien",
     "alpha analysis":             "alpha-analyse",
     "beta analysis":              "beta-analyse",
     "sharpe ratio (portfolio)":   "sharpe-ratio",
     "sortino ratio":              "sortino-ratio",
     "sortino ratio (portfolio)":  "sortino-ratio",
     "ai balance":                 "ai-balance",
+    "targeted rebalancing":       "zielgerichtetes-rebalancing",
     "portfolio comparison":       "portfolio-vergleich",
     "dividends":                  "dividenden",
     "dividend details":           "dividenden-details",

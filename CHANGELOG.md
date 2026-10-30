@@ -5,6 +5,50 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [5.7.4] – unreleased
+
+### Fixed
+- Candlestick chart: doji candles (Open = Close) no longer create tall spike bars — minimum body height is now price-based (`5 % of median bar range`) instead of time-based (`candle_w × 0.05` in seconds), which caused bodies up to 9 CHF/USD tall on 5-minute charts
+
+---
+
+## [5.7.3] – 2026-10-17
+
+### Fixed
+- AI Balance: replaced `ticker.news` (broken in yfinance ≥ 1.7.0 with HTTP 500) with direct Yahoo Finance v1 API — same fix already applied to chart news
+- AI Balance + Chart News: fallback to company-name search when symbol search returns no results (affects non-US tickers like ABBN.SW, SIE.DE, SREN.SW)
+
+---
+
+## [5.7.2] – 2026-10-14
+
+### Fixed
+- Stock Rating: QThread cleanup via `finished` signal, `RuntimeError` caught safely when closing quickly
+- Screener: `finished` signal renamed to `done` (resolved Qt internal signal name conflict), thread cleanup improved
+- Zoom chart: `UrlFinderThread` safe cleanup on close (macOS crash fix)
+
+---
+
+## [5.7.1] – 2026-10-11
+
+### Fixed
+- macOS ≥ 14 / Flatpak: `RLIMIT_NOFILE` raised to 10240 at startup to prevent file-descriptor crashes
+- Performance dialog: parent window and window flags set correctly (macOS rendering fix)
+- Screen geometry: `self.screen()` fallback for multi-monitor setups
+- Thread pool: maximum 6 workers enforced consistently everywhere (avoids Yahoo rate limiting)
+- Screener help (DE/EN): all 18 indices now documented
+
+---
+
+## [5.7.0] – 2026-10-02
+
+### Added
+- **Monte Carlo Scenarios** (accessible from portfolio overview): scenario editor with full Monte Carlo simulation, comparison against the real portfolio, export as PDF/XLSX/ODS
+- **Quick Search** in Stock Screener: pre-computed daily data for instant filtering without a new download
+- Help: new sections for Monte Carlo Scenarios and Quick Search; keyword index updated
+
+---
+
 ## [5.6.0] – 2026-08-31
 
 ### Added
