@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [5.7.4] – 2026-10-30
 
+### Changed
+- Monte Carlo Scenarios: Y-axes in dual-chart mode synchronised (same scale top/bottom)
+
 ### Fixed
 - Candlestick chart: doji candles (Open = Close) no longer create tall spike bars — minimum body height is now price-based (`5 % of median bar range`) instead of time-based (`candle_w × 0.05` in seconds), which caused bodies up to 9 CHF/USD tall on 5-minute charts
 
