@@ -51,7 +51,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.7.4"                            # beim Release anpassen
+APP_VERSION  = "5.8.0"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -5310,6 +5310,11 @@ class StockChartWidget(QFrame):
         
         # Chart
         self.plot_widget = pg.PlotWidget()
+        _orig_dbl = self.plot_widget.mouseDoubleClickEvent
+        def _dbl_click(ev, _orig=_orig_dbl, _chart=self):
+            _chart.maximize_requested.emit(_chart)
+            _orig(ev)
+        self.plot_widget.mouseDoubleClickEvent = _dbl_click
         self.plot_widget.setBackground('w')
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
         self.plot_widget.setLabel('left', TR('col_price'), units='$')
@@ -27907,6 +27912,12 @@ class StockMonitorApp(QMainWindow):
         # Signal: wenn Zurück-Button geklickt wird
         back_btn.clicked.connect(_sync_zoom_state_back)
         self._sync_zoom_state_back_fn = _sync_zoom_state_back  # für save_config beim App-Schließen
+
+        # Doppelklick auf Zoom-Chart → zurück zur Übersicht
+        def _dblclick_exit(_cw):
+            _sync_zoom_state_back()
+            self.exit_fullscreen()
+        fullscreen_chart.maximize_requested.connect(_dblclick_exit)
 
         # Bewertungs-Button
         rating_btn = QPushButton(TR("btn_stock_rating"))

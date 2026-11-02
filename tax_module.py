@@ -18,7 +18,7 @@ Haftungsausschluss:
   Dieses Portfolio kann bis ca. 3 % Abweichung aufweisen (Banklogik).
   Gebühren, Lombardkredite u. ä. werden nicht berücksichtigt.
 
-Version: 2025-01  (jährlich aktualisierbar; UK-Steuerjahr: 6. April – 5. April)
+Version: 2026-01  (jährlich aktualisierbar; UK-Steuerjahr: 6. April – 5. April)
 """
 
 import os
@@ -33,7 +33,7 @@ TAX_RULES = {
     "AT": {
         "name":        "Österreich",
         "flag":        "🇦🇹",
-        "year":        2025,
+        "year":        2026,
         # KESt 27,5 % flat auf Dividenden und realisierte Kursgewinne
         "kest_rate":        0.275,
         # Für Einkommen unter Grenzsteuersatz 27,5 %: Regelbesteuerungsoption möglich
@@ -52,7 +52,7 @@ TAX_RULES = {
     "CH": {
         "name":        "Schweiz",
         "flag":        "🇨🇭",
-        "year":        2025,
+        "year":        2026,
         # Verrechnungssteuer (35 %) auf Schweizer Dividenden → rückforderbar
         "vst_rate":    0.35,
         # Einkommenssteuer auf ausländische Dividenden (Schätzung Bund + Kanton)
@@ -71,7 +71,7 @@ TAX_RULES = {
     "DE": {
         "name":        "Deutschland",
         "flag":        "🇩🇪",
-        "year":        2025,
+        "year":        2026,
         # Abgeltungssteuer 25 % + 5,5 % Soli = 26,375 %
         "withholding_rate": 0.25,
         "soli_rate":   0.055,   # 5,5 % auf Abgeltungssteuer
@@ -81,35 +81,36 @@ TAX_RULES = {
         "cgt_note":    "Abgeltungssteuer 25 % + Soli 5,5 % auf Abgeltungsteuer",
         "disclaimer":  (
             "DE: Abgeltungssteuer 25 % zzgl. 5,5 % Solidaritätszuschlag. "
-            "Freistellungsauftrag 1.000 € p.P. (2025). Kirchensteuer ggf. zusätzlich. "
+            "Freistellungsauftrag 1.000 € p.P. (2026). Kirchensteuer ggf. zusätzlich. "
             "Verlustverrechnung über Steuerbescheinigung der Depotbank."
         ),
     },
     "UK": {
         "name":        "Grossbritannien",
         "flag":        "🇬🇧",
-        "year":        2024,   # UK Steuerjahr: April–April
-        # Dividend Allowance £500 (ab April 2024)
+        "year":        2026,   # UK Steuerjahr: April–April
+        # Dividend Allowance £500 (ab April 2026)
         "dividend_allowance": 500,
-        # Dividendensteuer (Basic Rate)
-        "div_basic_rate":  0.0875,
-        "div_higher_rate": 0.3375,
+        # Dividendensteuer (ab 6. April 2026: +2 Prozentpunkte gegenüber 2025/26)
+        "div_basic_rate":  0.1075,
+        "div_higher_rate": 0.3575,
         "div_additional_rate": 0.3935,
-        # Capital Gains Tax: Allowance £3.000 (ab April 2024)
+        # Capital Gains Tax: Allowance £3.000 (ab April 2024, unverändert)
         "cgt_allowance": 3000,
-        "cgt_basic_rate":  0.10,
-        "cgt_higher_rate": 0.20,
+        "cgt_basic_rate":  0.18,
+        "cgt_higher_rate": 0.24,
         "cgt_note":        "Basic/Higher Rate abhängig vom Gesamteinkommen",
         "disclaimer":  (
-            "UK: Dividend Allowance £500 p.a. (ab April 2024). "
-            "CGT Annual Exempt Amount £3.000 (ab April 2024). "
+            "UK: Dividend Allowance £500 p.a. (ab April 2026). "
+            "Dividendensteuer: 10,75 % / 35,75 % / 39,35 % (Basic/Higher/Additional). "
+            "CGT 18 % / 24 % (Basic/Higher), Freibetrag £3.000. "
             "Steuersatz abhängig vom Gesamteinkommen. Gilt für UK-Steuerresidenten."
         ),
     },
     "US": {
         "name":        "USA",
         "flag":        "🇺🇸",
-        "year":        2025,
+        "year":        2026,
         # Quellensteuer auf Dividenden für Nicht-US-Personen (Standard)
         "nra_withholding": 0.30,
         # Mit DBA (z. B. CH-US): reduziert auf 15 %
@@ -2243,7 +2244,7 @@ def _export_tax_form(parent_widget, tax_data, country_code):
     # ── UK ───────────────────────────────────────────────────────────────────
     elif country_code == "UK":
         title_lbl.setText(TRT("tax_form_uk_heading"))
-        info_lbl.setText(TRT("tax_form_uk_info"))
+        info_lbl.setText(TRT("tax_form_uk_info", year=year, year_plus1=(year + 1) if isinstance(year, int) else year))
         region_lbl.setText(TRT("tax_form_uk_region_label"))
         UK_NATIONS = [
             ("ENG", "England"),

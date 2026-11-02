@@ -305,7 +305,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_uk_heading":          "Capital Gains & Dividends – United Kingdom",
         "tax_form_uk_info": (
             "Exports a Capital Gains Tax / Dividend Tax summary (SA108 / SA100 guidance) "
-            "as an orientation aid. Dividend Allowance £500, CGT Annual Exempt £3,000 (2024/25). "
+            "as an orientation aid. Dividend Allowance £500, CGT Annual Exempt £3,000 ({year}/{year_plus1})."
             "Prices at 5 April (UK tax year end), FX via Yahoo Finance."
         ),
         "tax_form_uk_region_label":     "UK Nation (für Steuerhinweis):",
@@ -613,7 +613,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_form_uk_heading":          "Capital Gains & Dividends – United Kingdom",
         "tax_form_uk_info": (
             "Exports a Capital Gains Tax / Dividend Tax summary (SA108 / SA100 guidance) "
-            "as an orientation aid. Dividend Allowance £500, CGT Annual Exempt £3,000 (2024/25). "
+            "as an orientation aid. Dividend Allowance £500, CGT Annual Exempt £3,000 ({year}/{year_plus1})."
             "Prices at 5 April (UK tax year end), FX via Yahoo Finance."
         ),
         "tax_form_uk_region_label":     "UK Nation (for tax note):",
