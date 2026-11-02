@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [5.8.0] – 2026-11-02
+
+### Added
+- **Double-click to zoom:** In the portfolio overview, a double-click on any chart opens it in zoom mode; a second double-click closes it again (feature request from a user in Australia)
+
+### Changed
+- **Tax data updated to 2026** for all five supported countries:
+  - 🇬🇧 UK: Dividend Tax raised by 2 pp to **10.75 % / 35.75 % / 39.35 %** (Basic / Higher / Additional), effective 6 April 2026
+  - 🇬🇧 UK: CGT rates unchanged at **18 % (Basic) / 24 % (Higher)**, Annual Exempt Amount £3,000
+  - 🇨🇭 CH: Verrechnungssteuer 35 % — unchanged
+  - 🇩🇪 DE: Abgeltungsteuer 25 % + Soli 5.5 % — unchanged; Freistellungsauftrag €1,000
+  - 🇦🇹 AT: KESt 27.5 % — unchanged
+  - 🇺🇸 USA: Long-Term Capital Gains 0 / 15 / 20 % — unchanged
+- Tax module version string updated to `2026-01`
+- UK tax year label in info text now dynamic (`{year}/{year_plus1}`) — no longer hardcoded
+
+---
+
 ## [5.7.4] – 2026-10-30
 
 ### Changed
