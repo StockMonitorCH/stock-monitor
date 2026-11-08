@@ -296,7 +296,7 @@ _HTML_DE = """
         </table>
         <div class="tip">&#128270; <b>Vertiefung:</b> &rarr; <a href="#sortino-vertiefung">Sortino-Ratio – Analyse-Vertiefung</a></div>
 
-        <h3>&#127869; Candlestick-Darstellung (Zoom-Modus)</h3>
+        <a name="candlestick"></a><h3>&#127869; Candlestick-Darstellung (Zoom-Modus)</h3>
         <p>Im <b>gezoomten Chart</b> erscheint die Checkbox <b>&#127869; Candles</b>.</p>
         <ul>
             <li><b>Grüne Kerze:</b> Schlusskurs &gt; Eröffnungskurs (positiver Tag)</li>
@@ -305,6 +305,18 @@ _HTML_DE = """
             <li>Nur im Zoom-Modus verfügbar</li>
         </ul>
         <div class="tip"><b>Tipp:</b> Candlestick-Charts eignen sich besonders gut für kurzfristige technische Analyse (z.B. Zeitraum 1T &ndash; 1M).</div>
+
+        <a name="log-skala"></a><h3>&#128200; Logarithmische Darstellung (Zoom-Modus)</h3>
+        <div class="new">Neu in v5.9.0</div>
+        <p>Im <b>gezoomten Chart</b> schaltet die Checkbox <b>Log</b> die Preisachse auf eine logarithmische Skala um.</p>
+        <ul>
+            <li><b>Gleiche Prozente = gleiche Höhe:</b> Ein Anstieg von 10 auf 20 ist genauso hoch wie einer von 100 auf 200 (beides +100&nbsp;%).</li>
+            <li>Stetiges Wachstum erscheint als <b>gerade Linie</b> – Beschleunigung oder Abflachung ist sofort sichtbar.</li>
+            <li>Funktioniert mit Linie und Candlesticks; Moving Averages, Bollinger-Bänder, Stop-Loss-/Zielkurs-Linien und das Crosshair werden mitskaliert.</li>
+            <li>Die Achse bleibt in Kurswerten beschriftet (z.&nbsp;B. 10, 20, 50, 100 …).</li>
+            <li>Die Einstellung wird pro Chart gespeichert.</li>
+        </ul>
+        <div class="tip"><b>Tipp:</b> Ideal für lange Zeiträume (5J, Max). Bei kurzen Zeiträumen sehen linear und logarithmisch fast gleich aus.</div>
 
         <a name="aktien-bewertung"><h2>&#11088; Aktien-Bewertung (Zoom-Modus)</h2></a>
         <p>Im <b>Vollbild-Chart</b> erscheint der Button <b>&#11088; Bewertung</b> neben dem Zurück-Button. Ein Klick öffnet das Bewertungsfenster für die aktuelle Aktie.</p>
@@ -905,6 +917,38 @@ _HTML_DE = """
         diese nicht zuverlässig als solche ausweist. Eine Aktie kann daher tatsächlich einen höheren Titel
         verdienen als hier angezeigt.</div>
 
+        <a name="dividendenkonto"><h2>&#128176; Dividendenkonto</h2></a>
+        <div class="new">Neu in v5.9.0</div>
+        <p>Ein <b>Mehrwährungskonto</b> wie bei einer Bank (z.&nbsp;B. Swissquote): Gutgeschriebene Dividenden landen
+        auf dem Konto ihrer Währung – USD-Dividenden auf dem USD-Konto, CHF-Dividenden auf dem CHF-Konto usw.
+        Öffnen über: <b>Dividenden &rarr; &#128176; Dividendenkonto</b>.</p>
+        <h3>Erster Start</h3>
+        <p>Beim ersten Öffnen wird nach dem <b>Steuerwohnsitz</b> (CH, DE, AT, UK, USA, anderes Land) und dem
+        Formular <b>W-8BEN</b> gefragt. Davon hängt die Quellensteuer ab (z.&nbsp;B. US-Dividenden 15&nbsp;% mit,
+        30&nbsp;% ohne W-8BEN). Ändern jederzeit über <b>&#9881; Steuerwohnsitz</b>.</p>
+        <h3>Kontoübersicht</h3>
+        <ul>
+            <li>Eine Zeile pro Währung: Dividenden (brutto), Quellensteuer, Ein-/Auszahlungen, Saldo und Saldo in der Portfolio-Währung.</li>
+            <li>Unten der <b>Gesamtsaldo</b> aller Konten in der Portfolio-Währung (zum aktuellen Wechselkurs).</li>
+            <li>Der Knopf <b>Netto / Brutto</b> zeigt die Beträge nach bzw. vor Quellensteuer.</li>
+        </ul>
+        <h3>Buchungen</h3>
+        <p><b>Doppelklick</b> auf ein Konto (oder <b>&#128203; Buchungen</b>) zeigt alle Buchungen mit laufendem Saldo, die neueste oben.</p>
+        <ul>
+            <li><b>&#10133; Ein-/Auszahlung:</b> manuelle Buchung mit Datum, Währung, Betrag und Notiz – z.&nbsp;B. eine Rückerstattung der Verrechnungssteuer.</li>
+            <li><b>&#9999; Bearbeiten:</b> Dividende korrigieren, falls die Bank einen anderen Betrag gutgeschrieben hat (markiert mit &#9999;, wird beim Aktualisieren nicht überschrieben).</li>
+            <li><b>&#128465; Löschen:</b> Eine gelöschte automatische Dividende wird nicht erneut gebucht.</li>
+        </ul>
+        <h3>Wie werden Dividenden gebucht?</h3>
+        <ul>
+            <li>Automatisch aus dem Portfolio: Dividende je Aktie &times; <b>Bestand am Ex-Tag</b>. Nur Käufe <i>vor</i> dem Ex-Tag zählen.</li>
+            <li>Buchungsdatum ist der <b>Ex-Tag</b> (Yahoo liefert keinen Zahltag).</li>
+            <li>Wird eine Stückzahl oder ein Kaufdatum im Portfolio korrigiert, passen sich die Buchungen beim nächsten Aktualisieren an.</li>
+            <li>Wird eine Aktie ganz aus dem Portfolio entfernt, bleiben ihre bisherigen Dividenden erhalten.</li>
+        </ul>
+        <div class="tip"><b>Speicherung:</b> Das Konto gehört zum Portfolio und wird mit ihm gespeichert – in der .smpf-Datei verschlüsselt.</div>
+        <div class="warning"><b>Hinweis:</b> Die Quellensteuer wird nach dem Sitzland der Firma geschätzt. Bei ETFs/ADRs kann sie abweichen – in diesem Fall die Buchung bearbeiten.</div>
+
         <a name="pf-bewertung"><h2>&#128203; Portfolio-Bewertung</h2></a>
         <div class="new">Feature: Regelbasierte Portfolio-Analyse – kein API-Key erforderlich</div>
         <p>Die Portfolio-Bewertung analysiert das Portfolio vollautomatisch anhand von Kennzahlen – ohne externe API.
@@ -1280,6 +1324,22 @@ _HTML_DE = """
             <tr><td>&#127468;&#127463; Grossbritannien (UK)</td><td>GBP</td><td>Income Tax / CGT</td></tr>
             <tr><td>&#127482;&#127480; USA (US)</td><td>USD</td><td>Federal + State Tax</td></tr>
         </table>
+        <h3>Währung</h3>
+        <p>Alle Beträge werden in die Währung des Auszugs umgerechnet (CH: CHF, DE/AT: EUR, UK: GBP, US: USD):
+        Dividenden zum Kurs am <b>Ex-Tag</b>, Kurse und Marktwerte zum <b>aktuellen</b> Kurs. Dividenden Londoner
+        Aktien (Pence) werden korrekt in Pfund umgerechnet.</p>
+        <h3>Sitzland &amp; Quellensteuer</h3>
+        <p>Die Quellensteuer hängt vom <b>Sitzland</b> des Wertpapiers ab. Stock Monitor ermittelt es aus den
+        Firmendaten (Apple bleibt US, auch an der Börse Frankfurt), bei ETFs aus dem Fondsnamen
+        (<b>UCITS</b> = irischer/luxemburgischer Fonds ohne Quellensteuer, <b>(CH)</b> = Schweizer Fonds mit
+        Verrechnungssteuer). Angerechnet wird der Satz nach Doppelbesteuerungsabkommen (meist 15&nbsp;%;
+        UK, Hongkong, Singapur, Australien und UCITS-Fonds 0&nbsp;%).</p>
+        <h3>&#127462;&#127481; Österreich: Thesaurierende Fonds (AGE)</h3>
+        <p>Thesaurierende Fonds schütten nicht aus – in Österreich sind die <b>ausschüttungsgleichen Erträge (AGE)</b>
+        trotzdem jährlich KESt-pflichtig. Über <b>&#128221; AGE erfassen</b> im AT-Auszug werden die Werte aus der
+        Steuermeldung der OeKB (<b>my.oekb.at</b>, Suche nach ISIN) eingetragen: AGE je Anteil, anrechenbare
+        ausländische Quellensteuer je Anteil, Fondswährung und Zuflussdatum. Massgebend ist der Bestand am Zuflusstag.
+        Angezeigt werden nur Fonds/ETFs – <b>für Aktien ist nichts einzutragen</b>.</p>
         <div class="warning">&#9888; Das Steuermodul ist eine <b>Orientierungshilfe</b> – keine rechtsgültige Steuererklärung.
         Für die offizielle Abgabe immer den originalen Bankauszug und das Online-Portal des jeweiligen Landes verwenden.</div>
 
@@ -1460,7 +1520,7 @@ _HTML_EN = """
         </table>
         <div class="tip">&#128270; <b>Deep dive:</b> &rarr; <a href="#sortino-vertiefung">Sortino Ratio – Analysis Deep Dive</a></div>
 
-        <h3>&#127869; Candlestick View (Zoom Mode)</h3>
+        <a name="candlestick"></a><h3>&#127869; Candlestick View (Zoom Mode)</h3>
         <p>In zoom mode, checkbox <b>&#127869; Candles</b> switches from line to candlestick view.</p>
         <ul>
             <li><b>Green candle:</b> Close &gt; Open (positive day)</li>
@@ -1469,6 +1529,18 @@ _HTML_EN = """
             <li>Available in zoom mode only</li>
         </ul>
         <div class="tip"><b>Tip:</b> Candlestick charts are best suited for short-term technical analysis (e.g. period 1D – 1M).</div>
+
+        <a name="log-skala"></a><h3>&#128200; Logarithmic Scale (Zoom Mode)</h3>
+        <div class="new">New in v5.9.0</div>
+        <p>In the <b>zoomed chart</b>, the <b>Log</b> checkbox switches the price axis to a logarithmic scale.</p>
+        <ul>
+            <li><b>Equal percentages = equal height:</b> a rise from 10 to 20 looks as tall as one from 100 to 200 (both +100%).</li>
+            <li>Steady growth appears as a <b>straight line</b> – acceleration or flattening is visible at a glance.</li>
+            <li>Works with line and candlestick view; moving averages, Bollinger Bands, stop-loss/target lines and the crosshair are scaled too.</li>
+            <li>The axis keeps price labels (e.g. 10, 20, 50, 100 …).</li>
+            <li>The setting is saved per chart.</li>
+        </ul>
+        <div class="tip"><b>Tip:</b> Ideal for long periods (5Y, Max). For short periods linear and logarithmic look almost the same.</div>
 
         <a name="aktien-bewertung"><h2>&#11088; Stock Rating (Zoom Mode)</h2></a>
         <p>In <b>fullscreen chart mode</b>, the button <b>&#11088; Rating</b> appears next to the back button. Clicking it opens the rating window for the current stock.</p>
@@ -2063,6 +2135,38 @@ _HTML_EN = """
         conservatively – <b>special dividends</b> are <b>not</b> taken into account, as Yahoo Finance does not
         reliably identify them as such. A stock may therefore deserve a higher title than shown here.</div>
 
+        <a name="dividendenkonto"><h2>&#128176; Dividend Account</h2></a>
+        <div class="new">New in v5.9.0</div>
+        <p>A <b>multi-currency account</b> like at a bank (e.g. Swissquote): credited dividends go to the account of
+        their currency – USD dividends to the USD account, CHF dividends to the CHF account, etc.
+        Open via: <b>Dividends &rarr; &#128176; Dividend account</b>.</p>
+        <h3>First start</h3>
+        <p>On first opening you are asked for your <b>tax residence</b> (CH, DE, AT, UK, USA, other) and whether
+        form <b>W-8BEN</b> was filed. Withholding tax depends on this (e.g. US dividends 15% with, 30% without
+        W-8BEN). Change any time via <b>&#9881; Tax residence</b>.</p>
+        <h3>Account overview</h3>
+        <ul>
+            <li>One row per currency: dividends (gross), withholding tax, deposits/withdrawals, balance and balance in the portfolio currency.</li>
+            <li>At the bottom the <b>total balance</b> of all accounts in the portfolio currency (current exchange rates).</li>
+            <li>The <b>Net / Gross</b> button shows amounts after or before withholding tax.</li>
+        </ul>
+        <h3>Transactions</h3>
+        <p><b>Double-click</b> an account (or <b>&#128203; Transactions</b>) to see all transactions with running balance, newest first.</p>
+        <ul>
+            <li><b>&#10133; Deposit/Withdrawal:</b> manual entry with date, currency, amount and note – e.g. a withholding tax refund.</li>
+            <li><b>&#9999; Edit:</b> correct a dividend if your bank credited a different amount (marked &#9999;, not overwritten on refresh).</li>
+            <li><b>&#128465; Delete:</b> a deleted automatic dividend is not booked again.</li>
+        </ul>
+        <h3>How are dividends booked?</h3>
+        <ul>
+            <li>Automatically from the portfolio: dividend per share &times; <b>holding on the ex-date</b>. Only purchases <i>before</i> the ex-date count.</li>
+            <li>The booking date is the <b>ex-date</b> (Yahoo provides no payment date).</li>
+            <li>If a quantity or purchase date is corrected in the portfolio, the bookings are updated on the next refresh.</li>
+            <li>If a stock is removed from the portfolio entirely, its past dividends are kept.</li>
+        </ul>
+        <div class="tip"><b>Storage:</b> The account belongs to the portfolio and is saved with it – encrypted in the .smpf file.</div>
+        <div class="warning"><b>Note:</b> Withholding tax is estimated from the company's country of domicile. It may differ for ETFs/ADRs – edit the transaction in that case.</div>
+
         <a name="pf-bewertung"><h2>&#128203; Portfolio Assessment</h2></a>
         <div class="new">Feature: Rule-based portfolio analysis – no API key required</div>
         <p>Portfolio Assessment analyses your portfolio automatically using metrics – no external API needed.
@@ -2435,6 +2539,22 @@ _HTML_EN = """
             <tr><td>&#127468;&#127463; United Kingdom (UK)</td><td>GBP</td><td>Income Tax / CGT</td></tr>
             <tr><td>&#127482;&#127480; USA (US)</td><td>USD</td><td>Federal + State Tax</td></tr>
         </table>
+        <h3>Currency</h3>
+        <p>All amounts are converted to the statement currency (CH: CHF, DE/AT: EUR, UK: GBP, US: USD):
+        dividends at the <b>ex-date</b> rate, prices and market values at the <b>current</b> rate. Dividends of
+        London-listed shares (pence) are correctly converted to pounds.</p>
+        <h3>Domicile &amp; withholding tax</h3>
+        <p>Withholding tax depends on the security's <b>country of domicile</b>. Stock Monitor determines it from the
+        company data (Apple stays US, even on the Frankfurt exchange), for ETFs from the fund name
+        (<b>UCITS</b> = Irish/Luxembourg fund without withholding tax, <b>(CH)</b> = Swiss fund with Swiss
+        withholding tax). The creditable treaty rate is applied (usually 15%; UK, Hong Kong, Singapore,
+        Australia and UCITS funds 0%).</p>
+        <h3>&#127462;&#127481; Austria: accumulating funds (AGE)</h3>
+        <p>Accumulating funds do not pay out – but in Austria their <b>deemed distributed income (AGE)</b> is still
+        subject to KESt every year. Use <b>&#128221; Enter AGE</b> in the AT statement to enter the figures from the
+        OeKB tax report (<b>my.oekb.at</b>, search by ISIN): AGE per unit, creditable foreign withholding tax per unit,
+        fund currency and inflow date. The holding on the inflow date counts.
+        Only funds/ETFs are listed – <b>nothing to enter for shares</b>.</p>
         <div class="warning">&#9888; The tax module is a <b>guidance tool</b> – not a legally binding tax return.
         Always use your official bank statement and your country's online portal for the official submission.</div>
 
@@ -2477,6 +2597,7 @@ _TOC_DE = [
     "Bollinger-Bänder",
     "Trendlinie",
     "Candlestick",
+    "Log-Skala",
     "Drawdown",
     "52W Hoch/Tief",
     "Kaufpreis-Linie",
@@ -2533,6 +2654,7 @@ _TOC_DE = [
     "Portfolio-Vergleich",
     "Dividenden",
     "Dividenden Details",
+    "Dividendenkonto",
     "Portfolio-Bewertung",
     "Rohstoffe",
     "Branchen-Verteilung",
@@ -2567,6 +2689,7 @@ _TOC_EN = [
     "Bollinger Bands",
     "Trend Line",
     "Candlestick",
+    "Log Scale",
     "Drawdown",
     "52W High/Low",
     "Purchase Price Line",
@@ -2623,6 +2746,7 @@ _TOC_EN = [
     "Portfolio Comparison",
     "Dividends",
     "Dividend Details",
+    "Dividend Account",
     "Portfolio Assessment",
     "Commodities",
     "Sector Distribution",
@@ -2658,7 +2782,9 @@ _ANCHOR_DE = {
     "rsi-indikator":              "rsi-indikator",
     "bollinger-bänder":           "bollinger-bänder",
     "trendlinie":                 "trendlinie",
-    "candlestick":                "stop-loss__zielkurs",
+    "candlestick":                "candlestick",
+    "log-skala":                  "log-skala",
+    "log scale":                  "log-skala",
     "drawdown":                   "drawdown",
     "52w hoch/tief":              "52w_hochtief",
     "kaufpreis-linie":            "kaufpreis-linie",
@@ -2722,6 +2848,8 @@ _ANCHOR_DE = {
     "portfolio-vergleich":        "portfolio-vergleich",
     "dividenden":                 "dividenden",
     "dividenden details":         "dividenden-details",
+    "dividendenkonto":            "dividendenkonto",
+    "nachrichten":                "nachrichten",
     "portfolio-bewertung":        "pf-bewertung",
     "rohstoffe":                  "rohstoffe",
     "branchen-verteilung":        "portfolio_branchen",
@@ -2757,7 +2885,9 @@ _ANCHOR_EN = {
     "rsi indicator":              "rsi-indikator",
     "bollinger bands":            "bollinger-bänder",
     "trend line":                 "trendlinie",
-    "candlestick":                "stop-loss__zielkurs",
+    "candlestick":                "candlestick",
+    "log-skala":                  "log-skala",
+    "log scale":                  "log-skala",
     "drawdown":                   "drawdown",
     "52w high/low":               "52w_hochtief",
     "purchase price line":        "kaufpreis-linie",
@@ -2818,6 +2948,8 @@ _ANCHOR_EN = {
     "portfolio comparison":       "portfolio-vergleich",
     "dividends":                  "dividenden",
     "dividend details":           "dividenden-details",
+    "dividend account":           "dividendenkonto",
+    "news":                       "nachrichten",
     "portfolio assessment":       "pf-bewertung",
     "commodities":                "rohstoffe",
     "sector distribution":        "portfolio_branchen",

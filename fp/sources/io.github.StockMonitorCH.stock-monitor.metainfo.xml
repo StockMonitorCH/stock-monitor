@@ -60,6 +60,36 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.9.0" date="2026-11-08">
+      <description>
+        <p>New: logarithmic price axis in the zoom view; multi-currency dividend account (credited on the ex-date with the holdings at that time, withholding tax by country, gross/net, PDF/XLSX/ODS export); Austrian tax report: accumulated income (AGE) of accumulating funds; sales history with sale date (partial sale dialog checks weekends and exchange holidays). Improved: rule-based exchange holiday calendar 2024–2028 with more exchanges, help extended, Monte Carlo legends, yfinance 1.8.0. Fixes: tax report currencies, UK dividends in pence, country of domicile and treaty rates, current price, sale on the ex-date, updated Dividend Kings/Aristocrats, dark mode in Monte Carlo scenarios.</p>
+        <p xml:lang="de">Neu: logarithmische Preisachse in der Zoom-Ansicht; Mehrwährungs-Dividendenkonto (Gutschrift am Ex-Tag mit dem damaligen Bestand, Quellensteuer je Land, Brutto/Netto, Export PDF/XLSX/ODS); Steuerauszug AT: ausschüttungsgleiche Erträge (AGE) thesaurierender Fonds; Verkaufshistorie mit Verkaufsdatum (Teilverkauf-Dialog prüft Wochenenden und Börsenfeiertage). Verbessert: regelbasierter Börsenkalender 2024–2028 mit weiteren Börsen, Hilfe ergänzt, Monte-Carlo-Legenden, yfinance 1.8.0. Fixes: Währungen im Steuerauszug, UK-Dividenden in Pence, Sitzland und DBA-Sätze, aktueller Kurs, Verkauf am Ex-Tag, aktualisierte Dividend Kings/Aristocrats, Dark Mode in Monte-Carlo-Szenarien.</p>
+      </description>
+    </release>
+    <release version="5.8.0" date="2026-11-02">
+      <description>
+        <p>New: double-click on any chart in the portfolio overview opens it in zoom mode. Tax data updated to 2026 for all five supported countries (UK dividend tax raised by 2 percentage points).</p>
+        <p xml:lang="de">Neu: Doppelklick auf ein Diagramm in der Portfolio-Übersicht öffnet die Zoom-Ansicht. Steuerdaten 2026 für alle fünf Länder aktualisiert (UK-Dividendensteuer um 2 Prozentpunkte erhöht).</p>
+      </description>
+    </release>
+    <release version="5.7.4" date="2026-10-30">
+      <description>
+        <p>Bug fixes: Screener no longer shows German text in English mode. Race condition (RuntimeError: wrapped C++ object deleted) fixed in Screener and Monte Carlo Scenarios when closing quickly. 5D candlestick chart now uses a gapless integer index axis (no overnight/weekend gaps). Monte Carlo Scenarios: Y-axes synced in dual-chart mode, side-by-side comparison table, ±10% limit replaced by a visual warning showing the real deviation. Advanced Analysis – Stress Correlation: threshold lowered to ≥5 crisis periods, asterisk footnote added for sparse data.</p>
+        <p xml:lang="de">Bugfixes: Screener zeigt im Englisch-Modus keinen deutschen Text mehr. Race Condition (RuntimeError: C++-Objekt bereits gelöscht) im Screener und Monte-Carlo-Szenarien beim schnellen Schließen behoben. 5D-Candlestick-Chart nutzt jetzt eine ganzzahlige Index-Achse ohne Lücken. MC-Szenarien: Y-Achsen synchronisiert, Vergleichstabelle nebeneinander, ±10%-Sperre als Warnhinweis statt Hartklemme. Komplex-Analyse Stress-Korrelation: Schwellwert auf ≥5 Krisenperioden gesenkt, Fussnote bei knapper Datenbasis.</p>
+      </description>
+    </release>
+    <release version="5.7.3" date="2026-10-17">
+      <description>
+        <p>Fix: AI-Balance news fetching now uses the Yahoo Finance v1 API directly (ticker.news returned HTTP 500 with yfinance ≥ 1.7.0, resulting in 0/N news shown). Non-US stocks (e.g. ABBN.SW, SIE.DE) now also show news via company name fallback search.</p>
+        <p xml:lang="de">Fix: AI-Balance-News-Abfrage nutzt jetzt direkt die Yahoo-Finance-v1-API (ticker.news lieferte HTTP 500 mit yfinance ≥ 1.7.0). Nicht-US-Aktien (z.B. ABBN.SW, SIE.DE) zeigen jetzt ebenfalls News über Company-Name-Fallback.</p>
+      </description>
+    </release>
+    <release version="5.7.2" date="2026-10-14">
+      <description>
+        <p>Fixes: Stock Rating and Stock Screener dialogs no longer crash when closed quickly on Apple/macOS. Safe QThread cleanup added. URL finder thread in the analysis window also cleaned up safely.</p>
+        <p xml:lang="de">Fixes: Aktienbewertungs- und Screener-Dialog stürzen nicht mehr ab, wenn sie schnell geschlossen werden (Apple/macOS). Sicheres QThread-Cleanup ergänzt.</p>
+      </description>
+    </release>
     <release version="5.7.1" date="2026-10-11">
       <description>
         <p>Bug fixes: macOS crash on startup fixed (file descriptor limit RLIMIT_NOFILE raised to 10240 – Qt could abort with "Cannot continue without a thread pipe" on macOS ≥ 14 and Flatpak). Performance dialog no longer crashes on macOS (proper parent window and Window flag). Screen geometry fallback for multi-monitor setups. Data fetching less aggressive: max. 6 parallel workers to avoid Yahoo rate limiting.</p>
@@ -188,9 +218,6 @@
   </releases>
 
   <screenshots>
-    <screenshot type="default">
-      <video>https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.0.7/stock-monitor-demo-final.mp4</video>
-    </screenshot>
     <screenshot type="default">
       <caption>Main dashboard with 16 simultaneous live charts</caption>
       <caption xml:lang="de">Hauptansicht mit 16 gleichzeitigen Live-Charts</caption>

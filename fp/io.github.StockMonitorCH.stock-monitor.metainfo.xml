@@ -60,6 +60,18 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="5.9.0" date="2026-11-08">
+      <description>
+        <p>New: logarithmic price axis in the zoom view; multi-currency dividend account (credited on the ex-date with the holdings at that time, withholding tax by country, gross/net, PDF/XLSX/ODS export); Austrian tax report: accumulated income (AGE) of accumulating funds; sales history with sale date (partial sale dialog checks weekends and exchange holidays). Improved: rule-based exchange holiday calendar 2024–2028 with more exchanges, help extended, Monte Carlo legends, yfinance 1.8.0. Fixes: tax report currencies, UK dividends in pence, country of domicile and treaty rates, current price, sale on the ex-date, updated Dividend Kings/Aristocrats, dark mode in Monte Carlo scenarios.</p>
+        <p xml:lang="de">Neu: logarithmische Preisachse in der Zoom-Ansicht; Mehrwährungs-Dividendenkonto (Gutschrift am Ex-Tag mit dem damaligen Bestand, Quellensteuer je Land, Brutto/Netto, Export PDF/XLSX/ODS); Steuerauszug AT: ausschüttungsgleiche Erträge (AGE) thesaurierender Fonds; Verkaufshistorie mit Verkaufsdatum (Teilverkauf-Dialog prüft Wochenenden und Börsenfeiertage). Verbessert: regelbasierter Börsenkalender 2024–2028 mit weiteren Börsen, Hilfe ergänzt, Monte-Carlo-Legenden, yfinance 1.8.0. Fixes: Währungen im Steuerauszug, UK-Dividenden in Pence, Sitzland und DBA-Sätze, aktueller Kurs, Verkauf am Ex-Tag, aktualisierte Dividend Kings/Aristocrats, Dark Mode in Monte-Carlo-Szenarien.</p>
+      </description>
+    </release>
+    <release version="5.8.0" date="2026-11-02">
+      <description>
+        <p>New: double-click on any chart in the portfolio overview opens it in zoom mode. Tax data updated to 2026 for all five supported countries (UK dividend tax raised by 2 percentage points).</p>
+        <p xml:lang="de">Neu: Doppelklick auf ein Diagramm in der Portfolio-Übersicht öffnet die Zoom-Ansicht. Steuerdaten 2026 für alle fünf Länder aktualisiert (UK-Dividendensteuer um 2 Prozentpunkte erhöht).</p>
+      </description>
+    </release>
     <release version="5.7.4" date="2026-10-30">
       <description>
         <p>Bug fixes: Screener no longer shows German text in English mode. Race condition (RuntimeError: wrapped C++ object deleted) fixed in Screener and Monte Carlo Scenarios when closing quickly. 5D candlestick chart now uses a gapless integer index axis (no overnight/weekend gaps). Monte Carlo Scenarios: Y-axes synced in dual-chart mode, side-by-side comparison table, ±10% limit replaced by a visual warning showing the real deviation. Advanced Analysis – Stress Correlation: threshold lowered to ≥5 crisis periods, asterisk footnote added for sparse data.</p>
@@ -68,26 +80,26 @@
     </release>
     <release version="5.7.3" date="2026-10-17">
       <description>
-        <p>Fix: AI-Balance news fetching now uses the Yahoo Finance v1 API directly (ticker.news returned HTTP 500 with yfinance ≥ 1.7.0, resulting in 0/N news shown).</p>
-        <p xml:lang="de">Fix: AI-Balance-News-Abfrage nutzt jetzt direkt die Yahoo-Finance-v1-API (ticker.news lieferte HTTP 500 mit yfinance ≥ 1.7.0 – Ergebnis: 0 News angezeigt).</p>
+        <p>Fix: AI-Balance news fetching now uses the Yahoo Finance v1 API directly (ticker.news returned HTTP 500 with yfinance ≥ 1.7.0, resulting in 0/N news shown). Non-US stocks (e.g. ABBN.SW, SIE.DE) now also show news via company name fallback search.</p>
+        <p xml:lang="de">Fix: AI-Balance-News-Abfrage nutzt jetzt direkt die Yahoo-Finance-v1-API (ticker.news lieferte HTTP 500 mit yfinance ≥ 1.7.0). Nicht-US-Aktien (z.B. ABBN.SW, SIE.DE) zeigen jetzt ebenfalls News über Company-Name-Fallback.</p>
       </description>
     </release>
     <release version="5.7.2" date="2026-10-14">
       <description>
-        <p>Fixes: Stock Rating and Stock Screener dialogs no longer crash when closed quickly on Apple/macOS. Safe QThread cleanup added (finished signal conflict resolved, RuntimeError caught). URL finder thread in the analysis window also cleaned up safely.</p>
-        <p xml:lang="de">Fixes: Aktienbewertungs- und Screener-Dialog stürzen nicht mehr ab, wenn sie schnell geschlossen werden (Apple/macOS). Sicheres QThread-Cleanup ergänzt (finished-Signal-Konflikt behoben, RuntimeError abgefangen). Auch der URL-Finder-Thread im Analyse-Fenster wird jetzt sicher bereinigt.</p>
+        <p>Fixes: Stock Rating and Stock Screener dialogs no longer crash when closed quickly on Apple/macOS. Safe QThread cleanup added. URL finder thread in the analysis window also cleaned up safely.</p>
+        <p xml:lang="de">Fixes: Aktienbewertungs- und Screener-Dialog stürzen nicht mehr ab, wenn sie schnell geschlossen werden (Apple/macOS). Sicheres QThread-Cleanup ergänzt.</p>
       </description>
     </release>
     <release version="5.7.1" date="2026-10-11">
       <description>
         <p>Bug fixes: macOS crash on startup fixed (file descriptor limit RLIMIT_NOFILE raised to 10240 – Qt could abort with "Cannot continue without a thread pipe" on macOS ≥ 14 and Flatpak). Performance dialog no longer crashes on macOS (proper parent window and Window flag). Screen geometry fallback for multi-monitor setups. Data fetching less aggressive: max. 6 parallel workers to avoid Yahoo rate limiting.</p>
-        <p xml:lang="de">Bugfixes: macOS-Absturz beim Start behoben (Datei-Deskriptor-Limit auf 10 240 angehoben – Qt brach mit „Cannot continue without a thread pipe" ab). Performance-Dialog stürzt auf macOS nicht mehr ab. Bildschirm-Geometrie-Fallback für Multi-Monitor-Setups. Kursabfragen weniger aggressiv: max. 6 parallele Worker. Screener-Hilfe: alle 18 Indizes eingetragen.</p>
+        <p xml:lang="de">Bugfixes: macOS-Absturz beim Start behoben (Datei-Deskriptor-Limit auf 10 240 angehoben). Performance-Dialog stürzt auf macOS nicht mehr ab. Kursabfragen weniger aggressiv: max. 6 parallele Worker. Screener-Hilfe: alle 18 Indizes eingetragen.</p>
       </description>
     </release>
     <release version="5.7.0" date="2026-10-02">
       <description>
-        <p>New: Monte Carlo Scenarios – build hypothetical portfolios, run simulations and compare with the real portfolio. Export results as PDF, XLSX or ODS. New: Quick Search in Stock Screener – pre-computed nightly data for instant results across all 18 indices. Improvements: help texts for Screener and Monte Carlo Scenarios, search keyword index updated.</p>
-        <p xml:lang="de">Neu: Monte-Carlo-Szenarien – hypothetische Portfolios erstellen, simulieren und mit dem echten Portfolio vergleichen. Export als PDF, XLSX oder ODS. Neu: Schnelle Suche im Aktien-Screener – vorberechnete Tagesdaten für sofortige Ergebnisse über alle 18 Indizes. Verbesserungen: Hilfe-Texte für Screener und Monte-Carlo-Szenarien, Stichwortverzeichnis ergänzt.</p>
+        <p>New: Monte Carlo Scenarios – build hypothetical portfolios, run simulations and compare with the real portfolio. Export results as PDF, XLSX or ODS. New: Quick Search in Stock Screener – pre-computed nightly data for instant results across all 18 indices.</p>
+        <p xml:lang="de">Neu: Monte-Carlo-Szenarien – hypothetische Portfolios erstellen, simulieren und mit dem echten Portfolio vergleichen. Export als PDF, XLSX oder ODS. Neu: Schnelle Suche im Aktien-Screener – vorberechnete Tagesdaten für sofortige Ergebnisse über alle 18 Indizes.</p>
       </description>
     </release>
     <release version="5.6.0" date="2026-08-31">
@@ -110,20 +122,20 @@
     </release>
     <release version="5.4.3" date="2026-06-22">
       <description>
-        <p>Fix: Dark mode – company info and AI analysis text is now readable. Fix: RI factor tooltip corrected (right-click → left-click).</p>
-        <p xml:lang="de">Fix: Dark Mode – Firmeninfo und AI-Einschätzung jetzt lesbar. Fix: RI-Faktor Tooltip: Rechtsklick → Linksklick korrigiert.</p>
+        <p>Dark mode fix: Company info and AI assessment boxes now readable. RI factor tooltip text corrected (left-click instead of right-click).</p>
+        <p xml:lang="de">Dark-Mode-Fix: Firmeninfo und AI-Einschätzung jetzt lesbar. RI-Faktor Tooltip korrigiert (Linksklick statt Rechtsklick).</p>
       </description>
     </release>
     <release version="5.4.2" date="2026-06-16">
       <description>
-        <p>Fix: Company name now appears in portfolio overview tooltip on Full HD displays.</p>
-        <p xml:lang="de">Fix: Firmenname im Portfolio-Übersicht-Tooltip erscheint jetzt auch auf Full-HD-Systemen.</p>
+        <p>Flatpak update: real download progress bar, fixed sandbox path issue. RPM update: no longer hangs at 96%. yfinance 1.4.1 bundled.</p>
+        <p xml:lang="de">Flatpak-Update: echter Fortschrittsbalken, Sandbox-Pfad-Fix. RPM-Update: hängt nicht mehr bei 96 %. yfinance 1.4.1 enthalten.</p>
       </description>
     </release>
     <release version="5.4.1" date="2026-06-02">
       <description>
-        <p>Fix: Library setup no longer requires root – compatible with Discover installation on Fedora KDE.</p>
-        <p xml:lang="de">Fix: Bibliotheks-Installation ohne Root – kompatibel mit Discover-Installation auf Fedora KDE.</p>
+        <p>Portfolio overview tooltip fix, minor improvements.</p>
+        <p xml:lang="de">Portfolio-Übersicht Tooltip-Fix, kleinere Verbesserungen.</p>
       </description>
     </release>
     <release version="5.4.0" date="2026-05-25">
@@ -182,20 +194,20 @@
     </release>
     <release version="5.0.7" date="2026-04-25">
       <description>
-        <p>Version number update, NumPy fix, desktop file corrected.</p>
-        <p xml:lang="de">Versionsnummer aktualisiert, NumPy-Fix, Desktop-Datei korrigiert.</p>
+        <p>Demo portfolio with legal disclaimer, live data, watermark. Flatpak fixes: persistent settings, world map, tax module stability, Finment opens in system browser.</p>
+        <p xml:lang="de">Demo-Portfolio mit Haftungsausschluss, Live-Daten und Wasserzeichen. Flatpak-Korrekturen: persistente Einstellungen, Weltkarte, Steuermodul-Stabilität, Finment öffnet im System-Browser.</p>
       </description>
     </release>
     <release version="5.0.1" date="2026-04-19">
       <description>
-        <p>Flatpak-aware update notifications, improved help (update section, demo portfolio without password).</p>
-        <p xml:lang="de">Flatpak-spezifische Update-Hinweise, verbesserte Hilfe (Update-Abschnitt, Demo-Portfolio ohne Passwort).</p>
+        <p>Version 5.0.1: Flatpak-aware update notifications, improved help (update section, demo portfolio without password).</p>
+        <p xml:lang="de">Version 5.0.1: Flatpak-spezifische Update-Hinweise, verbesserte Hilfe (Update-Abschnitt, Demo-Portfolio ohne Passwort).</p>
       </description>
     </release>
     <release version="5.0.0" date="2026-04-13">
       <description>
-        <p>AI Balance with portfolio currency, update checker, yfinance notification.</p>
-        <p xml:lang="de">AI-Balance mit Portfolio-Währung, Update-Prüfung, yfinance-Benachrichtigung.</p>
+        <p>Version 5.0: AI-Balance with portfolio currency, update checker, yfinance notification.</p>
+        <p xml:lang="de">Version 5.0: AI-Balance mit Portfolio-Währung, Update-Prüfung, yfinance-Benachrichtigung.</p>
       </description>
     </release>
     <release version="4.0.0" date="2025-04-01">

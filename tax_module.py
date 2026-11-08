@@ -154,7 +154,81 @@ def _fmt(value, decimals=2):
 
 # ── Berechnungsfunktionen ────────────────────────────────────────────────────
 
-def _fetch_real_dividends(ticker_sym, year, positions_for_sym=None):
+_SUB_CURRENCY_FACTOR = {"GBp": 0.01, "GBX": 0.01, "ZAc": 0.01, "ZAC": 0.01, "ILA": 0.01}
+_SUB_CURRENCY_MAIN   = {"GBp": "GBP", "GBX": "GBP", "ZAc": "ZAR", "ZAC": "ZAR", "ILA": "ILS"}
+
+# Steuerauszug-Währung je Land
+STATEMENT_CURRENCY = {"AT": "EUR", "CH": "CHF", "DE": "EUR", "UK": "GBP", "US": "USD"}
+
+_TICKER_CUR = {}        # ticker → Handelswährung laut Yahoo (z. B. "GBp")
+_FX_SERIES  = {}        # (von, nach, jahr) → pandas.Series Tageskurse
+_FX_NOW     = {}        # (von, nach) → aktueller Kurs
+
+
+def split_currency(cur):
+    """'GBp' → ('GBP', 0.01), 'usd' → ('USD', 1.0), '' → ('', 1.0)."""
+    cur = (cur or "").strip()
+    if cur in _SUB_CURRENCY_FACTOR:
+        return _SUB_CURRENCY_MAIN[cur], _SUB_CURRENCY_FACTOR[cur]
+    return cur.upper(), 1.0
+
+
+def _run_timeout(fn, timeout=15):
+    res = [None]
+    def _w():
+        try:
+            res[0] = fn()
+        except Exception:
+            res[0] = None
+    th = __import__("threading").Thread(target=_w, daemon=True)
+    th.start(); th.join(timeout)
+    return res[0]
+
+
+def fx_now(src, dst):
+    """Aktueller Kurs src→dst (Hauptwährungen). 1.0 bei gleicher Währung; None wenn unbekannt."""
+    if not src or not dst or src == dst:
+        return 1.0
+    key = (src, dst)
+    if key not in _FX_NOW:
+        def _get():
+            import yfinance as yf
+            r = float(yf.Ticker(f"{src}{dst}=X").fast_info.last_price)
+            return r if r > 0 else None
+        _FX_NOW[key] = _run_timeout(_get, 10)
+    return _FX_NOW[key]
+
+
+def fx_on(src, dst, day, year=None):
+    """Kurs src→dst am Tag `day` (letzter Handelstag davor). Fallback: aktueller Kurs."""
+    if not src or not dst or src == dst:
+        return 1.0
+    year = year or day.year
+    key = (src, dst, year)
+    if key not in _FX_SERIES:
+        def _get():
+            import yfinance as yf
+            h = yf.Ticker(f"{src}{dst}=X").history(start=f"{year-1}-12-15",
+                                                     end=f"{year+1}-01-05", interval="1d")
+            if h is None or h.empty or "Close" not in h.columns:
+                return None
+            c = h["Close"].dropna()
+            c.index = [ts.date() for ts in c.index]
+            return c
+        _FX_SERIES[key] = _run_timeout(_get, 15)
+    ser = _FX_SERIES.get(key)
+    if ser is not None and len(ser):
+        try:
+            prior = ser[[d <= day for d in ser.index]]
+            if len(prior):
+                return float(prior.iloc[-1])
+            return float(ser.iloc[0])
+        except Exception:
+            pass
+    return fx_now(src, dst)
+
+
+def _fetch_real_dividends(ticker_sym, year, positions_for_sym=None, target_currency=None):
     """
     Holt tatsächlich bezahlte Dividenden für ein Symbol im angegebenen Jahr.
     Berücksichtigt den Ex-Dividend-Tag und den tatsächlichen Bestand an diesem Tag.
@@ -173,6 +247,7 @@ def _fetch_real_dividends(ticker_sym, year, positions_for_sym=None):
     # ticker.history() mit actions=True statt ticker.dividends — selber Code-Pfad
     # wie die Chart-Worker (curl_cffi-sicher auf dem Qt-Haupt-Thread)
     _hist_result = [None]
+    _factor = [1.0]
     def _fetch_in_thread():
         try:
             t = yf.Ticker(ticker_sym)
@@ -182,6 +257,15 @@ def _fetch_real_dividends(ticker_sym, year, positions_for_sym=None):
                 _hist_result[0] = data['Dividends'][data['Dividends'] > 0]
             else:
                 _hist_result[0] = None
+            # Unterwährung: London (GBp/GBX), Johannesburg (ZAc), Tel Aviv (ILA)
+            # liefern Dividenden in Pence/Cents → in Hauptwährung umrechnen
+            try:
+                _cur = getattr(t.fast_info, "currency", "") or ""
+                _TICKER_CUR[ticker_sym.upper()] = _cur
+                if _cur in _SUB_CURRENCY_FACTOR:
+                    _factor[0] = _SUB_CURRENCY_FACTOR[_cur]
+            except Exception:
+                pass
         except Exception:
             _hist_result[0] = None
     _th = _threading.Thread(target=_fetch_in_thread, daemon=True)
@@ -223,27 +307,335 @@ def _fetch_real_dividends(ticker_sym, year, positions_for_sym=None):
                     except Exception:
                         sell_d = _date(9999, 12, 31)
 
-                    # Position war am Ex-Day aktiv: buy_date <= ex_day < sell_date
-                    if buy_d <= ex_day < sell_d:
+                    # Dividendenberechtigt: vor dem Ex-Tag gekauft und nicht vor
+                    # dem Ex-Tag verkauft (Verkauf am Ex-Tag behält den Anspruch)
+                    if buy_d < ex_day <= sell_d:
                         qty_at_ex += float(pos.get('quantity', 0))
             else:
                 # Fallback: aktueller Bestand (ungenau für unterjährige Käufe/Verkäufe)
                 qty_at_ex = float(
                     sum(p.get('quantity', 0) for p in (positions_for_sym or [])))
 
-            div_amount = qty_at_ex * float(div_per_share)
+            div_per_share = float(div_per_share) * _factor[0]
+            _fx = 1.0
+            if target_currency:
+                _src, _ = split_currency(_TICKER_CUR.get(ticker_sym.upper(), ""))
+                _fx = fx_on(_src, target_currency, ex_day, year) or 1.0
+            div_per_share *= _fx
+            div_amount = qty_at_ex * div_per_share
             total += div_amount
             detail.append({
                 "ex_date":       str(ex_day),
                 "div_per_share": float(div_per_share),
                 "qty_at_ex":     qty_at_ex,
                 "div_amount":    div_amount,
+                "fx":            _fx,
             })
 
         return total, detail
 
     except Exception:
         return 0.0, []
+
+
+# ── Sitzland aus dem Yahoo-Ticker ableiten ───────────────────────────────────
+# Portfolio-Positionen speichern kein Land. Ohne diese Ableitung bekamen alle
+# Berechnungen country="" (→ CH: wie US behandelt, AT: wie AT behandelt).
+# ISO-Kürzel (GB statt UK), wie in den calc_*-Funktionen verwendet.
+TICKER_SUFFIX_COUNTRY = {
+    "SW": "CH", "VX": "CH",
+    "DE": "DE", "F": "DE", "BE": "DE", "DU": "DE", "HM": "DE", "HA": "DE",
+    "MU": "DE", "SG": "DE",
+    "VI": "AT",
+    "L": "GB", "IL": "GB",
+    "PA": "FR", "AS": "NL", "MI": "IT", "MC": "ES", "BR": "BE", "IR": "IE",
+    "CO": "DK", "ST": "SE", "OL": "NO", "HE": "FI",
+    "TO": "CA", "V": "CA", "T": "JP", "HK": "HK", "SI": "SG",
+}
+
+
+def country_from_ticker(ticker):
+    """'NESN.SW' → 'CH', 'SHEL.L' → 'GB', 'AAPL' → 'US', unbekannte Endung → ''.
+    Hinweis: Börsenplatz ≠ Sitzland (z. B. Apple an der Börse Frankfurt);
+    für die meisten Portfolios ist die Börsenendung aber die beste verfügbare Angabe."""
+    t = (ticker or "").upper()
+    if "." in t:
+        return TICKER_SUFFIX_COUNTRY.get(t.rsplit(".", 1)[1], "")
+    return "US"
+
+
+# ── Sitzland über Yahoo-Firmendaten (genauer als die Börsenendung) ──────────
+# Aktien: Land aus den Firmendaten (Apple bleibt US, auch an der Börse Frankfurt).
+# ETFs/Fonds: Yahoo liefert kein Land → Sitz aus dem Fondsnamen:
+#   "UCITS" → irischer/luxemburgischer Fonds (behält keine Quellensteuer ein)
+#   "(CH)"  → Schweizer Fonds (Verrechnungssteuer)
+# Ergebnis wird in .stock_monitor_countries.json zwischengespeichert.
+UCITS = "UCITS"   # Pseudo-Land: Fonds aus IE/LU, keine Quellensteuer auf Ausschüttungen
+
+_COUNTRY_NAME_TO_ISO = {
+    "united states": "US", "switzerland": "CH", "germany": "DE", "austria": "AT",
+    "united kingdom": "GB", "france": "FR", "netherlands": "NL", "italy": "IT",
+    "spain": "ES", "belgium": "BE", "ireland": "IE", "luxembourg": "LU",
+    "denmark": "DK", "sweden": "SE", "norway": "NO", "finland": "FI",
+    "canada": "CA", "japan": "JP", "hong kong": "HK", "singapore": "SG",
+    "australia": "AU", "portugal": "PT", "jersey": "JE", "bermuda": "BM",
+    "china": "CN", "taiwan": "TW", "south korea": "KR", "israel": "IL",
+}
+_GERMAN_EXCHANGES = {"DE", "F", "BE", "DU", "HM", "HA", "MU", "SG"}
+
+import threading as _threading_cc
+_CC_LOCK = _threading_cc.Lock()
+_CC = None
+
+
+def _country_cache_path():
+    try:
+        from config import _get_data_home
+        home = _get_data_home()
+    except Exception:
+        home = os.path.expanduser("~")
+    return os.path.join(home, ".stock_monitor_countries.json")
+
+
+def _country_cache():
+    global _CC
+    if _CC is None:
+        try:
+            import json as _json_cc
+            with open(_country_cache_path(), encoding="utf-8") as f:
+                _CC = _json_cc.load(f)
+        except Exception:
+            _CC = {}
+    return _CC
+
+
+_FUND_WORDS = ("ETF", "UCITS", "FUND", "FONDS", "ISHARES", "VANGUARD", "XTRACKERS",
+               "AMUNDI", "SPDR", "LYXOR", "INVESCO", "WISDOMTREE", "UBS ETF", "SICAV")
+
+
+def is_fund(ticker, name=""):
+    """ETF / Fonds? Wertpapierart aus Yahoo (Cache), sonst Name."""
+    t = (ticker or "").upper()
+    try:
+        with _CC_LOCK:
+            cc = _country_cache()
+            qt = (cc.get("_quote_types") or {}).get(t)
+            if cc.get(t) == UCITS:
+                return True
+        if qt:
+            return qt in ("ETF", "MUTUALFUND")
+    except Exception:
+        pass
+    n = (name or "").upper()
+    return any(w in n for w in _FUND_WORDS)
+
+
+def _fund_country(name, ticker):
+    n = (name or "").upper()
+    if "UCITS" in n:
+        return UCITS
+    if "(CH)" in n:
+        return "CH"
+    if "(DE)" in n:
+        return "DE"
+    return country_from_ticker(ticker)
+
+
+def _yahoo_info(ticker, timeout=8, inline=False):
+    if inline:          # direkt im aufrufenden (Worker-)Thread – keine parallelen Abfragen
+        try:
+            import yfinance as yf
+            return yf.Ticker(ticker).info or {}
+        except Exception:
+            return None
+    res = [None]
+    def _run():
+        try:
+            import yfinance as yf
+            res[0] = yf.Ticker(ticker).info or {}
+        except Exception:
+            res[0] = None
+    th = _threading_cc.Thread(target=_run, daemon=True)
+    th.start(); th.join(timeout)
+    return res[0]
+
+
+def resolve_country(ticker, inline=False):
+    """Sitzland (ISO, GB statt UK) oder UCITS für einen Ticker.
+    Reihenfolge: Cache → Yahoo-Firmendaten → Fondsname → Börsenendung."""
+    t = (ticker or "").upper()
+    with _CC_LOCK:
+        hit = _country_cache().get(t)
+    if hit is not None:
+        return hit
+    info = _yahoo_info(t, inline=inline)
+    if not info or not (info.get("longName") or info.get("shortName") or info.get("quoteType")):
+        # Börsenplatz-Ticker unbekannt (z. B. AAPL.DE): Grundsymbol versuchen
+        if "." in t and t.rsplit(".", 1)[1] in _GERMAN_EXCHANGES:
+            base_info = _yahoo_info(t.rsplit(".", 1)[0], inline=inline)
+            if base_info and base_info.get("quoteType") == "EQUITY":
+                c = _COUNTRY_NAME_TO_ISO.get((base_info.get("country") or "").lower())
+                if c:
+                    with _CC_LOCK:
+                        _country_cache()[t] = c; _save_country_cache()
+                    return c
+        return country_from_ticker(t)          # offline / unbekannt: nicht cachen
+    with _CC_LOCK:
+        _country_cache().setdefault("_quote_types", {})[t] = info.get("quoteType") or ""
+    if info.get("quoteType") in ("ETF", "MUTUALFUND"):
+        c = _fund_country(info.get("longName") or info.get("shortName"), t)
+    else:
+        c = (_COUNTRY_NAME_TO_ISO.get((info.get("country") or "").lower())
+             or country_from_ticker(t))
+    with _CC_LOCK:
+        _country_cache()[t] = c
+        _save_country_cache()
+    return c
+
+
+def _save_country_cache():
+    try:
+        import json as _json_cc
+        path = _country_cache_path()
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            _json_cc.dump(_CC or {}, f, indent=1, sort_keys=True)
+        os.replace(tmp, path)
+    except Exception:
+        pass
+
+
+# ── AT: Ausschüttungsgleiche Erträge (AGE) thesaurierender Fonds ────────────
+# Werte aus der OeKB-Meldung, manuell erfasst: je Fonds und Steuerjahr
+#   {"CSPX.L": {"2026": {"age": 1.2345, "qst": 0.1234, "date": "2026-03-31"}}}
+# age = ausschüttungsgleiche Erträge je Anteil, qst = anrechenbare ausl. QSt je
+# Anteil, date = Zuflusstag (Bestand an diesem Tag ist massgebend).
+def _age_path():
+    try:
+        from config import _get_data_home
+        home = _get_data_home()
+    except Exception:
+        home = os.path.expanduser("~")
+    return os.path.join(home, ".stock_monitor_age.json")
+
+
+def load_age():
+    try:
+        import json as _json_age
+        with open(_age_path(), encoding="utf-8") as f:
+            d = _json_age.load(f)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_age(data):
+    import json as _json_age
+    path = _age_path()
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        _json_age.dump(data, f, indent=1, sort_keys=True)
+    os.replace(tmp, path)
+
+
+def _qty_on(raw_positions, day, fallback):
+    """Bestand an einem Stichtag (gekauft bis einschliesslich, noch nicht verkauft)."""
+    from datetime import datetime as _dt_q, date as _date_q
+    if not raw_positions:
+        return fallback
+    q = 0.0
+    for p in raw_positions:
+        try:
+            b = _dt_q.strptime(str(p.get("buy_date", ""))[:10], "%Y-%m-%d").date()
+        except Exception:
+            b = _date_q(1900, 1, 1)
+        try:
+            sd = p.get("sell_date", "")
+            s_ = _dt_q.strptime(str(sd)[:10], "%Y-%m-%d").date() if sd else _date_q(9999, 12, 31)
+        except Exception:
+            s_ = _date_q(9999, 12, 31)
+        if b <= day < s_:
+            q += float(p.get("quantity", 0) or 0)
+    return q
+
+
+# ── Rest-Quellensteuer nach DBA (anrechenbar) ────────────────────────────────
+# Satz, der nach Doppelbesteuerungsabkommen endgültig im Ausland bleibt
+# (Mehrbetrag ist rückforderbar). Standard der meisten DBA: 15 %.
+# AU: voll frankierte Dividenden sind quellensteuerfrei (unfrankierte: 15 %).
+# Bitte jährlich prüfen.
+DBA_RESIDUAL = {
+    "CH": {"US": 0.15, "DE": 0.15, "AT": 0.15, "GB": 0.0, "FR": 0.128, "NL": 0.15,
+           "IT": 0.15, "ES": 0.15, "BE": 0.15, "IE": 0.15, "LU": 0.15, "DK": 0.15,
+           "SE": 0.15, "NO": 0.15, "FI": 0.10, "CA": 0.15, "JP": 0.10, "AU": 0.0,
+           "HK": 0.0, "SG": 0.0, UCITS: 0.0},
+    "AT": {"US": 0.15, "DE": 0.15, "CH": 0.15, "GB": 0.0, "FR": 0.128, "NL": 0.15,
+           "IT": 0.15, "ES": 0.15, "BE": 0.15, "IE": 0.15, "LU": 0.15, "DK": 0.15,
+           "SE": 0.10, "NO": 0.15, "FI": 0.10, "CA": 0.15, "JP": 0.10, "AU": 0.0,
+           "HK": 0.0, "SG": 0.0, UCITS: 0.0},
+}
+_DBA_DEFAULT = 0.15
+
+
+def _foreign_note(country, rate, investor):
+    if country == UCITS:
+        return "UCITS-Fonds (IE/LU): keine QSt"
+    if not country:
+        return f"Sitzland unbekannt – Annahme QSt {rate*100:.0f} % (DBA)"
+    label = "UK" if country == "GB" else country
+    if rate == 0:
+        return f"{label}: keine Quellensteuer"
+    return f"{label} QSt {rate*100:.1f} % (DBA {investor}-{label})".replace(".0 %", " %")
+
+
+# ── Dividendenkonto: Quellensteuer am Zahltag ────────────────────────────────
+# Satz, der bei Auszahlung TATSÄCHLICH einbehalten wird (= was auf dem Konto
+# ankommt). DBA-Rückforderungen (z. B. CH 35 % → 15 %) passieren erst später
+# und werden im Dividendenkonto als Einzahlung erfasst.
+# Länderkürzel: Sitzland der Gesellschaft. Bitte jährlich prüfen.
+DIV_ACCOUNT_RESIDENCES = ("CH", "DE", "AT", "UK", "US", "OTHER")
+
+DIV_SOURCE_WITHHOLDING = {
+    "CH": 0.35,      # Verrechnungssteuer (auch für Inländer)
+    "DE": 0.26375,   # Kapitalertragsteuer 25 % + Soli
+    "AT": 0.275,     # KESt
+    "UK": 0.0,       # keine Quellensteuer auf Dividenden
+    "FR": 0.128,     # Prélèvement für nicht ansässige Privatpersonen
+    "NL": 0.15,
+    "IT": 0.26,
+    "ES": 0.19,
+    "BE": 0.30,
+    "IE": 0.25,
+    "DK": 0.27,
+    "SE": 0.30,
+    "NO": 0.25,
+    "FI": 0.35,
+    "CA": 0.25,
+    "JP": 0.15315,
+    "HK": 0.0,
+    "SG": 0.0,
+    "LU": 0.15,
+    "AU": 0.0,       # voll frankierte Dividenden (Standard bei grossen AU-Firmen): keine QSt
+    "UCITS": 0.0,    # IE/LU-Fonds behalten keine Quellensteuer ein
+}
+
+
+def div_withholding_rate(source_country, residence, w8ben=True):
+    """Quellensteuersatz am Zahltag für eine Dividende.
+
+    source_country: Sitzland der Gesellschaft (z. B. "US", "CH", "UK")
+    residence:      Steuerwohnsitz des Anlegers (DIV_ACCOUNT_RESIDENCES)
+    w8ben:          Formular W-8BEN beim Broker hinterlegt (nur für US relevant)
+    Unbekanntes Sitzland → 0.0 (Eintrag kann im Konto manuell korrigiert werden).
+    """
+    src = (source_country or "").upper()
+    if src == "GB":
+        src = "UK"
+    if src == "US":
+        if residence == "US":
+            return 0.0
+        return 0.15 if w8ben else 0.30
+    return DIV_SOURCE_WITHHOLDING.get(src, 0.0)
 
 
 def calc_ch(positions, currency="CHF"):
@@ -281,32 +673,17 @@ def calc_ch(positions, currency="CHF"):
 
         # Ticker-Herkunft: CH = Verrechnungssteuer, sonst Quellensteuer
         # Erkennung: .SW Suffix oder explizites country=="CH"
-        is_ch = country == "CH" or ticker.upper().endswith(".SW")
+        is_ch = country == "CH" or (not country and ticker.upper().endswith(".SW"))
         if is_ch:
             vst         = div_total * rules["vst_rate"]
             foreign_tax = 0.0
             tax_note    = "VSt 35 % (rückforderbar)"
-        elif country in ("US", ""):
-            vst         = 0.0
-            # US-DBA CH: 15 %
-            foreign_tax = div_total * 0.15
-            tax_note    = "US QSt 15 % (DBA CH-US)"
-        elif country == "DE":
-            vst         = 0.0
-            foreign_tax = div_total * 0.15
-            tax_note    = "DE QSt 15 % (DBA CH-DE)"
-        elif country == "GB":
-            vst         = 0.0
-            foreign_tax = div_total * 0.00   # UK: kein Quellensteuerabzug für Schweizer
-            tax_note    = "UK: keine Quellensteuer"
-        elif country == "FR":
-            vst         = 0.0
-            foreign_tax = div_total * 0.128  # FR DBA CH: 12.8 %
-            tax_note    = "FR QSt 12.8 % (DBA CH-FR)"
         else:
+            # Ausländische QSt: Restsatz nach DBA CH (Tabelle DBA_RESIDUAL)
             vst         = 0.0
-            foreign_tax = div_total * rules["div_tax_foreign"]
-            tax_note    = f"QSt ~{rules['div_tax_foreign']*100:.0f} % (DBA abhängig)"
+            f_rate      = DBA_RESIDUAL["CH"].get(country, _DBA_DEFAULT)
+            foreign_tax = div_total * f_rate
+            tax_note    = _foreign_note(country, f_rate, "CH")
 
         total_dividends    += div_total
         total_vst          += vst
@@ -537,6 +914,9 @@ def calc_at(positions, currency="EUR"):
     rules = TAX_RULES["AT"]
     year  = rules["year"]
     rate  = rules["kest_rate"]
+    total_age      = 0.0
+    total_kest_age = 0.0
+    _age_all = load_age()
 
     for pos in positions:
         ticker  = pos.get("ticker", "")
@@ -557,41 +937,39 @@ def calc_at(positions, currency="EUR"):
             div_total, _ = _fetch_real_dividends(ticker, year, positions_for_sym=raw)
 
         # Quellensteuer-Anrechnung je Herkunftsland (DBA Österreich)
-        if country in ("AT", "") or ticker.upper().endswith(".VI"):
+        if country == "AT" or (not country and ticker.upper().endswith(".VI")):
             # Österreichische Wertpapiere: KESt wird direkt abgeführt, keine ausländ. QSt
             foreign_tax = 0.0
             kest_div    = div_total * rate
             tax_note    = "KESt 27,5 % (AT-Depot)"
-        elif country == "US":
-            # DBA AT-US: 15 % QSt anrechenbar auf KESt 27,5 %
-            foreign_tax = div_total * 0.15
-            kest_div    = max(0.0, div_total * rate - foreign_tax)
-            tax_note    = "US QSt 15 % (DBA AT-US), Rest KESt"
-        elif country == "DE":
-            # DBA AT-DE: 15 % QSt
-            foreign_tax = div_total * 0.15
-            kest_div    = max(0.0, div_total * rate - foreign_tax)
-            tax_note    = "DE QSt 15 % (DBA AT-DE), Rest KESt"
-        elif country == "CH":
-            # DBA AT-CH: 15 % QSt
-            foreign_tax = div_total * 0.15
-            kest_div    = max(0.0, div_total * rate - foreign_tax)
-            tax_note    = "CH VSt 15 % (DBA AT-CH), Rest KESt"
-        elif country == "GB":
-            # DBA AT-UK: 15 % QSt
-            foreign_tax = div_total * 0.15
-            kest_div    = max(0.0, div_total * rate - foreign_tax)
-            tax_note    = "UK QSt 15 % (DBA AT-UK), Rest KESt"
-        elif country == "FR":
-            # DBA AT-FR: 15 % QSt
-            foreign_tax = div_total * 0.15
-            kest_div    = max(0.0, div_total * rate - foreign_tax)
-            tax_note    = "FR QSt 15 % (DBA AT-FR), Rest KESt"
         else:
-            foreign_tax = div_total * 0.15   # Standardannahme DBA
+            # Ausländische QSt bis zum DBA-Satz anrechenbar, Rest KESt
+            f_rate      = DBA_RESIDUAL["AT"].get(country, _DBA_DEFAULT)
+            foreign_tax = div_total * f_rate
             kest_div    = max(0.0, div_total * rate - foreign_tax)
-            tax_note    = f"QSt ~15 % (DBA), Rest KESt {rate*100:.1f} %"
+            tax_note    = _foreign_note(country, f_rate, "AT") + (
+                f", KESt {rate*100:.1f} %" if f_rate == 0 else ", Rest KESt")
 
+        # Ausschüttungsgleiche Erträge (manuell aus OeKB-Meldung)
+        age_total = kest_age = 0.0
+        _age = (_age_all.get(ticker.upper()) or {}).get(str(year))
+        if _age and float(_age.get("age", 0) or 0) > 0:
+            from datetime import date as _date_a, datetime as _dt_a
+            try:
+                _day = _dt_a.strptime(str(_age.get("date", ""))[:10], "%Y-%m-%d").date()
+            except Exception:
+                _day = _date_a(year, 12, 31)
+            _q = _qty_on(pos.get("raw_positions"), _day, qty)
+            # AGE-Werte sind in Fondswährung erfasst → in EUR zum Kurs am Zuflusstag
+            _acur = (_age.get("cur") or pos.get("_cur") or "EUR").upper()
+            _afx  = fx_on(_acur, currency, _day, year) if _acur != currency else 1.0
+            _afx  = _afx or 1.0
+            age_total = float(_age["age"]) * _q * _afx
+            _credit   = float(_age.get("qst", 0) or 0) * _q * _afx
+            kest_age  = max(0.0, age_total * rate - _credit)
+            tax_note += f" | AGE {age_total:.2f}"
+        total_age      += age_total
+        total_kest_age += kest_age
         total_dividends    += div_total
         total_kest_div     += kest_div
         total_kest_gain    += kest_gain
@@ -609,11 +987,15 @@ def calc_at(positions, currency="EUR"):
             "foreign_tax": foreign_tax,
             "unrealised":  unrealised,
             "kest_gain":   kest_gain,
+            "age_total":   age_total,
+            "kest_age":    kest_age,
             "tax_note":    tax_note,
         })
 
-    total_tax = total_kest_div + total_kest_gain + total_foreign_tax
+    total_tax = total_kest_div + total_kest_gain + total_foreign_tax + total_kest_age
     summary = {
+        "total_age":          total_age,
+        "total_kest_age":     total_kest_age,
         "total_market_value": total_market_value,
         "total_dividends":    total_dividends,
         "total_kest_div":     total_kest_div,
@@ -625,6 +1007,141 @@ def calc_at(positions, currency="EUR"):
         "rules":              rules,
     }
     return rows, summary
+
+def _edit_age_dialog(parent, positions, year, fmt_fn=None):
+    """Dialog: AGE je Fonds für das Steuerjahr erfassen. True = gespeichert."""
+    from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+                                 QTableWidget, QTableWidgetItem, QHeaderView,
+                                 QDoubleSpinBox, QDateEdit, QMessageBox)
+    from PyQt6.QtCore import Qt, QDate
+
+    data = load_age()
+    dlg = QDialog(parent)
+    if _sys_tax.platform == "win32":
+        dlg.finished.connect(lambda: (parent.raise_(), parent.activateWindow()))
+    dlg.setWindowTitle(TRT("tax_age_title", year=year))
+    dlg.resize(900, 520)
+    lay = QVBoxLayout(dlg)
+    _info_html = TRT("tax_age_info", year=year)
+    try:
+        from PyQt6.QtWidgets import QApplication as _QApp_age
+        from PyQt6.QtGui import QPalette as _QPal_l
+        if _QApp_age.palette().color(_QPal_l.ColorRole.Window).lightness() < 128:
+            # Dark Mode: Link hell einfärben (Standard-Blau ist auf dunklem Grund kaum lesbar)
+            _info_html = _info_html.replace("<a href=", "<a style='color:#6cb4ff' href=")
+    except Exception:
+        pass
+    info = QLabel(_info_html)
+    info.setWordWrap(True)
+    info.setTextFormat(Qt.TextFormat.RichText)
+    info.setOpenExternalLinks(True)
+    lay.addWidget(info)
+
+    from PyQt6.QtWidgets import QCheckBox, QComboBox
+    plist = sorted(positions, key=lambda p: (not is_fund(p.get("ticker", ""), p.get("name", "")),
+                                             p.get("ticker", "")))
+    tbl = QTableWidget(len(plist), 6)
+    tbl.setHorizontalHeaderLabels([TRT("tax_col_ticker"), TRT("tax_col_name"),
+                                   TRT("tax_age_col_age"), TRT("tax_age_col_qst"),
+                                   TRT("tax_age_col_cur"), TRT("tax_age_col_date")])
+    tbl.verticalHeader().setVisible(False)
+    widgets = []
+    fund_rows = []
+    for r, p in enumerate(plist):
+        t = p.get("ticker", "").upper()
+        if is_fund(t, p.get("name", "")):
+            fund_rows.append(r)
+        cur_vals = (data.get(t) or {}).get(str(year)) or {}
+        it = QTableWidgetItem(t); it.setFlags(it.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        tbl.setItem(r, 0, it)
+        it = QTableWidgetItem(str(p.get("name", t))); it.setFlags(it.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        tbl.setItem(r, 1, it)
+        sp_age = QDoubleSpinBox(); sp_age.setDecimals(4); sp_age.setRange(0, 1e6)
+        sp_age.setValue(float(cur_vals.get("age", 0) or 0))
+        sp_qst = QDoubleSpinBox(); sp_qst.setDecimals(4); sp_qst.setRange(0, 1e6)
+        sp_qst.setValue(float(cur_vals.get("qst", 0) or 0))
+        cb = QComboBox(); cb.setEditable(True)
+        for c in ("EUR", "USD", "CHF", "GBP", "JPY"):
+            cb.addItem(c)
+        cb.setCurrentText(cur_vals.get("cur") or p.get("_cur") or "EUR")
+        de = QDateEdit(); de.setCalendarPopup(True); de.setDisplayFormat("dd.MM.yyyy")
+        d = QDate.fromString(str(cur_vals.get("date", "")), "yyyy-MM-dd")
+        de.setDate(d if d.isValid() else QDate(year, 12, 31))
+        tbl.setCellWidget(r, 2, sp_age); tbl.setCellWidget(r, 3, sp_qst)
+        tbl.setCellWidget(r, 4, cb); tbl.setCellWidget(r, 5, de)
+        widgets.append((t, sp_age, sp_qst, cb, de))
+    tbl.resizeColumnsToContents()
+    tbl.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+    lay.addWidget(tbl, 1)
+
+    no_funds = QLabel(TRT("tax_age_no_funds"))
+    no_funds.setWordWrap(True)
+    no_funds.setStyleSheet("padding:10px; font-size:12px;")
+    lay.addWidget(no_funds)
+    show_all = QCheckBox(TRT("tax_age_show_all"))
+    lay.addWidget(show_all)
+
+    # Zeilen abwechselnd hell/grau – selbst gefärbt, weil Qt beim Abwechseln
+    # auch ausgeblendete Zeilen mitzählt (sonst zwei gleiche Zeilen untereinander).
+    from PyQt6.QtGui import QPalette as _QPal_age
+    _pal  = tbl.palette()
+    _base = _pal.color(_QPal_age.ColorRole.Base)
+    _alt  = _pal.color(_QPal_age.ColorRole.AlternateBase)
+    if abs(_alt.lightness() - _base.lightness()) < 8:      # Stil ohne sichtbaren Unterschied
+        _alt = _base.lighter(150) if _base.lightness() < 128 else _base.darker(106)
+
+    def _stripe():
+        k = 0
+        for r in range(tbl.rowCount()):
+            if tbl.isRowHidden(r):
+                continue
+            bg = _base if k % 2 == 0 else _alt
+            for c in range(tbl.columnCount()):
+                it = tbl.item(r, c)
+                if it is None:
+                    it = QTableWidgetItem("")
+                    it.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                    tbl.setItem(r, c, it)
+                it.setBackground(bg)
+            k += 1
+
+    def _apply_filter():
+        all_ = show_all.isChecked()
+        for r in range(tbl.rowCount()):
+            tbl.setRowHidden(r, not (all_ or r in fund_rows))
+        _stripe()
+        empty = not all_ and not fund_rows
+        tbl.setVisible(not empty)
+        no_funds.setVisible(empty)
+    show_all.toggled.connect(lambda _: _apply_filter())
+    _apply_filter()
+
+    row = QHBoxLayout(); row.addStretch()
+    ok = QPushButton(TRT("tax_age_btn_save")); ok.setDefault(True)
+    ca = QPushButton(TRT("tax_age_btn_cancel"))
+    row.addWidget(ok); row.addWidget(ca)
+    lay.addLayout(row)
+    ok.clicked.connect(dlg.accept); ca.clicked.connect(dlg.reject)
+
+    if dlg.exec() != QDialog.DialogCode.Accepted:
+        return False
+    for t, sp_age, sp_qst, cb, de in widgets:
+        y = data.setdefault(t, {})
+        if sp_age.value() > 0:
+            y[str(year)] = {"age": round(sp_age.value(), 6), "qst": round(sp_qst.value(), 6),
+                            "cur": (cb.currentText().strip().upper() or "EUR")[:5],
+                            "date": de.date().toString("yyyy-MM-dd")}
+        else:
+            y.pop(str(year), None)
+        if not y:
+            data.pop(t, None)
+    try:
+        save_age(data)
+    except Exception as e:
+        QMessageBox.warning(parent, TRT("tax_age_title", year=year), str(e))
+        return False
+    return True
+
 
 CALC_FUNCS = {
     "AT": calc_at,
@@ -663,13 +1180,19 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
     # portfolio_data: {sym: {"quantity":..., "current_price":..., "buy_date":...,
     #                        "raw_positions": [{"quantity":q,"buy_date":d,...}]}}
     positions = []
+    # Im Steuerjahr (teil-)verkaufte Titel ebenfalls aufnehmen (Menge 0 =
+    # ganz verkauft): Dividenden bis zum Verkauf sind steuerpflichtig.
+    _year_start = f"{rules['year']}-01-01"
     for sym, info in (portfolio_data or {}).items():
         qty   = info.get("quantity", 0)
         price = info.get("current_price") or info.get("buy_price", 0)
         buy   = info.get("buy_price", price)
-        cty   = info.get("country", "")
+        cty   = info.get("country", "") or country_from_ticker(sym)
+        sold_in_year = any(
+            p.get("sell_date") and str(p.get("sell_date"))[:10] >= _year_start
+            for p in info.get("raw_positions", []) or [])
 
-        if qty and qty > 0:
+        if (qty and qty > 0) or sold_in_year:
             positions.append({
                 "ticker":           sym,
                 "name":             info.get("name", sym),
@@ -678,6 +1201,7 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
                 "buy_price":        buy,
                 "country":          cty,
                 "investor_country": country_code,
+                "currency":         info.get("currency", ""),
                 # Rohdaten mit buy_date für Ex-Day-Berechnung
                 "raw_positions":    info.get("raw_positions", []),
             })
@@ -735,6 +1259,10 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
     _QApp.processEvents()
 
     # Dividenden pro Symbol laden mit Live-Status
+    # Alle Beträge werden in die Auszugswährung umgerechnet (Dividenden zum
+    # Kurs am Ex-Tag, Kurse zum aktuellen Kurs).
+    _stmt_cur = STATEMENT_CURRENCY.get(country_code, "")
+    _fx_missing = []
     def _calc_with_progress(positions):
         """Ruft calc_fn auf, aber aktualisiert den Ladescreen pro Symbol."""
         n = len(positions)
@@ -743,11 +1271,29 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
             _status_lbl.setText(TRT("tax_loading_status", i=i, n=n))
             _sym_lbl.setText(TRT("tax_loading_symbol", sym=sym))
             _QApp.processEvents()
+            # Sitzland genauer bestimmen (Firmendaten / Fondsname, gecacht)
+            try:
+                pos["country"] = resolve_country(sym) or pos.get("country", "")
+            except Exception:
+                pass
             # Dividenden für dieses Symbol holen
             raw = pos.get("raw_positions") or [{"quantity": pos.get("quantity",0), "buy_date":""}]
             year = rules["year"]
             pos["_div_total"], pos["_div_detail"] = _fetch_real_dividends(
-                sym, year, positions_for_sym=raw)
+                sym, year, positions_for_sym=raw, target_currency=_stmt_cur)
+            # Kurse (Handelswährung, ggf. Pence) → Auszugswährung zum aktuellen Kurs
+            _icur = pos.get("currency") or _TICKER_CUR.get(sym.upper(), "")
+            _main, _fac = split_currency(_icur)
+            pos["_cur"] = _main
+            _rate = fx_now(_main, _stmt_cur) if _main else 1.0
+            if _rate is None:
+                _rate = 1.0
+                _fx_missing.append(sym)
+            for _k in ("current_price", "buy_price"):
+                try:
+                    pos[_k] = float(pos.get(_k, 0) or 0) * _fac * _rate
+                except Exception:
+                    pass
         _status_lbl.setText(TRT("tax_loading_calculating", n=n))
         _sym_lbl.setText("")
         _QApp.processEvents()
@@ -818,7 +1364,12 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
     help_btn = QPushButton(TRT("tax_btn_help"))
     help_btn.setToolTip(TRT("tax_tip_help"))
 
-    for b in (save_btn, load_btn, export_btn, form_btn, help_btn, close_btn):
+    _hdr_btns = [save_btn, load_btn, export_btn, form_btn, help_btn, close_btn]
+    if country_code == "AT":
+        age_btn = QPushButton(TRT("tax_btn_age"))
+        age_btn.setToolTip(TRT("tax_tip_age"))
+        _hdr_btns.insert(0, age_btn)
+    for b in _hdr_btns:
         b.setMinimumHeight(_BTN_H)
         if b not in (export_btn, form_btn):
             b.setStyleSheet(_BTN_STYLE)
@@ -835,6 +1386,14 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
     _title_color = "#e0e0e0" if _dm else "#1a1a2e"
     title_lbl.setStyleSheet(f"font-size:15px; margin-bottom:2px; color:{_title_color};")
     main_layout.addWidget(title_lbl)
+    if _stmt_cur:
+        _fx_txt = TRT("tax_fx_note", cur=_stmt_cur)
+        if _fx_missing:
+            _fx_txt += "  " + TRT("tax_fx_missing", syms=", ".join(_fx_missing))
+        _fx_lbl = QLabel(_fx_txt)
+        _fx_lbl.setWordWrap(True)
+        _fx_lbl.setStyleSheet("font-size:11px; color:%s;" % ("#e67e22" if _fx_missing else "#888"))
+        main_layout.addWidget(_fx_lbl)
 
     # Disclaimer (Regeln)
     _disc_key = "disclaimer_en" if get_tax_language() == "EN" and "disclaimer_en" in rules else "disclaimer"
@@ -864,7 +1423,12 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
         headers = [_c("tax_col_ticker"), _c("tax_col_name"), _c("tax_col_qty"),
                    _c("tax_col_price"), _c("tax_col_market_val"),
                    _c("tax_col_div"), _c("tax_col_unrealised")]
-    else:  # AT / US
+    elif country_code == "AT":
+        headers = [_c("tax_col_ticker"), _c("tax_col_name"), _c("tax_col_qty"),
+                   _c("tax_col_price"), _c("tax_col_market_val"),
+                   _c("tax_col_div"), _c("tax_col_kest_div_short"), _c("tax_col_foreign_short"),
+                   _c("tax_col_age"), _c("tax_col_kest_age"), _c("tax_col_note")]
+    else:  # US
         headers = [_c("tax_col_ticker"), _c("tax_col_name"), _c("tax_col_qty"),
                    _c("tax_col_price"), _c("tax_col_market_val"),
                    _c("tax_col_div"), _c("tax_col_withholding"), _c("tax_col_dba")]
@@ -886,35 +1450,41 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
         except Exception:
             return "–"
 
-    for r, row in enumerate(rows):
-        def _item(text, align=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter):
-            it = QTableWidgetItem(str(text))
-            it.setTextAlignment(align)
-            return it
+    def _fill_table():
+        tbl.setRowCount(len(rows))
+        for r, row in enumerate(rows):
+            def _item(text, align=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter):
+                it = QTableWidgetItem(str(text))
+                it.setTextAlignment(align)
+                return it
 
-        left = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        tbl.setItem(r, 0, _item(row["ticker"],      left))
-        tbl.setItem(r, 1, _item(row["name"],         left))
-        tbl.setItem(r, 2, _item(_num(row["qty"], 0)))
-        tbl.setItem(r, 3, _item(_num(row["price"])))
-        tbl.setItem(r, 4, _item(_num(row["market_val"])))
-        tbl.setItem(r, 5, _item(_num(row["div_total"])))
+            left = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            tbl.setItem(r, 0, _item(row["ticker"],      left))
+            tbl.setItem(r, 1, _item(row["name"],         left))
+            tbl.setItem(r, 2, _item(_num(row["qty"], 0)))
+            tbl.setItem(r, 3, _item(_num(row["price"])))
+            tbl.setItem(r, 4, _item(_num(row["market_val"])))
+            tbl.setItem(r, 5, _item(_num(row["div_total"])))
 
-        if country_code == "AT":
-            tbl.setItem(r, 6, _item(_num(row["kest_div"])))
-            tbl.setItem(r, 7, _item(_num(row["foreign_tax"])))
-            tbl.setItem(r, 8, _item(row["tax_note"], left))
-        elif country_code == "CH":
-            tbl.setItem(r, 6, _item(_num(row["vst"])))
-            tbl.setItem(r, 7, _item(_num(row["foreign_tax"])))
-            tbl.setItem(r, 8, _item(row["tax_note"], left))
-        elif country_code in ("DE", "UK"):
-            tbl.setItem(r, 6, _item(_num(row.get("unrealised", 0))))
-        elif country_code == "US":
-            tbl.setItem(r, 6, _item(_num(row.get("tax", 0))))
-            tbl.setItem(r, 7, _item(row.get("rate_note", ""), left))
+            if country_code == "AT":
+                tbl.setItem(r, 6, _item(_num(row["kest_div"])))
+                tbl.setItem(r, 7, _item(_num(row["foreign_tax"])))
+                tbl.setItem(r, 8, _item(_num(row.get("age_total", 0)) if row.get("age_total") else ""))
+                tbl.setItem(r, 9, _item(_num(row.get("kest_age", 0)) if row.get("age_total") else ""))
+                tbl.setItem(r, 10, _item(row["tax_note"], left))
+            elif country_code == "CH":
+                tbl.setItem(r, 6, _item(_num(row["vst"])))
+                tbl.setItem(r, 7, _item(_num(row["foreign_tax"])))
+                tbl.setItem(r, 8, _item(row["tax_note"], left))
+            elif country_code in ("DE", "UK"):
+                tbl.setItem(r, 6, _item(_num(row.get("unrealised", 0))))
+            elif country_code == "US":
+                tbl.setItem(r, 6, _item(_num(row.get("tax", 0))))
+                tbl.setItem(r, 7, _item(row.get("rate_note", ""), left))
 
-    tbl.resizeColumnsToContents()
+        tbl.resizeColumnsToContents()
+
+    _fill_table()
     main_layout.addWidget(tbl)
 
     # ── Zusammenfassung ───────────────────────────────────────────────────────
@@ -940,63 +1510,74 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
             lbl.setStyleSheet(f"color:{color};")
         sum_layout.addWidget(lbl)
 
-    _sum_row(TRT("tax_sum_market_val"),
-             _num(summary["total_market_value"]) + f"  {cur}", bold=True)
-    _sum_row(TRT("tax_sum_gross_div"),
-             _num(summary["total_dividends"]) + f"  {cur}")
+    def _fill_summary():
+        while sum_layout.count():
+            _it = sum_layout.takeAt(0)
+            if _it.widget():
+                _it.widget().deleteLater()
+        _sum_row(TRT("tax_sum_market_val"),
+                 _num(summary["total_market_value"]) + f"  {cur}", bold=True)
+        _sum_row(TRT("tax_sum_gross_div"),
+                 _num(summary["total_dividends"]) + f"  {cur}")
 
-    if country_code == "AT":
-        _sum_row(TRT("tax_sum_kest_div"),
-                 _num(summary["total_kest_div"]) + f"  {cur}", color="#c0392b")
-        _sum_row(TRT("tax_sum_foreign_tax"),
-                 _num(summary["total_foreign_tax"]) + f"  {cur}", color="#c0392b")
-        _sum_row(TRT("tax_sum_kest_gain"),
-                 _num(summary["total_kest_gain"]) + f"  {cur}", color="#e67e22")
-        _sum_row(TRT("tax_sum_total_tax"),
-                 _num(summary["total_tax"]) + f"  {cur}", bold=True, color="#c0392b")
-        _sum_row(TRT("tax_sum_net_div_kest"),
-                 _num(summary["net_dividends"]) + f"  {cur}", bold=True, color="#27ae60")
-        if rules.get("verlustausgleich"):
-            _sum_row(TRT("tax_sum_verlustausgleich"), rules["verlustausgleich_note"])
-    elif country_code == "CH":
-        _sum_row(TRT("tax_sum_vst"),
-                 _num(summary["total_vst"]) + f"  {cur}", color="#c0392b")
-        _sum_row(TRT("tax_sum_foreign_tax_est"),
-                 _num(summary["total_foreign_tax"]) + f"  {cur}", color="#c0392b")
-        _sum_row(TRT("tax_sum_total_tax_ch"),
-                 _num(summary["total_tax"]) + f"  {cur}", bold=True, color="#c0392b")
-        _sum_row(TRT("tax_sum_net_div_ch"),
-                 _num(summary["net_dividends"]) + f"  {cur}", bold=True, color="#27ae60")
-        if rules.get("wealth_tax"):
-            _sum_row(TRT("tax_sum_wealth_tax"), rules["wealth_tax_note"])
-    elif country_code == "DE":
-        _sum_row(TRT("tax_sum_freistellung"),
-                 _num(summary["freistellungsauftrag"]) + f"  {cur}")
-        _sum_row(TRT("tax_sum_taxable_div"),
-                 _num(summary["taxable_dividends"]) + f"  {cur}")
-        _sum_row(TRT("tax_sum_abgeltung"),
-                 _num(summary["abgeltungssteuer"]) + f"  {cur}", color="#c0392b")
-        _sum_row(TRT("tax_sum_soli"),
-                 _num(summary["soli"]) + f"  {cur}", color="#c0392b")
-        _sum_row(TRT("tax_sum_total_tax_de"),
-                 _num(summary["total_tax"]) + f"  {cur}", bold=True, color="#c0392b")
-        _sum_row(TRT("tax_sum_net_div_de"),
-                 _num(summary["net_dividends"]) + f"  {cur}", bold=True, color="#27ae60")
-    elif country_code == "UK":
-        _sum_row(TRT("tax_sum_div_allowance"),
-                 _num(summary["dividend_allowance"]) + "  GBP")
-        _sum_row(TRT("tax_sum_taxable_div_uk"),
-                 _num(summary["taxable_dividends"]) + "  GBP")
-        _sum_row(TRT("tax_sum_div_tax_basic"),
-                 _num(summary["div_tax_basic"]) + "  GBP", color="#c0392b")
-        _sum_row(TRT("tax_sum_net_div_uk"),
-                 _num(summary["net_dividends"]) + "  GBP", bold=True, color="#27ae60")
-    elif country_code == "US":
-        _sum_row(TRT("tax_sum_total_tax_us"),
-                 _num(summary["total_tax"]) + f"  {cur}", bold=True, color="#c0392b")
-        _sum_row(TRT("tax_sum_net_div_us"),
-                 _num(summary["net_dividends"]) + f"  {cur}", bold=True, color="#27ae60")
+        if country_code == "AT":
+            _sum_row(TRT("tax_sum_kest_div"),
+                     _num(summary["total_kest_div"]) + f"  {cur}", color="#c0392b")
+            _sum_row(TRT("tax_sum_foreign_tax"),
+                     _num(summary["total_foreign_tax"]) + f"  {cur}", color="#c0392b")
+            _sum_row(TRT("tax_sum_kest_gain"),
+                     _num(summary["total_kest_gain"]) + f"  {cur}", color="#e67e22")
+            _sum_row(TRT("tax_sum_age"),
+                     _num(summary.get("total_age", 0)) + f"  {cur}")
+            _sum_row(TRT("tax_sum_kest_age"),
+                     _num(summary.get("total_kest_age", 0)) + f"  {cur}", color="#c0392b")
+            _sum_row(TRT("tax_sum_total_tax"),
+                     _num(summary["total_tax"]) + f"  {cur}", bold=True, color="#c0392b")
+            _sum_row(TRT("tax_sum_net_div_kest"),
+                     _num(summary["net_dividends"]) + f"  {cur}", bold=True, color="#27ae60")
+            if rules.get("verlustausgleich"):
+                _sum_row(TRT("tax_sum_verlustausgleich"), rules["verlustausgleich_note"])
+        elif country_code == "CH":
+            _sum_row(TRT("tax_sum_vst"),
+                     _num(summary["total_vst"]) + f"  {cur}", color="#c0392b")
+            _sum_row(TRT("tax_sum_foreign_tax_est"),
+                     _num(summary["total_foreign_tax"]) + f"  {cur}", color="#c0392b")
+            _sum_row(TRT("tax_sum_total_tax_ch"),
+                     _num(summary["total_tax"]) + f"  {cur}", bold=True, color="#c0392b")
+            _sum_row(TRT("tax_sum_net_div_ch"),
+                     _num(summary["net_dividends"]) + f"  {cur}", bold=True, color="#27ae60")
+            if rules.get("wealth_tax"):
+                _sum_row(TRT("tax_sum_wealth_tax"), rules["wealth_tax_note"])
+        elif country_code == "DE":
+            _sum_row(TRT("tax_sum_freistellung"),
+                     _num(summary["freistellungsauftrag"]) + f"  {cur}")
+            _sum_row(TRT("tax_sum_taxable_div"),
+                     _num(summary["taxable_dividends"]) + f"  {cur}")
+            _sum_row(TRT("tax_sum_abgeltung"),
+                     _num(summary["abgeltungssteuer"]) + f"  {cur}", color="#c0392b")
+            _sum_row(TRT("tax_sum_soli"),
+                     _num(summary["soli"]) + f"  {cur}", color="#c0392b")
+            _sum_row(TRT("tax_sum_total_tax_de"),
+                     _num(summary["total_tax"]) + f"  {cur}", bold=True, color="#c0392b")
+            _sum_row(TRT("tax_sum_net_div_de"),
+                     _num(summary["net_dividends"]) + f"  {cur}", bold=True, color="#27ae60")
+        elif country_code == "UK":
+            _sum_row(TRT("tax_sum_div_allowance"),
+                     _num(summary["dividend_allowance"]) + "  GBP")
+            _sum_row(TRT("tax_sum_taxable_div_uk"),
+                     _num(summary["taxable_dividends"]) + "  GBP")
+            _sum_row(TRT("tax_sum_div_tax_basic"),
+                     _num(summary["div_tax_basic"]) + "  GBP", color="#c0392b")
+            _sum_row(TRT("tax_sum_net_div_uk"),
+                     _num(summary["net_dividends"]) + "  GBP", bold=True, color="#27ae60")
+        elif country_code == "US":
+            _sum_row(TRT("tax_sum_total_tax_us"),
+                     _num(summary["total_tax"]) + f"  {cur}", bold=True, color="#c0392b")
+            _sum_row(TRT("tax_sum_net_div_us"),
+                     _num(summary["net_dividends"]) + f"  {cur}", bold=True, color="#27ae60")
 
+
+    _fill_summary()
     main_layout.addWidget(sumframe)
 
     # ── Wash Sale Hinweis (nur US) ────────────────────────────────────────────
@@ -1056,6 +1637,17 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
         "summary":   summary,
         "positions": positions,
     }
+
+    # ── AT: AGE erfassen → neu berechnen (Dividenden sind bereits geladen) ────
+    if country_code == "AT":
+        def _on_age():
+            if _edit_age_dialog(dlg, positions, rules["year"], _fmt):
+                _new_rows, _new_sum = calc_fn(positions)
+                rows[:] = _new_rows
+                summary.clear(); summary.update(_new_sum)
+                _fill_table()
+                _fill_summary()
+        age_btn.clicked.connect(_on_age)
 
     # ── Export ────────────────────────────────────────────────────────────────
     def _on_export():
@@ -1175,8 +1767,8 @@ code { background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 12p
             <tr><th>Spalte</th><th>Erklärung</th></tr>
             <tr><td><b>Ticker / Name</b></td><td>Wertpapierbezeichnung</td></tr>
             <tr><td><b>Stück</b></td><td>Gehaltene Stückzahl am Ex-Dividend-Tag</td></tr>
-            <tr><td><b>Kurs / Marktwert</b></td><td>Kurs per 31.12. in CHF (SNB-Jahreskurs)</td></tr>
-            <tr><td><b>Dividende/J.</b></td><td>Brutto-Dividende im Steuerjahr in CHF</td></tr>
+            <tr><td><b>Kurs / Marktwert</b></td><td>Aktueller Kurs, in CHF umgerechnet (aktueller Wechselkurs)</td></tr>
+            <tr><td><b>Dividende/J.</b></td><td>Brutto-Dividende im Steuerjahr in CHF (umgerechnet zum Kurs am Ex-Tag)</td></tr>
             <tr><td><b>Verrechnungssteuer 35 %</b></td><td>Einbehaltene VSt auf Schweizer Dividenden (rückforderbar)</td></tr>
             <tr><td><b>Ausländische QSt</b></td><td>Einbehaltene Quellensteuer auf ausländische Dividenden (anrechenbar via DA-1)</td></tr>
             <tr><td><b>DBA-Satz / Hinweis</b></td><td>Angewandter DBA-Satz je Herkunftsland</td></tr>
@@ -1227,8 +1819,8 @@ code { background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 12p
             <tr><th>Column</th><th>Explanation</th></tr>
             <tr><td><b>Ticker / Name</b></td><td>Security name</td></tr>
             <tr><td><b>Shares</b></td><td>Shares held on ex-dividend date</td></tr>
-            <tr><td><b>Price / Market value</b></td><td>Price as of 31 Dec in CHF (SNB annual rate)</td></tr>
-            <tr><td><b>Dividend/Y.</b></td><td>Gross dividend in the tax year in CHF</td></tr>
+            <tr><td><b>Price / Market value</b></td><td>Current price, converted to CHF (current exchange rate)</td></tr>
+            <tr><td><b>Dividend/Y.</b></td><td>Gross dividend in the tax year in CHF (converted at the ex-date rate)</td></tr>
             <tr><td><b>Withholding tax 35%</b></td><td>Swiss withholding tax on Swiss dividends (reclaimable)</td></tr>
             <tr><td><b>Foreign WHT</b></td><td>Foreign withholding tax on foreign dividends (creditable via DA-1)</td></tr>
             <tr><td><b>DTT rate / Note</b></td><td>Applied DTT rate by source country</td></tr>
@@ -1281,8 +1873,8 @@ code { background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 12p
             <tr><th>Spalte</th><th>Erklärung</th></tr>
             <tr><td><b>Ticker / Name</b></td><td>Wertpapierbezeichnung</td></tr>
             <tr><td><b>Stück</b></td><td>Gehaltene Stückzahl am Ex-Dividend-Tag</td></tr>
-            <tr><td><b>Kurs / Marktwert</b></td><td>Kurs per 31.12. in EUR (Bundesbank-Jahreskurs)</td></tr>
-            <tr><td><b>Dividende/J.</b></td><td>Brutto-Dividende im Steuerjahr in EUR</td></tr>
+            <tr><td><b>Kurs / Marktwert</b></td><td>Aktueller Kurs, in EUR umgerechnet (aktueller Wechselkurs)</td></tr>
+            <tr><td><b>Dividende/J.</b></td><td>Brutto-Dividende im Steuerjahr in EUR (umgerechnet zum Kurs am Ex-Tag)</td></tr>
             <tr><td><b>Ausländische QSt</b></td><td>Einbehaltene Quellensteuer auf ausländische Dividenden (anrechenbar)</td></tr>
             <tr><td><b>Abgeltungsteuer</b></td><td>25 % auf steuerpflichtige Kapitalerträge (nach Freistellungsauftrag)</td></tr>
             <tr><td><b>Nicht realisierter Gewinn</b></td><td>Buchgewinn der gehaltenen Position (informativ)</td></tr>
@@ -1337,8 +1929,8 @@ code { background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 12p
             <tr><th>Column</th><th>Explanation</th></tr>
             <tr><td><b>Ticker / Name</b></td><td>Security name</td></tr>
             <tr><td><b>Shares</b></td><td>Shares held on ex-dividend date</td></tr>
-            <tr><td><b>Price / Market value</b></td><td>Price as of 31 Dec in EUR (Bundesbank annual rate)</td></tr>
-            <tr><td><b>Dividend/Y.</b></td><td>Gross dividend in the tax year in EUR</td></tr>
+            <tr><td><b>Price / Market value</b></td><td>Current price, converted to EUR (current exchange rate)</td></tr>
+            <tr><td><b>Dividend/Y.</b></td><td>Gross dividend in the tax year in EUR (converted at the ex-date rate)</td></tr>
             <tr><td><b>Foreign WHT</b></td><td>Foreign withholding tax on foreign dividends (creditable)</td></tr>
             <tr><td><b>Withholding tax</b></td><td>25% on taxable capital income (after tax-free allowance)</td></tr>
             <tr><td><b>Unrealised gain</b></td><td>Book gain on held position (informational)</td></tr>
@@ -1395,12 +1987,24 @@ code { background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 12p
             <tr><th>Spalte</th><th>Erklärung</th></tr>
             <tr><td><b>Ticker / Name</b></td><td>Wertpapierbezeichnung</td></tr>
             <tr><td><b>Stück</b></td><td>Gehaltene Stückzahl am Ex-Dividend-Tag</td></tr>
-            <tr><td><b>Kurs / Marktwert</b></td><td>Kurs per 31.12. in EUR (OeNB-Jahreskurs)</td></tr>
-            <tr><td><b>Dividende/J.</b></td><td>Brutto-Dividende im Steuerjahr in EUR</td></tr>
-            <tr><td><b>Ausländische QSt</b></td><td>Einbehaltene Quellensteuer auf ausländische Dividenden</td></tr>
-            <tr><td><b>KeSt 27,5 %</b></td><td>Kapitalertragsteuer auf Dividenden</td></tr>
-            <tr><td><b>DBA-Satz / Hinweis</b></td><td>Anwendbarer DBA-Satz (AT–US/DE/CH/GB/FR: 15 %)</td></tr>
+            <tr><td><b>Kurs / Marktwert</b></td><td>Aktueller Kurs, in EUR umgerechnet (aktueller Wechselkurs)</td></tr>
+            <tr><td><b>Dividende/J.</b></td><td>Brutto-Dividende im Steuerjahr in EUR (umgerechnet zum Kurs am Ex-Tag)</td></tr>
+            <tr><td><b>KESt Div.</b></td><td>KESt 27,5 % auf Dividenden (abzüglich anrechenbarer ausländischer QSt)</td></tr>
+            <tr><td><b>Ausländ. QSt</b></td><td>Anrechenbare ausländische Quellensteuer nach DBA (meist 15 %; UK, UCITS-Fonds 0 %)</td></tr>
+            <tr><td><b>AGE / KESt AGE</b></td><td>Ausschüttungsgleiche Erträge thesaurierender Fonds (manuell erfasst) und die KESt darauf</td></tr>
+            <tr><td><b>Hinweis</b></td><td>Sitzland und angewandter DBA-Satz</td></tr>
         </table>
+        <h3>Thesaurierende Fonds: AGE erfassen</h3>
+        <p>Thesaurierende Fonds schütten nicht aus, die <b>ausschüttungsgleichen Erträge (AGE)</b> sind trotzdem
+        jährlich KESt-pflichtig. Über <b>&#128221; AGE erfassen</b> die Werte aus der OeKB-Steuermeldung eintragen
+        (<b>my.oekb.at</b> &rarr; Fonds-Steuerdaten, Suche nach ISIN):</p>
+        <ul>
+            <li><b>AGE je Anteil</b> und <b>anrechenbare ausländische QSt je Anteil</b></li>
+            <li><b>Währung</b> laut Meldung (Fondswährung, kann von der Börsenwährung abweichen)</li>
+            <li><b>Zuflussdatum</b> – massgebend ist der Bestand an diesem Tag</li>
+        </ul>
+        <p>Es werden nur Fonds/ETFs angezeigt – <b>für Aktien ist nichts einzutragen</b>. Die Werte gelten pro Fonds
+        und Steuerjahr und werden sofort in Tabelle, Zusammenfassung und Gesamtsteuer übernommen.</p>
         <h3>Steuerformular-Export: E1kv-Nachweis</h3>
         <ul>
             <li><b>Auswahl:</b> Finanzamt-Region (alle 9)</li>
@@ -1423,12 +2027,24 @@ code { background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 12p
             <tr><th>Column</th><th>Explanation</th></tr>
             <tr><td><b>Ticker / Name</b></td><td>Security name</td></tr>
             <tr><td><b>Shares</b></td><td>Shares held on ex-dividend date</td></tr>
-            <tr><td><b>Price / Market value</b></td><td>Price as of 31 Dec in EUR (OeNB annual rate)</td></tr>
-            <tr><td><b>Dividend/Y.</b></td><td>Gross dividend in the tax year in EUR</td></tr>
-            <tr><td><b>Foreign WHT</b></td><td>Foreign withholding tax on foreign dividends</td></tr>
-            <tr><td><b>KeSt 27.5%</b></td><td>Capital gains tax on dividends</td></tr>
-            <tr><td><b>DTT rate / Note</b></td><td>Applicable DTT rate (AT–US/DE/CH/GB/FR: 15%)</td></tr>
+            <tr><td><b>Price / Market value</b></td><td>Current price, converted to EUR (current exchange rate)</td></tr>
+            <tr><td><b>Dividend/Y.</b></td><td>Gross dividend in the tax year in EUR (converted at the ex-date rate)</td></tr>
+            <tr><td><b>KESt div.</b></td><td>KESt 27.5% on dividends (less creditable foreign WHT)</td></tr>
+            <tr><td><b>Foreign WHT</b></td><td>Creditable foreign withholding tax under DTT (usually 15%; UK, UCITS funds 0%)</td></tr>
+            <tr><td><b>AGE / KESt AGE</b></td><td>Deemed distributed income of accumulating funds (entered manually) and the KESt on it</td></tr>
+            <tr><td><b>Note</b></td><td>Country of domicile and applied DTT rate</td></tr>
         </table>
+        <h3>Accumulating funds: enter AGE</h3>
+        <p>Accumulating funds do not pay out, but their <b>deemed distributed income (AGE)</b> is still subject
+        to KESt every year. Use <b>&#128221; Enter AGE</b> to enter the figures from the OeKB tax report
+        (<b>my.oekb.at</b> &rarr; fund tax data, search by ISIN):</p>
+        <ul>
+            <li><b>AGE per unit</b> and <b>creditable foreign WHT per unit</b></li>
+            <li><b>Currency</b> as reported (fund currency, may differ from the trading currency)</li>
+            <li><b>Inflow date</b> – your holding on that day counts</li>
+        </ul>
+        <p>Only funds/ETFs are listed – <b>nothing to enter for shares</b>. Values apply per fund and tax year and
+        are immediately reflected in the table, summary and total tax.</p>
         <h3>Tax Form Export: E1kv Supplement</h3>
         <ul>
             <li><b>Selection:</b> Tax office region (all 9)</li>
@@ -1453,8 +2069,8 @@ code { background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 12p
             <tr><th>Spalte</th><th>Erklärung</th></tr>
             <tr><td><b>Ticker / Name</b></td><td>Wertpapierbezeichnung</td></tr>
             <tr><td><b>Stück</b></td><td>Gehaltene Stückzahl am Ex-Dividend-Tag</td></tr>
-            <tr><td><b>Kurs / Marktwert</b></td><td>Kurs per 5. April in GBP</td></tr>
-            <tr><td><b>Dividende/J.</b></td><td>Brutto-Dividende im Steuerjahr in GBP</td></tr>
+            <tr><td><b>Kurs / Marktwert</b></td><td>Aktueller Kurs, in GBP umgerechnet (aktueller Wechselkurs)</td></tr>
+            <tr><td><b>Dividende/J.</b></td><td>Brutto-Dividende im Steuerjahr in GBP (umgerechnet zum Kurs am Ex-Tag)</td></tr>
             <tr><td><b>Nicht realisierter Gewinn</b></td><td>Buchgewinn (informativ, CGT erst bei Verkauf)</td></tr>
         </table>
         <h3>Steuerformular-Export: SA100 / SA108 (Self Assessment)</h3>
@@ -1479,8 +2095,8 @@ code { background: #f5f5f5; padding: 1px 4px; border-radius: 3px; font-size: 12p
             <tr><th>Column</th><th>Explanation</th></tr>
             <tr><td><b>Ticker / Name</b></td><td>Security name</td></tr>
             <tr><td><b>Shares</b></td><td>Shares held on ex-dividend date</td></tr>
-            <tr><td><b>Price / Market value</b></td><td>Price as of 5 April in GBP</td></tr>
-            <tr><td><b>Dividend/Y.</b></td><td>Gross dividend in the tax year in GBP</td></tr>
+            <tr><td><b>Price / Market value</b></td><td>Current price, converted to GBP (current exchange rate)</td></tr>
+            <tr><td><b>Dividend/Y.</b></td><td>Gross dividend in the tax year in GBP (converted at the ex-date rate)</td></tr>
             <tr><td><b>Unrealised gain</b></td><td>Book gain (informational – CGT only on disposal)</td></tr>
         </table>
         <h3>Tax Form Export: SA100 / SA108 (Self Assessment)</h3>
@@ -1681,8 +2297,35 @@ code { background: #313244; padding: 1px 4px; border-radius: 3px; font-size: 12p
 
     help_btn.clicked.connect(_show_help)
 
+    # ── Fenstergrösse an Inhalt und Bildschirm anpassen ───────────────────────
+    try:
+        _scr = ((parent.screen() if parent is not None else None)
+                or QApplication.primaryScreen()).availableGeometry()
+        _fit_tax_dialog(dlg, _scr, update_btn, _hdr_btns, tbl)
+    except Exception:
+        pass
 
     return dlg
+
+
+def _fit_tax_dialog(dlg, scr, update_btn, hdr_btns, tbl):
+    """Öffnet den Steuerauszug so breit, dass alle Buttons sichtbar sind
+    (max. 95 % des Bildschirms), zentriert. Bei zu kleinem Bildschirm
+    (z. B. Full HD mit 150 % Skalierung): kompakte Kopfzeile, niedrigere Tabelle."""
+    max_w = int(scr.width() * 0.95)
+    max_h = int(scr.height() * 0.92)
+    need_w = dlg.sizeHint().width() + 30
+    if need_w > max_w:
+        update_btn.hide()                       # Platzhalter, noch ohne Funktion
+        for b in hdr_btns:
+            b.setStyleSheet(b.styleSheet().replace("padding:4px 14px;", "padding:4px 6px;"))
+        need_w = dlg.sizeHint().width() + 10
+    if dlg.minimumSizeHint().height() > max_h:
+        tbl.setMinimumHeight(120)
+    w = min(max(need_w, 1050), max_w)
+    h = min(max(dlg.sizeHint().height(), 720), max_h)
+    dlg.resize(w, h)
+    dlg.move(scr.x() + (scr.width() - w) // 2, scr.y() + (scr.height() - h) // 2)
 
 
 # ── Speichern / Laden (AES-256-verschlüsselt, gleiche Logik wie Portfolios) ──
@@ -3983,6 +4626,8 @@ def _export_pdf(path, tax_data):
             (TRT("tax_sum_kest_div").rstrip(":"),      "total_kest_div"),
             (TRT("tax_sum_foreign_tax").rstrip(":"),   "total_foreign_tax"),
             (TRT("tax_sum_kest_gain").rstrip(":"),     "total_kest_gain"),
+            (TRT("tax_sum_age").rstrip(":"),           "total_age"),
+            (TRT("tax_sum_kest_age").rstrip(":"),      "total_kest_age"),
             (TRT("tax_sum_total_tax").rstrip(":"),     "total_tax"),
             (TRT("tax_sum_net_div_kest").rstrip(":"),  "net_dividends"),
         ]
@@ -4093,6 +4738,8 @@ def _export_xlsx(path, tax_data):
             (f"{TRT('tax_sum_kest_div').rstrip(':')} ({cur})",             "total_kest_div"),
             (f"{TRT('tax_sum_foreign_tax').rstrip(':')} ({cur})",          "total_foreign_tax"),
             (f"{TRT('tax_sum_kest_gain').rstrip(':')} ({cur})",            "total_kest_gain"),
+            (f"{TRT('tax_sum_age').rstrip(':')} ({cur})",                  "total_age"),
+            (f"{TRT('tax_sum_kest_age').rstrip(':')} ({cur})",             "total_kest_age"),
             (f"{TRT('tax_sum_total_tax').rstrip(':')} ({cur})",            "total_tax"),
             (f"{TRT('tax_sum_net_div_kest').rstrip(':')} ({cur})",         "net_dividends"),
         ]
@@ -4196,6 +4843,8 @@ def _export_ods(path, tax_data):
             (f"{TRT('tax_sum_kest_div').rstrip(':')} ({cur})",             "total_kest_div"),
             (f"{TRT('tax_sum_foreign_tax').rstrip(':')} ({cur})",          "total_foreign_tax"),
             (f"{TRT('tax_sum_kest_gain').rstrip(':')} ({cur})",            "total_kest_gain"),
+            (f"{TRT('tax_sum_age').rstrip(':')} ({cur})",                  "total_age"),
+            (f"{TRT('tax_sum_kest_age').rstrip(':')} ({cur})",             "total_kest_age"),
             (f"{TRT('tax_sum_total_tax').rstrip(':')} ({cur})",            "total_tax"),
             (f"{TRT('tax_sum_net_div_kest').rstrip(':')} ({cur})",         "net_dividends"),
         ]

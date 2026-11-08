@@ -107,6 +107,35 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_col_unrealised":           "Nicht realisierter Gewinn",
         "tax_col_withholding":          "Quellensteuer",
         "tax_col_dba":                  "DBA-Satz",
+        "tax_col_age":                  "AGE",
+        "tax_col_kest_age":             "KESt AGE",
+        "tax_sum_age":                  "Ausschüttungsgleiche Erträge (AGE, manuell):",
+        "tax_sum_kest_age":             "KESt 27,5 % auf AGE (abzgl. anrechenbarer QSt):",
+        "tax_btn_age":                  "📝 AGE erfassen",
+        "tax_tip_age":                  "Ausschüttungsgleiche Erträge thesaurierender Fonds aus der OeKB-Meldung eintragen",
+        "tax_age_title":                "Ausschüttungsgleiche Erträge {year}",
+        "tax_age_info":                 "Thesaurierende Fonds schütten nicht aus, in Österreich sind die "
+                                        "<b>ausschüttungsgleichen Erträge (AGE)</b> trotzdem jährlich KESt-pflichtig. "
+                                        "Die Werte je Anteil stehen in der Steuermeldung des Fonds bei der OeKB "
+                                        "(<a href='https://my.oekb.at'>my.oekb.at</a> → Fonds-Steuerdaten, Suche nach ISIN). "
+                                        "Übernehmen Sie für {year}: <i>Ausschüttungsgleiche Erträge</i>, "
+                                        "<i>anrechenbare ausländische Quellensteuer</i> und das Zuflussdatum "
+                                        "(massgebend ist Ihr Bestand an diesem Tag). Beträge in Fondswährung. "
+                                        "Leer lassen (0) = keine AGE. Angezeigt werden nur Fonds/ETFs – bei Aktien ist nichts einzutragen. "
+                                        "Die Währung ist die Fondswährung laut OeKB-Meldung (kann von der Börsenwährung abweichen).",
+        "tax_age_col_age":              "AGE je Anteil",
+        "tax_age_col_qst":              "Anrechenb. QSt je Anteil",
+        "tax_age_col_date":             "Zuflussdatum",
+        "tax_age_btn_save":             "Speichern",
+        "tax_age_btn_cancel":           "Abbrechen",
+        "tax_age_col_cur":              "Währung (OeKB)",
+        "tax_age_no_funds":             "In diesem Portfolio wurden keine Fonds oder ETFs gefunden. "
+                                        "Ausschüttungsgleiche Erträge gibt es nur bei Fonds – für Aktien "
+                                        "ist nichts einzutragen.",
+        "tax_age_show_all":             "Alle Positionen anzeigen (falls ein Fonds nicht erkannt wurde)",
+        "tax_fx_note":                  "Alle Beträge in {cur}: Dividenden zum Kurs am Ex-Tag, "
+                                        "Kurse und Marktwerte zum aktuellen Kurs umgerechnet.",
+        "tax_fx_missing":               "Kein Wechselkurs verfügbar für: {syms} (nicht umgerechnet).",
         # Kurz-Varianten für Export-Tabellen (PDF/XLSX/ODS)
         "tax_col_kest_div_short":       "KESt Div.",
         "tax_col_vst_short":            "VSt (35%)",
@@ -415,6 +444,34 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_col_unrealised":           "Unrealized Gain",
         "tax_col_withholding":          "Withholding Tax",
         "tax_col_dba":                  "Treaty Rate",
+        "tax_col_age":                  "Deemed dist.",
+        "tax_col_kest_age":             "KESt deemed",
+        "tax_sum_age":                  "Deemed distributed income (AGE, manual):",
+        "tax_sum_kest_age":             "KESt 27.5 % on AGE (less creditable WHT):",
+        "tax_btn_age":                  "📝 Enter AGE",
+        "tax_tip_age":                  "Enter deemed distributed income of accumulating funds from the OeKB report",
+        "tax_age_title":                "Deemed distributed income {year}",
+        "tax_age_info":                 "Accumulating funds do not pay out, but in Austria their "
+                                        "<b>deemed distributed income (ausschüttungsgleiche Erträge, AGE)</b> is still "
+                                        "subject to KESt every year. The per-unit figures are in the fund's tax report "
+                                        "at OeKB (<a href='https://my.oekb.at'>my.oekb.at</a> → fund tax data, search by ISIN). "
+                                        "Enter for {year}: <i>deemed distributed income</i>, <i>creditable foreign "
+                                        "withholding tax</i> and the inflow date (your holding on that day counts). "
+                                        "Leave empty (0) = no AGE. Only funds/ETFs are listed – nothing to enter for shares. "
+                                        "Currency = fund currency as reported by OeKB (may differ from the trading currency).",
+        "tax_age_col_age":              "AGE per unit",
+        "tax_age_col_qst":              "Creditable WHT per unit",
+        "tax_age_col_date":             "Inflow date",
+        "tax_age_btn_save":             "Save",
+        "tax_age_btn_cancel":           "Cancel",
+        "tax_age_col_cur":              "Currency (OeKB)",
+        "tax_age_no_funds":             "No funds or ETFs were found in this portfolio. "
+                                        "Deemed distributed income only exists for funds – "
+                                        "nothing to enter for shares.",
+        "tax_age_show_all":             "Show all positions (if a fund was not recognised)",
+        "tax_fx_note":                  "All amounts in {cur}: dividends converted at the ex-date rate, "
+                                        "prices and market values at the current rate.",
+        "tax_fx_missing":               "No exchange rate available for: {syms} (not converted).",
         # Short variants for export tables (PDF/XLSX/ODS)
         "tax_col_kest_div_short":       "WHT Div.",
         "tax_col_vst_short":            "WHT (35%)",

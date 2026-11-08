@@ -1,5 +1,5 @@
 project('stock-monitor',
-  version: '5.7.4',
+  version: '5.9.0',
   meson_version: '>= 0.59.0',
 )
 
@@ -24,6 +24,8 @@ py_sources = [
   'screener.py',
   'stock_rating.py',
   'mc_scenarios.py',
+  'dividend_account.py',
+  'dividend_account_translations.py',
 ]
 
 install_data(py_sources,

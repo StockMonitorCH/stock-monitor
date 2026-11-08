@@ -1,21 +1,29 @@
 {
-  "_comment": "Dividend Kings (>=50 Jahre) und Aristocrats (>=25 Jahre) – Stand 2025.",
-  "_hint": "Symbole ohne Exchange-Suffix (z.B. 'KO', nicht 'KO.US'). Kings sind automatisch auch Aristocrats.",
+  "_comment": "Dividend Kings (>=50 Jahre) und S&P 500 Dividend Aristocrats (>=25 Jahre) – Stand November 2026. Nächste Prüfung: Februar 2027 (S&P-Rebalancing Ende Januar).",
+  "_hint": "Symbole ohne Exchange-Suffix im Yahoo-Format (z.B. 'KO', 'BF-B'). Kings gelten in der App automatisch auch als Aristocrats.",
+  "_sources": [
+    "Aristocrats: dividendcalculator.net/dividend-aristocrats und merrydiv.com/dividend-aristocrats (beide 69 Titel, identisch; Rebalancing Jan. 2026 ohne Änderungen)",
+    "Kings: dividendpower.org/dividend-kings-list (Stand 06.11.2026) + simplysafedividends.com 2026 Dividend Kings (Stand 03.11.2026: neu CSL, MCD, MGEE)",
+    "Entfernt: KVUE (Übernahme durch Kimberly-Clark, Nov. 2026); MMM, VFC (Dividendenkürzung); LANC → MZTI, SJW → HTO (Umbenennung)"
+  ],
   "kings": [
-    "MMM",   "ABM",   "ABT",   "AFL",   "AWR",   "BDX",   "CINF",  "CL",
-    "KO",    "CLX",   "CB",    "DOV",   "EMR",   "GPC",   "GWW",   "HRL",
-    "ITW",   "JNJ",   "LANC",  "LOW",   "MKC",   "MDT",   "NDSN",  "NUE",
-    "PG",    "PPG",   "PH",    "SCL",   "SWK",   "SPGI",  "SYY",   "TROW",
-    "TGT",   "TR",    "VFC",   "WMT",   "WTR",   "MSA",   "FUL",   "CBSH",
-    "FFIN",  "BKH",   "SJW",   "MSEX",  "YORW",  "CWT",   "ARTNA", "CTBI",
-    "FMCB",  "NWN"
+    "ABBV",  "ABM",   "ABT",   "ADM",   "ADP",   "AWR",   "BDX",   "BKH",
+    "CBSH",  "CINF",  "CL",    "CSL",   "CWT",   "DOV",   "ED",    "EMR",
+    "FMCB",  "FRT",   "FUL",   "GPC",   "GRC",   "GWW",   "HRL",   "HTO",
+    "ITW",   "JNJ",   "KMB",   "KO",    "LOW",   "MCD",   "MGEE",  "MO",
+    "MSA",   "MSEX",  "MZTI",  "NDSN",  "NFG",   "NUE",   "NWN",   "PEP",
+    "PG",    "PH",    "PNR",   "PPG",   "RLI",   "RPM",   "SCL",   "SPGI",
+    "SWK",   "SYY",   "TGT",   "TNC",   "TR",    "UBSI",  "UVV",   "WMT"
   ],
   "aristocrats": [
-    "ADP",   "ALB",   "AMCR",  "AOS",   "ATO",   "BRO",   "CAT",   "CTAS",
-    "CVX",   "CHD",   "CHRW",  "ECL",   "EL",    "ESS",   "ED",    "EXR",
-    "FDS",   "FRT",   "GD",    "GRMN",  "HSY",   "IBM",   "KVUE",  "KMB",
-    "L",     "LECO",  "LIN",   "MCD",   "MCO",   "MKTX",  "NEE",   "NOC",
-    "O",     "OTIS",  "PEP",   "RMD",   "ROL",   "ROP",   "SHW",   "SWKS",
-    "T",     "TSCO",  "VTR",   "WAB",   "WBA",   "WEC",   "XOM"
+    "ABBV",  "ABT",   "ADM",   "ADP",   "AFL",   "ALB",   "AMCR",  "AOS",
+    "APD",   "ATO",   "BDX",   "BEN",   "BF-B",  "BRO",   "CAH",   "CAT",
+    "CB",    "CHD",   "CHRW",  "CINF",  "CL",    "CLX",   "CTAS",  "CVX",
+    "DOV",   "ECL",   "ED",    "EMR",   "ERIE",  "ES",    "ESS",   "EXPD",
+    "FAST",  "FDS",   "FRT",   "GD",    "GPC",   "GWW",   "HRL",   "IBM",
+    "ITW",   "JNJ",   "KMB",   "KO",    "LIN",   "LOW",   "MCD",   "MDT",
+    "MKC",   "NDSN",  "NEE",   "NUE",   "O",     "PEP",   "PG",    "PNR",
+    "PPG",   "ROP",   "SHW",   "SJM",   "SPGI",  "SWK",   "SYY",   "TGT",
+    "TROW",  "WMT",   "WST",   "XOM"
   ]
 }

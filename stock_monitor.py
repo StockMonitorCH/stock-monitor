@@ -51,7 +51,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.8.0"                            # beim Release anpassen
+APP_VERSION  = "5.9.0"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -5108,6 +5108,16 @@ class StockChartWidget(QFrame):
             else:
                 self.candle_checkbox.hide()
 
+            # Logarithmische Preisachse – nur im Zoom-Modus sichtbar
+            self.log_checkbox = QCheckBox(TR("chk_log"))
+            self.log_checkbox.setToolTip(TR("tip_log_scale"))
+            self.log_checkbox.stateChanged.connect(self._redraw_chart)
+            self.log_checkbox.setStyleSheet("QCheckBox { spacing: 3px; }")
+            if self.zoom_mode:
+                controls_row.addWidget(self.log_checkbox)
+            else:
+                self.log_checkbox.hide()
+
             # RSI-Checkbox – nur im Zoom-Modus sichtbar
             self.rsi_checkbox = QCheckBox(TR("chk_rsi"))
             self.rsi_checkbox.setToolTip(TR("tip_rsi"))
@@ -5235,6 +5245,10 @@ class StockChartWidget(QFrame):
             self.candle_checkbox = QCheckBox()
             self.candle_checkbox.stateChanged.connect(self._redraw_chart)
             self.candle_checkbox.hide()
+
+            self.log_checkbox = QCheckBox()
+            self.log_checkbox.stateChanged.connect(self._redraw_chart)
+            self.log_checkbox.hide()
 
             self.rsi_checkbox = QCheckBox()
             self.rsi_checkbox.stateChanged.connect(self._redraw_chart)
@@ -5721,6 +5735,7 @@ class StockChartWidget(QFrame):
             'bb':  _zoom_val('bb_checkbox',  'zoom_bb'),
             'dd':  _zoom_val('dd_checkbox',  'zoom_dd'),
             'candle': _zoom_val('candle_checkbox', 'zoom_candle'),
+            'log':    _zoom_val('log_checkbox',    'zoom_log'),
             # Zoom-eigene MA/Trend-Zustände – None bedeutet "noch nie im Zoom gesetzt"
             'zoom_ma20':   getattr(self, 'zoom_ma20',   None),
             'zoom_ma50':   getattr(self, 'zoom_ma50',   None),
@@ -5805,6 +5820,7 @@ class StockChartWidget(QFrame):
         self.zoom_bb     = state.get('bb',     False)
         self.zoom_dd     = state.get('dd',     False)
         self.zoom_candle = state.get('candle', False)
+        self.zoom_log    = state.get('log',    False)
         # Zoom-eigene MA/Trend-Zustände wiederherstellen (None = noch nie im Zoom gesetzt)
         self.zoom_ma20   = state.get('zoom_ma20',   None)
         self.zoom_ma50   = state.get('zoom_ma50',   None)
@@ -5822,6 +5838,7 @@ class StockChartWidget(QFrame):
                 ('bb_checkbox',     'bb'),
                 ('dd_checkbox',     'dd'),
                 ('candle_checkbox', 'candle'),
+                ('log_checkbox',    'log'),
             ]:
                 cb = getattr(self, cb_attr, None)
                 if cb is not None:
@@ -5832,7 +5849,7 @@ class StockChartWidget(QFrame):
             # Im Grid-Modus: Checkboxen auf False halten (sind sowieso versteckt,
             # aber sicher ist sicher – verhindert versehentliche Anzeige)
             for cb_attr in ('rsi_checkbox', 'w52_checkbox', 'bb_checkbox',
-                            'dd_checkbox', 'candle_checkbox'):
+                            'dd_checkbox', 'candle_checkbox', 'log_checkbox'):
                 cb = getattr(self, cb_attr, None)
                 if cb is not None:
                     cb.blockSignals(True)
@@ -5890,6 +5907,7 @@ class StockChartWidget(QFrame):
         self.zoom_bb     = state.get('bb',     False)
         self.zoom_dd     = state.get('dd',     False)
         self.zoom_candle = state.get('candle', False)
+        self.zoom_log    = state.get('log',    False)
         # Zoom-eigene MA/Trend-Zustände wiederherstellen (None = noch nie im Zoom gesetzt)
         self.zoom_ma20   = state.get('zoom_ma20',   None)
         self.zoom_ma50   = state.get('zoom_ma50',   None)
@@ -5908,6 +5926,7 @@ class StockChartWidget(QFrame):
                 ('bb_checkbox',     'bb'),
                 ('dd_checkbox',     'dd'),
                 ('candle_checkbox', 'candle'),
+                ('log_checkbox',    'log'),
             ]:
                 cb = getattr(self, cb_attr, None)
                 if cb is not None:
@@ -5916,7 +5935,7 @@ class StockChartWidget(QFrame):
                     cb.blockSignals(False)
         else:
             for cb_attr in ('rsi_checkbox', 'w52_checkbox', 'bb_checkbox',
-                            'dd_checkbox', 'candle_checkbox'):
+                            'dd_checkbox', 'candle_checkbox', 'log_checkbox'):
                 cb = getattr(self, cb_attr, None)
                 if cb is not None:
                     cb.blockSignals(True)
@@ -6252,6 +6271,70 @@ class StockChartWidget(QFrame):
             self.info_label.setText(TR("lbl_error_generic", e=e))
             self.plot_widget.clear()
 
+    @staticmethod
+    def _log_price_ticks(p_lo, p_hi):
+        """Gut lesbare Preis-Ticks für eine logarithmische Achse.
+
+        Kleine Spannen (< Faktor 4): lineare 'schöne' Schritte (z. B. 150, 160, 170).
+        Grosse Spannen: 1-2-5-Reihe pro Zehnerpotenz (z. B. 10, 20, 50, 100, 200).
+        """
+        import math
+        if not (p_lo > 0 and p_hi > p_lo):
+            return []
+        if p_hi / p_lo < 4:
+            raw = (p_hi - p_lo) / 6.0
+            mag = 10 ** math.floor(math.log10(raw))
+            step = next(m * mag for m in (1, 2, 2.5, 5, 10) if m * mag >= raw)
+            start = math.ceil(p_lo / step) * step
+            ticks = []
+            v = start
+            while v <= p_hi + step * 1e-9 and len(ticks) < 50:
+                ticks.append(round(v, 10))
+                v += step
+            return ticks
+        e_lo = math.floor(math.log10(p_lo)) - 1
+        e_hi = math.ceil(math.log10(p_hi)) + 1
+        for mants in ((1, 2, 3, 5, 7), (1, 2, 5), (1, 3), (1,)):
+            ticks = [m * 10 ** e for e in range(e_lo, e_hi + 1) for m in mants
+                     if p_lo <= m * 10 ** e <= p_hi]
+            if len(ticks) <= 10:
+                return ticks
+        return ticks
+
+    def _apply_log_axis(self, use_log):
+        """Schaltet die Y-Achse des Kurscharts zwischen linear und logarithmisch um."""
+        pi = self.plot_widget.getPlotItem()
+        axis = self.plot_widget.getAxis('left')
+        if bool(getattr(self, '_log_axis_active', False)) != bool(use_log):
+            pi.setLogMode(x=False, y=bool(use_log))
+            self._log_axis_active = bool(use_log)
+        if use_log:
+            def _tick_values(minVal, maxVal, size, _self=self):
+                try:
+                    ticks = _self._log_price_ticks(10 ** minVal, 10 ** maxVal)
+                    return [(None, [float(np.log10(t)) for t in ticks])]
+                except Exception:
+                    return []
+            def _tick_strings(values, scale, spacing):
+                out = []
+                for v in values:
+                    p = float(f"{10 ** v:.6g}")
+                    if p >= 1000:
+                        out.append(f"{p:,.0f}".replace(',', "'"))
+                    else:
+                        out.append(f"{p:.4f}".rstrip('0').rstrip('.'))
+                return out
+            axis.tickValues = _tick_values
+            axis.tickStrings = _tick_strings
+            axis.enableAutoSIPrefix(False)
+        else:
+            for _attr in ('tickValues', 'tickStrings'):
+                if _attr in axis.__dict__:
+                    delattr(axis, _attr)
+            axis.enableAutoSIPrefix(True)
+        axis.picture = None
+        axis.update()
+
     def _redraw_chart(self, *args):
         """Zeichnet den Chart neu mit den gespeicherten Daten - kein Download."""
         try:
@@ -6408,6 +6491,20 @@ class StockChartWidget(QFrame):
             self.plot_widget.clear()
             self.plot_widget.setLabel('left', TR('col_price'), units=currency)
 
+            # Logarithmische Preisachse (nur Zoom-Modus). PlotDataItems werden
+            # von pyqtgraph automatisch transformiert; BarGraphItems, Crosshair
+            # und Y-Bereich werden unten manuell in log10-Koordinaten gesetzt.
+            use_log = bool(self.zoom_mode and getattr(self, 'log_checkbox', None)
+                           and self.log_checkbox.isChecked()
+                           and float(np.nanmin(self.data['Close'].values)) > 0)
+            self._apply_log_axis(use_log)
+            def _ty(a):
+                a = np.asarray(a, dtype=float)
+                if not use_log:
+                    return a
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    return np.log10(np.where(a > 0, a, np.nan))
+
             times  = np.array([t.timestamp() for t in self.data.index])
             prices = self.data['Close'].values
 
@@ -6457,10 +6554,13 @@ class StockChartWidget(QFrame):
                 # Körper: grüne und rote Kerzen je als ein BarGraphItem
                 up   = c_v >= o_v
                 down = ~up
-                body_lo = np.minimum(o_v, c_v)
-                body_hi = np.maximum(o_v, c_v)
+                # Im Log-Modus Körper in log10-Koordinaten (BarGraphItem kennt kein LogMode)
+                body_lo = _ty(np.minimum(o_v, c_v))
+                body_hi = _ty(np.maximum(o_v, c_v))
                 # Preisbasiertes Minimum – candle_w ist in Sekunden, nicht in Preis-Einheiten
-                _min_body_h = np.median(h_v - l_v) * 0.05 if len(h_v) > 0 else 0.001
+                _min_body_h = np.nanmedian(_ty(h_v) - _ty(l_v)) * 0.05 if len(h_v) > 0 else 0.001
+                if not np.isfinite(_min_body_h) or _min_body_h <= 0:
+                    _min_body_h = 0.001
                 heights = np.where(body_hi - body_lo < 1e-10, _min_body_h, body_hi - body_lo)
 
                 if up.any():
@@ -6581,6 +6681,9 @@ class StockChartWidget(QFrame):
                     # Füllung zwischen den Bändern (leicht blau-transparent)
                     bb_upper_item = pg.PlotDataItem(x_plot, bb_upper)
                     bb_lower_item = pg.PlotDataItem(x_plot, bb_lower)
+                    if use_log:
+                        bb_upper_item.setLogMode(False, True)
+                        bb_lower_item.setLogMode(False, True)
                     bb_fill = pg.FillBetweenItem(bb_upper_item, bb_lower_item,
                         brush=pg.mkBrush(30, 140, 255, 25))
                     self.plot_widget.addItem(bb_fill)
@@ -6639,8 +6742,13 @@ class StockChartWidget(QFrame):
                 if _bb_u is not None:
                     y_min = min(y_min, float(np.nanmin(_bb_l)))
                     y_max = max(y_max, float(np.nanmax(_bb_u)))
-            y_margin = (y_max - y_min) * 0.1
-            self.plot_widget.setYRange(y_min - y_margin, y_max + y_margin)
+            if use_log and y_min > 0 and y_max > 0:
+                _ly_min, _ly_max = np.log10(y_min), np.log10(y_max)
+                _ly_margin = max((_ly_max - _ly_min) * 0.1, 0.005)
+                self.plot_widget.setYRange(_ly_min - _ly_margin, _ly_max + _ly_margin)
+            else:
+                y_margin = (y_max - y_min) * 0.1
+                self.plot_widget.setYRange(y_min - y_margin, y_max + y_margin)
 
             # ── Crosshair Tooltip (nur im Zoom-Modus) ──────────────────────
             # Im Kompakt-Modus (16-Chart-Ansicht) kein Crosshair
@@ -6662,6 +6770,7 @@ class StockChartWidget(QFrame):
                 self._ch_times   = x_plot
                 self._ch_ts_arr  = times_clean if use_gapless else None  # für Zeitanzeige im Tooltip
                 self._ch_prices  = prices_clean
+                self._ch_log     = use_log
                 self._ch_currency_symbol = currency_symbol
 
                 # Alte Crosshair-Elemente entfernen
@@ -6724,9 +6833,12 @@ class StockChartWidget(QFrame):
 
                         snap_x = self._ch_times[idx]
                         snap_y = self._ch_prices[idx]
+                        # Im Log-Modus liegt die View in log10-Koordinaten
+                        view_y = (np.log10(snap_y) if getattr(_self_ref, '_ch_log', False)
+                                  and snap_y > 0 else snap_y)
 
                         vline.setPos(snap_x)
-                        hline.setPos(snap_y)
+                        hline.setPos(view_y)
                         vline.show(); hline.show()
 
                         from datetime import datetime as _dt
@@ -6750,9 +6862,9 @@ class StockChartWidget(QFrame):
                         x_range = view_range[0][1] - view_range[0][0]
                         y_range = view_range[1][1] - view_range[1][0]
                         anchor_x = 0.0 if (snap_x - view_range[0][0]) < x_range * 0.75 else 1.0
-                        anchor_y = 1.0 if (snap_y - view_range[1][0]) > y_range * 0.25 else 0.0
+                        anchor_y = 1.0 if (view_y - view_range[1][0]) > y_range * 0.25 else 0.0
                         label.setAnchor((anchor_x, anchor_y))
-                        label.setPos(snap_x, snap_y)
+                        label.setPos(snap_x, view_y)
                         label.show()
                     except Exception:
                         pass
@@ -8391,6 +8503,8 @@ class PortfolioDialog(QMainWindow):
         self.setWindowModality(Qt.WindowModality.NonModal)
         self.charts = charts
         self._portfolio_notes = []   # Journal-Einträge, portf.-spezifisch
+        self._div_account = {}        # Dividendenkonto (dividend_account.py), portf.-spezifisch
+        self._closed_positions = {}   # Verkaufshistorie (intern: Dividendenkonto/Steuern)
         self.portfolio_data = self.load_portfolio()
         self._limits = self._load_limits()
         PortfolioDialog.load_api_keys()   # API-Keys beim Start laden
@@ -9030,13 +9144,19 @@ class PortfolioDialog(QMainWindow):
                 if isinstance(raw, dict) and "positions" in raw and isinstance(raw.get("positions"), dict):
                     positions = raw["positions"]
                     self._portfolio_notes = raw.get("notes", [])
+                    self._div_account = raw.get("div_account", {}) or {}
+                    self._closed_positions = raw.get("closed", {}) or {}
                 else:
                     positions = raw   # altes Format: nur Positionen
                     self._portfolio_notes = []
+                    self._div_account = {}
+                    self._closed_positions = {}
                 migrated = self._migrate_crypto(positions)
                 if migrated != positions:
                     with open(self.PORTFOLIO_FILE, 'w') as f:
-                        json.dump({"positions": migrated, "notes": self._portfolio_notes}, f, indent=2)
+                        json.dump({"positions": migrated, "notes": self._portfolio_notes,
+                                   "div_account": self._div_account,
+                                   "closed": self._closed_positions}, f, indent=2)
                 return migrated
         except Exception:
             pass
@@ -9104,6 +9224,8 @@ class PortfolioDialog(QMainWindow):
             data = _pdb.load_portfolio("Demo", "")
             self.portfolio_data = self._migrate_crypto(data["positions"])
             self._portfolio_notes = data.get("notes", [])
+            self._div_account = data.get("div_account", {}) or {}
+            self._closed_positions = data.get("closed", {}) or {}
             if data.get("sector_cache"):
                 self._sector_cache.update(data["sector_cache"])
             self._set_active_portfolio_name("Demo")
@@ -9147,9 +9269,53 @@ class PortfolioDialog(QMainWindow):
         Für benannte Portfolios in der DB: portfolio_save_as() verwenden."""
         try:
             with open(self.PORTFOLIO_FILE, 'w') as f:
-                json.dump({"positions": self.portfolio_data, "notes": self._portfolio_notes}, f, indent=2)
+                json.dump({"positions": self.portfolio_data, "notes": self._portfolio_notes,
+                           "div_account": self._div_account,
+                           "closed": self._closed_positions}, f, indent=2)
         except Exception as e:
             QMessageBox.warning(self, TR("msg_title_error"), TR("msg_save_failed", e=e))
+
+    # ── Verkaufshistorie ────────────────────────────────────────────────────
+    # Verkaufte (Teil-)Positionen verschwinden aus portfolio_data (Hauptansicht
+    # ohne 0-Positionen), werden aber mit Verkaufsdatum in _closed_positions
+    # aufbewahrt: Dividendenkonto und Steuern brauchen den Bestand am Ex-Tag.
+    def _record_sale(self, sym, lot, qty, sell_date, sell_price=None, dedupe=False):
+        """Merkt sich einen (Teil-)Verkauf eines Kauf-Lots mit Datum.
+        dedupe=True (Import): identischen Eintrag nicht doppelt anlegen."""
+        try:
+            qty = float(qty)
+        except (TypeError, ValueError):
+            return
+        if qty <= 0 or not sell_date:
+            return
+        rec = {"buy_date":  lot.get("buy_date", ""),
+               "buy_price": lot.get("buy_price", 0),
+               "quantity":  round(qty, 8),
+               "sell_date": str(sell_date)[:10]}
+        if "hist_fx_to_chf" in lot:
+            rec["hist_fx_to_chf"] = lot["hist_fx_to_chf"]
+        try:
+            if sell_price and float(sell_price) > 0:
+                rec["sell_price"] = float(sell_price)
+        except (TypeError, ValueError):
+            pass
+        if not isinstance(getattr(self, "_closed_positions", None), dict):
+            self._closed_positions = {}
+        lots = self._closed_positions.setdefault(sym, [])
+        if dedupe and any(l.get("buy_date") == rec["buy_date"]
+                          and l.get("sell_date") == rec["sell_date"]
+                          and abs(float(l.get("quantity", 0)) - rec["quantity"]) < 1e-6
+                          for l in lots):
+            return
+        lots.append(rec)
+
+    def _positions_with_history(self):
+        """Offene Positionen + verkaufte Lots (mit sell_date) je Symbol."""
+        merged = {s: list(p) for s, p in (self.portfolio_data or {}).items()}
+        for s, lots in (getattr(self, "_closed_positions", None) or {}).items():
+            if lots:
+                merged.setdefault(s, []).extend(lots)
+        return merged
 
     def _limits_file(self) -> str:
         """Gibt den portfoliospezifischen Limits-Dateipfad zurück."""
@@ -9240,6 +9406,8 @@ class PortfolioDialog(QMainWindow):
                 price_cache  = self._sector_cache,   # Branchen-Cache mitschreiben
                 sector_cache = self._sector_cache,
                 notes        = self._portfolio_notes,
+                div_account  = self._div_account,
+                closed       = self._closed_positions,
             )
             self._set_active_portfolio_name(name)
             self.save_portfolio()
@@ -9474,6 +9642,10 @@ class PortfolioDialog(QMainWindow):
                             self.portfolio_data[sym].extend(positions)
                         else:
                             self.portfolio_data[sym] = positions
+                    for sym, lots in (data.get("closed", {}) or {}).items():
+                        if not isinstance(self._closed_positions, dict):
+                            self._closed_positions = {}
+                        self._closed_positions.setdefault(sym, []).extend(lots)
                     n_total = len(self.portfolio_data)
 
                     # Nach Merge: speichern anbieten
@@ -9513,7 +9685,10 @@ class PortfolioDialog(QMainWindow):
                         if pw_dlg.exec() == QDialog.DialogCode.Accepted:
                             try:
                                 _pdb.save_portfolio(new_name, self.portfolio_data,
-                                                    pw_dlg.get_password())
+                                                    pw_dlg.get_password(),
+                                                    notes=self._portfolio_notes,
+                                                    div_account=self._div_account,
+                                                    closed=self._closed_positions)
                                 info_txt = TR("lbl_merged_saved_as", name=new_name, n=n_total)
                             except Exception as ex:
                                 QMessageBox.warning(dlg, TR("msg_title_error"), TR("msg_save_failed2", e=ex))
@@ -9526,6 +9701,8 @@ class PortfolioDialog(QMainWindow):
                     # Ersetzen
                     self.portfolio_data = new_positions
                     self._portfolio_notes = data.get("notes", [])
+                    self._div_account = data.get("div_account", {}) or {}
+                    self._closed_positions = data.get("closed", {}) or {}
                     info_txt = TR("lbl_portfolio_loaded_n", name=e['name'], n=len(self.portfolio_data))
 
                 # Branchen-Cache übernehmen
@@ -9681,6 +9858,7 @@ class PortfolioDialog(QMainWindow):
             with open(self._portfolio_path(name)) as f:
                 self.portfolio_data = json.load(f)
             self.portfolio_data = self._migrate_crypto(self.portfolio_data)
+            self._closed_positions = {}
             self.save_portfolio()
             self._invalidate_cache()
             self._update_portfolio_name_label(name)
@@ -9876,31 +10054,38 @@ class PortfolioDialog(QMainWindow):
             )
             return
 
-        # Aktuelle Portfolio-Positionen aggregieren
+        # Aktuelle Portfolio-Positionen aggregieren (+ Verkaufshistorie für
+        # den Bestand am Ex-Tag; ganz verkaufte Titel mit Menge 0)
         pos_data = {}
-        for sym, entries in (self.portfolio_data or {}).items():
+        _closed_all = getattr(self, "_closed_positions", None) or {}
+        _all_syms = list(self.portfolio_data or {}) + [
+            s for s in _closed_all if s not in (self.portfolio_data or {})]
+        for sym in _all_syms:
+            entries = (self.portfolio_data or {}).get(sym, [])
+            closed_lots = _closed_all.get(sym, []) or []
             total_qty = sum(float(e.get("quantity", 0)) for e in entries)
-            if total_qty <= 0:
+            if total_qty <= 0 and not closed_lots:
                 continue
             buy_vals = [float(e.get("buy_price", 0)) * float(e.get("quantity", 0))
                         for e in entries if float(e.get("quantity", 0)) > 0]
             avg_buy  = sum(buy_vals) / total_qty if total_qty else 0
-            # Kurs aus Cache
+            # Kurs + Handelswährung aus dem Kurs-Cache ({sym: {'price', 'cur', ...}})
             cur_price = 0
-            if self._price_cache:
-                for item in self._price_cache:
-                    if isinstance(item, dict) and item.get("ticker") == sym:
-                        cur_price = item.get("current_price", 0) or 0
-                        break
+            instr_cur = ""
+            _pc = self._price_cache.get(sym) if isinstance(self._price_cache, dict) else None
+            if isinstance(_pc, dict):
+                cur_price = _pc.get("price") or 0
+                instr_cur = _pc.get("cur") or ""
             if not cur_price:
                 cur_price = avg_buy
-            info = entries[0] if entries else {}
+            info = entries[0] if entries else (closed_lots[0] if closed_lots else {})
             pos_data[sym] = {
                 "quantity":        total_qty,
                 "buy_price":       avg_buy,
                 "current_price":   cur_price,
                 "name":            info.get("name", sym),
                 "country":         info.get("country", ""),
+                "currency":        instr_cur,
                 # Alle Einzelpositionen mit buy_date für Ex-Day-Berechnung
                 "raw_positions":   [
                     {
@@ -9908,7 +10093,8 @@ class PortfolioDialog(QMainWindow):
                         "buy_date":  e.get("buy_date", ""),
                         "sell_date": e.get("sell_date", ""),
                     }
-                    for e in entries if float(e.get("quantity", 0)) > 0
+                    for e in list(entries) + list(closed_lots)
+                    if float(e.get("quantity", 0)) > 0
                 ],
             }
 
@@ -9962,6 +10148,7 @@ class PortfolioDialog(QMainWindow):
         )
         if reply == QMessageBox.StandardButton.Yes:
             self.portfolio_data = {}
+            self._closed_positions = {}
             self.save_portfolio()
             self._invalidate_cache()
             self._update_portfolio_name_label("")
@@ -10617,6 +10804,7 @@ class PortfolioDialog(QMainWindow):
 
             if sq_action == 'replace':
                 self.portfolio_data = {}
+                self._closed_positions = {}
 
             import_ok_btn.setEnabled(False)
             cancel_btn.setEnabled(False)
@@ -10760,7 +10948,7 @@ class PortfolioDialog(QMainWindow):
                         errors.append(f"Verkauf {sym} {date}: Symbol nicht im Portfolio – übersprungen")
                         continue
 
-                    # FIFO
+                    # FIFO – verkaufte Lots mit Datum in der Verkaufshistorie merken
                     remaining  = qty
                     positions  = sorted(self.portfolio_data[found_sym], key=lambda p: p['buy_date'])
                     new_pos    = []
@@ -10768,8 +10956,12 @@ class PortfolioDialog(QMainWindow):
                         if remaining <= 0:
                             new_pos.append(pos)
                         elif pos['quantity'] <= remaining + 0.0001:
+                            self._record_sale(found_sym, pos, pos['quantity'], date,
+                                              entry.get('price'), dedupe=True)
                             remaining -= pos['quantity']
                         else:
+                            self._record_sale(found_sym, pos, remaining, date,
+                                              entry.get('price'), dedupe=True)
                             pos = dict(pos)
                             pos['quantity'] -= remaining
                             remaining = 0
@@ -11712,6 +11904,7 @@ class PortfolioDialog(QMainWindow):
 
             if generic_action == 'replace':
                 self.portfolio_data = {}
+                self._closed_positions = {}
 
             import2_btn.setEnabled(False)
             cancel2_btn.setEnabled(False)
@@ -11829,8 +12022,12 @@ class PortfolioDialog(QMainWindow):
                         if remaining2 <= 0:
                             new_pos2.append(pos2)
                         elif pos2['quantity'] <= remaining2 + 0.0001:
+                            self._record_sale(found_sym, pos2, pos2['quantity'], date,
+                                              entry.get('price'), dedupe=True)
                             remaining2 -= pos2['quantity']
                         else:
+                            self._record_sale(found_sym, pos2, remaining2, date,
+                                              entry.get('price'), dedupe=True)
                             pos2 = dict(pos2)
                             pos2['quantity'] -= remaining2
                             remaining2 = 0
@@ -12484,6 +12681,7 @@ class PortfolioDialog(QMainWindow):
                 QMessageBox.StandardButton.No)
             if reply == QMessageBox.StandardButton.Yes:
                 self.portfolio_data = {}
+                self._closed_positions = {}
                 self.save_portfolio()
                 self._invalidate_cache()
                 self._overview_cache = {}; self._overview_cache_ts = 0; self._ov_data = {}
@@ -14527,6 +14725,13 @@ class PortfolioDialog(QMainWindow):
         result_table.setMaximumHeight(180)
         result_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         result_table.setAlternatingRowColors(True)
+        # Spaltenlinien von Kopf und Zeilen bündig (jede Skalierung) + Dark Mode
+        try:
+            from mc_scenarios import mc_style_result_table
+            mc_style_result_table(result_table, _dm_mc)
+        except Exception:
+            if _dm_mc:
+                result_table.setStyleSheet("QTableWidget { gridline-color: #6b7a8f; }")
         result_table.setVisible(False)
         outer.addWidget(result_table)
 
@@ -14755,11 +14960,17 @@ class PortfolioDialog(QMainWindow):
                 ax.spines['right'].set_visible(False)
                 ax.spines['left'].set_color('#dee2e6')
                 ax.spines['bottom'].set_color('#dee2e6')
-                ax.legend(loc='upper left', fontsize=9, framealpha=0.95,
-                          edgecolor='#dee2e6', ncol=2)
                 ax.set_title(TR("mc_title_chart", n=n_sims, h=years),
                              fontsize=12, fontweight='bold', pad=10, color='#2c3e50')
-                fig.tight_layout(pad=1.5)
+                # Legende als Leiste über dem Diagramm (überdeckt auf Full HD keine Kurven)
+                try:
+                    from mc_scenarios import mc_legend_strip
+                    _mc_top = mc_legend_strip(fig, ax, fontsize=9, ncol=4)
+                    fig.tight_layout(pad=1.2, rect=(0, 0, 1, _mc_top))
+                except Exception:
+                    ax.legend(loc='upper left', fontsize=9, framealpha=0.95,
+                              edgecolor='#dee2e6', ncol=2)
+                    fig.tight_layout(pad=1.5)
                 canvas.draw()
 
                 # Tabelle
@@ -14860,7 +15071,12 @@ class PortfolioDialog(QMainWindow):
         af = QFontDatabase.families()
         for fc in ['Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji']:
             if fc in af:
-                btn.setFont(QFont(fc, 10))
+                f = QFont(fc, 10)
+                if sys.platform == 'darwin':
+                    # macOS: "Apple Color Emoji" nur als Fallback – als Hauptschrift
+                    # werden Ziffern als breite Keycap-Glyphen gezeichnet ("4 1 . 0").
+                    f.setFamilies([QApplication.font().family(), fc])
+                btn.setFont(f)
                 return
 
         # ── Zentraler Export-Dialog ──────────────────────────────────────────────
@@ -16240,6 +16456,40 @@ class PortfolioDialog(QMainWindow):
         cal_btn.setToolTip(TR("tip_dividend_calendar"))
         self._ef(cal_btn)
         ctrl.addWidget(cal_btn)
+
+        # Dividendenkonto (Mehrwährungskonto) – eigenes Modul dividend_account.py
+        acc_btn = QPushButton(TR("btn_div_account"))
+        acc_btn.setToolTip(TR("tip_div_account"))
+        self._ef(acc_btn)
+        def _open_div_account():
+            try:
+                from dividend_account import DividendAccountDialog
+            except ImportError as _exc:
+                QMessageBox.warning(dialog, TR("msg_title_error"),
+                                    f"dividend_account.py nicht gefunden:\n{_exc}")
+                return
+            if not isinstance(getattr(self, '_div_account', None), dict):
+                self._div_account = {}
+            def _skip_sym(s):
+                return is_crypto(s) or _is_commodity(s) or '=' in s
+            def _stop_chart_workers():
+                # Wie beim Steuerauszug: laufende Chart-Worker stoppen –
+                # curl_cffi ist nicht thread-sicher für parallele yfinance-Sessions
+                for _w in list(StockChartWidget._worker_registry):
+                    try:
+                        _w.quit(); _w.wait(1500)
+                    except Exception:
+                        pass
+                StockChartWidget._worker_registry.clear()
+            _acc_dlg = DividendAccountDialog(
+                self._positions_with_history(), self._div_account, self.save_portfolio, dialog,
+                base_currency=getattr(self, '_ov_currency', 'USD') or 'USD',
+                fmt_fn=_fmt, export_factory=self._make_export_btn, skip_fn=_skip_sym,
+                price_cache=self._price_cache if isinstance(self._price_cache, dict) else None,
+                before_fetch=_stop_chart_workers)
+            _acc_dlg.exec()
+        acc_btn.clicked.connect(_open_div_account)
+        ctrl.addWidget(acc_btn)
 
         div_export_btn = self._make_export_btn(lambda: _div_export_data[0], "Dividenden")
         ctrl.addWidget(div_export_btn)
@@ -25756,12 +26006,95 @@ class PortfolioDialog(QMainWindow):
                     def _sell():
                         pos = self.portfolio_data[sym][idx]
                         qty = pos['quantity']
-                        from PyQt6.QtWidgets import QInputDialog
-                        amount, ok = QInputDialog.getDouble(
-                            self, "Teilverkauf",
-                            TR("msg_partial_sell_qty", sym=sym, max=f"{qty:.4g}"),
-                            value=1, min=0.0001, max=qty, decimals=6)
+                        from PyQt6.QtWidgets import (QDoubleSpinBox, QFormLayout,
+                                                     QDialogButtonBox)
+                        from PyQt6.QtCore import QDate
+                        s_dlg = QDialog(self)
+                        s_dlg.setWindowTitle(TR("title_partial_sell"))
+                        s_form = QFormLayout(s_dlg)
+                        s_form.addRow(QLabel(TR("msg_partial_sell_qty", sym=sym, max=f"{qty:.4g}")))
+                        s_qty = QDoubleSpinBox()
+                        s_qty.setDecimals(6)
+                        s_qty.setRange(0.0001, qty)
+                        s_qty.setValue(min(1.0, qty))
+                        s_form.addRow(TR("lbl_sell_qty"), s_qty)
+                        # Handelstage: Wochenende + Börsenfeiertage (market_data.py,
+                        # Börse anhand der Symbol-Endung); Krypto handelt 24/7
+                        _always_open = False
+                        _exch_name, _hols = "", set()
+                        try:
+                            import market_data as _md_s
+                            _always_open = sym.upper().endswith(tuple(_md_s.CRYPTO_SUFFIXES))
+                        except Exception:
+                            _md_s = None
+                            _always_open = sym.upper().endswith(('-USD', '-EUR', '-CHF', '-BTC', '-USDT'))
+                        if not _always_open and _md_s is not None:
+                            try:
+                                if not _is_commodity(sym):
+                                    for _sfx, _inf in sorted(_md_s.EXCHANGES.items(),
+                                                             key=lambda x: -len(x[0])):
+                                        if _sfx == "" or sym.upper().endswith(_sfx.upper()):
+                                            _exch_name = _inf[0]
+                                            _hols = set(_md_s.HOLIDAYS.get(_exch_name, []))
+                                            break
+                            except Exception:
+                                pass
+                        def _closed_reason(qd):
+                            """None = Handelstag, sonst Meldungstext."""
+                            if _always_open:
+                                return None
+                            if qd.dayOfWeek() > 5:
+                                return TR("msg_sell_date_weekend")
+                            if qd.toPyDate() in _hols:
+                                return TR("msg_sell_date_holiday",
+                                          date=qd.toString("dd.MM.yyyy"), exch=_exch_name)
+                            return None
+                        # Vorgabe: letzter Handelstag (Wochenende/Feiertag → davor)
+                        _def_day = QDate.currentDate()
+                        for _ in range(10):
+                            if _closed_reason(_def_day) is None:
+                                break
+                            _def_day = _def_day.addDays(-1)
+                        s_date = QDateEdit(_def_day)
+                        s_date.setCalendarPopup(True)
+                        s_date.setDisplayFormat("dd.MM.yyyy")
+                        s_date.setMaximumDate(QDate.currentDate())
+                        _bd = QDate.fromString(str(pos.get('buy_date', ''))[:10], "yyyy-MM-dd")
+                        if _bd.isValid():
+                            s_date.setMinimumDate(_bd)
+                        s_form.addRow(TR("lbl_sell_date"), s_date)
+                        _hint = QLabel(TR("lbl_sell_history_hint"))
+                        _hint.setWordWrap(True)
+                        _hint.setStyleSheet("color: gray; font-size: 11px;")
+                        s_form.addRow(_hint)
+                        s_btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok |
+                                                  QDialogButtonBox.StandardButton.Cancel)
+                        def _check_sell_date():
+                            _qd = s_date.date()
+                            _why = _closed_reason(_qd)
+                            if _why and _qd.dayOfWeek() > 5:
+                                # Wochenende: sicher kein Handelstag → sperren
+                                QMessageBox.warning(s_dlg, TR("title_partial_sell"), _why)
+                                return
+                            if _why:
+                                # Feiertag laut Kalender: nur warnen – ein falscher
+                                # Kalendereintrag darf keinen echten Verkauf blockieren
+                                _r = QMessageBox.question(
+                                    s_dlg, TR("title_partial_sell"),
+                                    _why + "\n\n" + TR("msg_sell_date_holiday_confirm"),
+                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                    QMessageBox.StandardButton.No)
+                                if _r != QMessageBox.StandardButton.Yes:
+                                    return
+                            s_dlg.accept()
+                        s_btns.accepted.connect(_check_sell_date)
+                        s_btns.rejected.connect(s_dlg.reject)
+                        s_form.addRow(s_btns)
+                        ok = s_dlg.exec() == QDialog.DialogCode.Accepted
+                        amount = s_qty.value()
                         if ok:
+                            self._record_sale(sym, pos, min(amount, qty),
+                                              s_date.date().toString("yyyy-MM-dd"))
                             if amount >= qty:
                                 self.portfolio_data[sym].pop(idx)
                                 if not self.portfolio_data[sym]:
@@ -27847,6 +28180,9 @@ class StockMonitorApp(QMainWindow):
         if hasattr(fullscreen_chart, 'candle_checkbox'):
             fullscreen_chart.candle_checkbox.setChecked(
                 getattr(chart_widget, 'zoom_candle', False))
+        if hasattr(fullscreen_chart, 'log_checkbox'):
+            fullscreen_chart.log_checkbox.setChecked(
+                getattr(chart_widget, 'zoom_log', False))
         # Stop-Loss / Zielkurs übernehmen
         fullscreen_chart.own_stop   = getattr(chart_widget, 'own_stop', None)
         fullscreen_chart.own_target = getattr(chart_widget, 'own_target', None)
@@ -27871,6 +28207,7 @@ class StockMonitorApp(QMainWindow):
             # Zoom-Only-Checkboxen (existieren nur im zoom_mode)
             _zoom_attrs = [
                 ('candle_checkbox', 'zoom_candle'),
+                ('log_checkbox',    'zoom_log'),
                 ('rsi_checkbox',    'zoom_rsi'),
                 ('bb_checkbox',     'zoom_bb'),
                 ('dd_checkbox',     'zoom_dd'),

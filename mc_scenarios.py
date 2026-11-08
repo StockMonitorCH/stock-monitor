@@ -13,6 +13,7 @@ from typing import Optional
 from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QFontDatabase, QPalette
 from PyQt6.QtWidgets import (
+    QStyledItemDelegate,
     QAbstractItemView, QCheckBox, QComboBox, QDialog, QDoubleSpinBox,
     QFileDialog, QFrame, QHBoxLayout, QHeaderView, QInputDialog, QLabel,
     QLineEdit, QListWidget, QMessageBox, QPushButton, QSizePolicy,
@@ -53,6 +54,70 @@ def _scenarios_dir() -> str:
 
 # ── Kleine Helfer ─────────────────────────────────────────────────────────────
 
+# Gitterlinien der Monte-Carlo-Ergebnistabellen im Dark Mode (Kontrast ≥ 3:1 zu allen Zeilenfarben)
+MC_GRID_DARK = "#6b7a8f"
+
+
+class _CellLineDelegate(QStyledItemDelegate):
+    """Zeichnet die Zellinhalte normal (inkl. Zeilenfarbe) und dazu den rechten
+    und unteren Rand als 1-px-Linie – an exakt derselben Stelle wie die
+    Stylesheet-Ränder der Kopfzeile (letztes Pixel der Zelle)."""
+
+    def __init__(self, color, parent=None):
+        super().__init__(parent)
+        self._color = QColor(color)
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        r = option.rect
+        painter.save()
+        painter.fillRect(r.x() + r.width() - 1, r.y(), 1, r.height(), self._color)
+        painter.fillRect(r.x(), r.y() + r.height() - 1, r.width(), 1, self._color)
+        painter.restore()
+
+
+def mc_style_result_table(table, dark: bool) -> None:
+    """Einheitlicher Stil der Monte-Carlo-Ergebnistabellen.
+
+    Kopf- und Zellenlinien werden beide als letztes Pixel der jeweiligen
+    Zelle gezeichnet (statt Qt-Gitter + Kopfzeilen-Rahmen). Dadurch liegen die
+    Spaltenlinien bei jeder Skalierung (Full HD, 4K, 125 %/150 %/200 %) exakt
+    übereinander – vorher war die Kopfzeile ab 125 % um 1 Pixel versetzt.
+    """
+    if dark:
+        grid, hdr_bg, hdr_fg = MC_GRID_DARK, "#2b3340", "#e0e6ee"
+    else:
+        grid, hdr_bg, hdr_fg = "#c8ced6", "#f0f2f5", "#2c3e50"
+    table.setShowGrid(False)
+    table.setItemDelegate(_CellLineDelegate(grid, table))
+    table.setStyleSheet(
+        f"QHeaderView::section {{ background: {hdr_bg}; color: {hdr_fg}; border: none;"
+        f" border-right: 1px solid {grid}; border-bottom: 1px solid {grid}; padding: 3px 4px; }}"
+        f"QTableCornerButton::section {{ background: {hdr_bg}; border: none;"
+        f" border-right: 1px solid {grid}; border-bottom: 1px solid {grid}; }}"
+    )
+
+
+def mc_legend_strip(fig, ax, fontsize: int = 8, ncol: int = 3, gap_pt: float = 12) -> float:
+    """Gemeinsame Legende als Leiste über den Monte-Carlo-Diagrammen.
+
+    Liegt ausserhalb der Zeichenfläche (überdeckt auf Full HD keine Kurven).
+    Die tatsächliche Höhe der Legende wird gemessen (Schriftgrösse, DPI,
+    Skalierung) – zurückgegeben wird der obere Rand für tight_layout(rect=…),
+    sodass der Diagrammtitel mit `gap_pt` Punkt Abstand darunter beginnt.
+    """
+    handles, labels = ax.get_legend_handles_labels()
+    leg = fig.legend(handles, labels, loc='upper center', ncol=ncol, fontsize=fontsize,
+                     frameon=False, bbox_to_anchor=(0.5, 0.995),
+                     columnspacing=1.6, handlelength=2.2)
+    try:
+        bb = leg.get_window_extent(fig.canvas.get_renderer())
+        top = (bb.y0 - gap_pt * fig.dpi / 72.0) / fig.bbox.height
+    except Exception:
+        top = 1.0 - 70.0 / max(fig.bbox.height, 200)
+    return max(0.5, min(top, 0.97))
+
+
 def _fix_win_focus(dialog: QDialog, parent: QWidget) -> None:
     """Windows: Parent-Fenster nach Dialog-Schluss reaktivieren."""
     if sys.platform == 'win32':
@@ -63,7 +128,11 @@ def _fix_win_focus(dialog: QDialog, parent: QWidget) -> None:
 def _emoji_font(size: int = 10) -> Optional[QFont]:
     for name in ['Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji']:
         if name in QFontDatabase.families():
-            return QFont(name, size)
+            f = QFont(name, size)
+            if sys.platform == 'darwin':
+                # macOS: Emoji-Schrift nur als Fallback, sonst Keycap-Ziffern ("± 1 0 %")
+                f.setFamilies([QApplication.font().family(), name])
+            return f
     return None
 
 
@@ -917,6 +986,7 @@ class ScenarioEditorDialog(QDialog):
         self._result_table.setEditTriggers(
             QTableWidget.EditTrigger.NoEditTriggers)
         self._result_table.setAlternatingRowColors(True)
+        mc_style_result_table(self._result_table, self._dm)   # Linien bündig, Dark Mode
         self._result_table.setVisible(False)
         lay.addWidget(self._result_table)
 
@@ -1497,7 +1567,7 @@ class ScenarioEditorDialog(QDialog):
                 return dt.strftime('%m/%Y')
             except Exception: return ''
 
-        def _draw_mc(ax, res, title_str):
+        def _draw_mc(ax, res, title_str, ylabel=True):
             d = res['dates']
             p10 = res['p10']*fx; p25=res['p25']*fx; p50=res['p50']*fx
             p75 = res['p75']*fx; p90=res['p90']*fx
@@ -1517,7 +1587,8 @@ class ScenarioEditorDialog(QDialog):
                     label=TR('mc_legend_p90'))
             ax.axhline(v0, color='#888', linewidth=0.9, linestyle='-.',
                        label=f"{TR('mc_legend_today')} ({sym}{_fmt(v0, 0)})")
-            ax.set_ylabel(f"{TR('mc_axis_label')} ({cur})", fontsize=9, color='#555')
+            if ylabel:
+                ax.set_ylabel(f"{TR('mc_axis_label')} ({cur})", fontsize=9, color='#555')
             ax.yaxis.set_major_formatter(mticker.FuncFormatter(_yfmt))
             ax.xaxis.set_major_formatter(mticker.FuncFormatter(_xfmt))
             ax.tick_params(labelsize=8)
@@ -1527,8 +1598,7 @@ class ScenarioEditorDialog(QDialog):
             for sp in ['top', 'right']:  ax.spines[sp].set_visible(False)
             ax.spines['left'].set_color('#dee2e6')
             ax.spines['bottom'].set_color('#dee2e6')
-            ax.legend(loc='upper left', fontsize=8, framealpha=0.95,
-                      edgecolor='#dee2e6', ncol=2)
+            # Keine Legende im Diagramm – gemeinsame Legendenleiste oben (s. _legend_strip)
             ax.set_title(title_str, fontsize=11, fontweight='bold',
                          pad=8, color='#2c3e50')
             return p10, p25, p50, p75, p90, v0
@@ -1542,19 +1612,24 @@ class ScenarioEditorDialog(QDialog):
         if real is not None:
             ax1, ax2 = self._fig.subplots(2, 1, sharex=False)
             ax1.set_facecolor('#ffffff'); ax2.set_facecolor('#ffffff')
-            _draw_mc(ax1, real, f"{TR('scen_mc_title_real')} – {TR('mc_title_chart', n=n_sims, h=years)}")
-            _draw_mc(ax2, scen, scen_title)
+            _draw_mc(ax1, real, f"{TR('scen_mc_title_real')} – {TR('mc_title_chart', n=n_sims, h=years)}",
+                     ylabel=False)
+            _draw_mc(ax2, scen, scen_title, ylabel=False)
+            # Eine gemeinsame Y-Beschriftung statt zwei überlappender
+            self._fig.supylabel(f"{TR('mc_axis_label')} ({cur})", fontsize=9, color='#555')
             # Gemeinsame Y-Achse: beide Charts auf denselben Bereich setzen
             _y_min = min(ax1.get_ylim()[0], ax2.get_ylim()[0])
             _y_max = max(ax1.get_ylim()[1], ax2.get_ylim()[1])
             ax1.set_ylim(_y_min, _y_max)
             ax2.set_ylim(_y_min, _y_max)
-            self._fig.tight_layout(pad=1.8, h_pad=2.5)
+            _top = mc_legend_strip(self._fig, ax1)
+            self._fig.tight_layout(pad=1.2, h_pad=1.8, rect=(0.015, 0, 1, _top))
         else:
             ax = self._fig.add_subplot(111)
             ax.set_facecolor('#ffffff')
             _draw_mc(ax, scen, scen_title)
-            self._fig.tight_layout(pad=1.5)
+            _top = mc_legend_strip(self._fig, ax)
+            self._fig.tight_layout(pad=1.2, rect=(0, 0, 1, _top))
 
         self._canvas.draw()
 
@@ -1563,7 +1638,15 @@ class ScenarioEditorDialog(QDialog):
             scen['p10'][-1]*fx, scen['p25'][-1]*fx, scen['p50'][-1]*fx,
             scen['p75'][-1]*fx, scen['p90'][-1]*fx, scen['portfolio_value']*fx)
 
-        RC_BASE = ['#f8f9fa','#fdecea','#fef5ec','#eaf6fb','#eafaf1','#d5f5e3']
+        # Zeilenfarben je Modus (gleiche Palette wie die Monte-Carlo-Ansicht im Portfolio)
+        if self._dm:
+            RC_BASE  = ['#1e2a35', '#2d1515', '#2d1f0a', '#0d2030', '#0d2a1a', '#0a2015']
+            TXT_COL  = QColor('#cdd6f4')
+            POS_COL, NEG_COL = '#2ecc71', '#ff6b6b'
+        else:
+            RC_BASE  = ['#f8f9fa', '#fdecea', '#fef5ec', '#eaf6fb', '#eafaf1', '#d5f5e3']
+            TXT_COL  = QColor('#2c3e50')
+            POS_COL, NEG_COL = '#1a7a43', '#b03a2e'
 
         if real is not None:
             # Vergleichsmodus: 4 Spalten – Kennzahl | Szenario | Echtes Portfolio | Differenz
@@ -1592,11 +1675,12 @@ class ScenarioEditorDialog(QDialog):
                 diff_pct = diff / rv * 100 if rv != 0 else 0
                 sign     = '+' if diff >= 0 else ''
                 diff_str = f"{sign}{sym}{_fmt(diff, 0)} ({sign}{diff_pct:.1f}%)"
-                diff_col = '#27ae60' if diff >= 0 else '#e74c3c'
-                bg = QColor(RC_BASE[i] if i < len(RC_BASE) else '#f8f9fa')
+                diff_col = POS_COL if diff >= 0 else NEG_COL
+                bg = QColor(RC_BASE[i % len(RC_BASE)])
                 for ci, text in enumerate((lbl, f"{sym}{_fmt(sv, 0)}", f"{sym}{_fmt(rv, 0)}", diff_str)):
                     itm = QTableWidgetItem(text)
                     itm.setBackground(bg)
+                    itm.setForeground(TXT_COL)
                     if ci == 3 and i > 0:
                         itm.setForeground(QColor(diff_col))
                     if ci > 0:
@@ -1620,11 +1704,12 @@ class ScenarioEditorDialog(QDialog):
             for i, (lbl, val, base) in enumerate(ROWS):
                 pct     = (val - base)/base*100 if base > 0 and i > 0 else 0
                 pct_str = f"{_fmt(pct, 1)}%" if i > 0 else '—'
-                pct_col = '#27ae60' if pct >= 0 else '#e74c3c'
-                bg = QColor(RC_BASE[i] if i < len(RC_BASE) else '#f8f9fa')
+                pct_col = POS_COL if pct >= 0 else NEG_COL
+                bg = QColor(RC_BASE[i % len(RC_BASE)])
                 for ci, text in enumerate((lbl, f"{sym}{_fmt(val, 0)}", pct_str)):
                     itm = QTableWidgetItem(text)
                     itm.setBackground(bg)
+                    itm.setForeground(TXT_COL)
                     if ci == 2 and i > 0: itm.setForeground(QColor(pct_col))
                     if ci > 0: itm.setTextAlignment(
                         Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)

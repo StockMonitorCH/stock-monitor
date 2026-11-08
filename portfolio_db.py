@@ -123,8 +123,11 @@ def portfolio_exists(name: str) -> bool:
 
 def save_portfolio(name: str, portfolio_data: dict, password: str,
                    price_cache: dict = None, sector_cache: dict = None,
-                   notes: list = None) -> str:
-    """Speichert portfolio_data als verschlüsselte .smpf-Datei. Gibt Pfad zurück."""
+                   notes: list = None, div_account: dict = None,
+                   closed: dict = None) -> str:
+    """Speichert portfolio_data als verschlüsselte .smpf-Datei. Gibt Pfad zurück.
+    closed: Verkaufshistorie {sym: [{buy_date, buy_price, quantity, sell_date}]}
+    (intern für Dividendenkonto/Steuern, nicht in der Hauptansicht)."""
     if not CRYPTO_AVAILABLE:
         raise CryptoNotAvailableError("cryptography nicht installiert.")
     payload = {
@@ -135,6 +138,8 @@ def save_portfolio(name: str, portfolio_data: dict, password: str,
         "price_cache":  price_cache  or {},
         "sector_cache": sector_cache or {},
         "notes":        notes        or [],
+        "div_account":  div_account  or {},
+        "closed":       closed       or {},
     }
     blob = encrypt_data(payload, password)
     path = portfolio_path(name)
@@ -206,4 +211,6 @@ def change_password(name: str, old_password: str, new_password: str) -> None:
     save_portfolio(name, data["positions"], new_password,
                    price_cache=data.get("price_cache", {}),
                    sector_cache=data.get("sector_cache", {}),
-                   notes=data.get("notes", []))
+                   notes=data.get("notes", []),
+                   div_account=data.get("div_account", {}),
+                   closed=data.get("closed", {}))

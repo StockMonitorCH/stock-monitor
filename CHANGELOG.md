@@ -5,6 +5,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [5.9.0] – 2026-11-08
+
+### Added
+- **Logarithmic price axis:** new "Log" checkbox in the zoom view (line and candlesticks); equal percentage moves appear equally high, crosshair and Bollinger Bands scale correctly, setting is saved (request from an App Store review)
+- **Dividend account:** multi-currency account in the dividend window — dividends are credited on the ex-date with the holdings at that time, withholding tax by company domicile and own tax residence (CH/DE/AT/UK/US, W-8BEN), gross/net toggle, total in portfolio currency, booking history per account, manual deposits/withdrawals, export PDF/XLSX/ODS; stored encrypted with the portfolio
+- **Austrian tax report – AGE:** enter accumulated income of accumulating funds from the OeKB report; KESt on AGE calculated with the holdings on the inflow date and included in summary, total tax and all exports
+- **Sales history:** sales (manual partial sale, broker import) are stored internally with date; main view still shows only open positions, but dividend account and tax report know the holdings on every ex-date, also for fully sold positions. Partial sale dialog now asks for the sale date (default: last trading day; weekends rejected, warning on exchange holidays; crypto 24/7)
+
+### Changed
+- **Exchange calendar:** holidays are now calculated from rules (Easter, "3rd Monday in January", substitute days) for 2024–2028; new exchanges: Vienna, Milan, Madrid, Lisbon, Stockholm, Oslo, Copenhagen, Helsinki, Johannesburg, Mexico, São Paulo, NZX, CME
+- **Help extended:** log scale, dividend account, tax module (currency, domicile & withholding tax, AT AGE)
+- **Tax report window size:** opens wide enough for all buttons, compact layout on small screens
+- **Monte Carlo legends:** legend bar above the charts instead of inside; single Y-axis label in comparison mode
+- **yfinance 1.8.0** (with curl_cffi 0.17.0)
+
+### Fixed
+- Monte Carlo Scenarios: result table unreadable in dark mode; grid lines and 1-pixel column offset on scaled screens
+- Help table of contents: "Candlestick" and "News" (EN) links
+- Tax help: price description corrected (current price, not year-end price)
+- Monte Carlo axis label showed the currency twice
+- Tax report: country of domicile was never detected; now from Yahoo company data, ETF names or exchange suffix
+- Tax report CH/AT: correct treaty withholding rates per country
+- Tax report: UK dividends 100× too high (pence vs. pounds)
+- Tax report: mixed currencies added without conversion; now everything in the report currency
+- Tax report: purchase price was shown as current price
+- Tax report: sale on the ex-date now keeps the dividend entitlement; purchase on the ex-date no longer counted
+- Exchange hours: wrong 2027 holidays (Easter), SIX, Toronto, ASX and Tokyo corrections
+- Dividend Kings / Aristocrats updated (as of November 2026)
+- Tax report AT: missing notes column
+- macOS: digits with wide spacing in labels/buttons containing emoji
+
+---
+
 ## [5.8.0] – 2026-11-02
 
 ### Added

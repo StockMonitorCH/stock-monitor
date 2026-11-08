@@ -110,8 +110,8 @@ modules:
   sources:
   - &id005
     type: file
-    url: https://files.pythonhosted.org/packages/98/df/0a1755e750013a2081e863e7cd37e0cdd02664372c754e5560099eb7aa44/cffi-2.0.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
-    sha256: c8d3b5532fc71b7a77c09192b4a5a200ea992702734a2e9279a37f2478236f26
+    url: https://files.pythonhosted.org/packages/95/95/86342356ff5953b3fb06f7ef7c5bee212d45e770abc7218d451b9148313c/cffi-2.1.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+    sha256: a931079504ecc49efed7744c476a5c343a92fabf66dec2db95edb1b2fdc770e2
   - type: file
     url: https://files.pythonhosted.org/packages/19/69/732a736d12c2631e140be2348b4ad3d226302df63ef64d30dfdb8db7ad1c/cryptography-46.0.6-cp311-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
     sha256: 9a693028b9cbe51b5a1136232ee8f2bc242e4e19d456ded3fa7c86e43c713b4a
@@ -130,7 +130,7 @@ modules:
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "cffi==2.0.0" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "cffi==2.1.1" --no-build-isolation
   sources:
   - *id005
   - *id006
@@ -233,7 +233,7 @@ modules:
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "yfinance==1.7.0" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "yfinance==1.8.0" --no-build-isolation
   sources:
   - &id023
     type: file
@@ -241,14 +241,14 @@ modules:
     sha256: 0918bfe44902e6ad8d57732ba310582e98da931428d231a5ecb9e7c703a735bb
   - &id017
     type: file
-    url: https://files.pythonhosted.org/packages/9a/3c/c17fb3ca2d9c3acff52e30b309f538586f9f5b9c9cf454f3845fc9af4881/certifi-2026.2.25-py3-none-any.whl
-    sha256: 027692e4402ad994f1c42e52a4997a9763c646b73e4096e4d5d6db8af1d6f0fa
+    url: https://files.pythonhosted.org/packages/32/d1/a3652fe2c19134d0d15922177821d863cbd7e842d53a21bbe7e8e3a1b5ac/certifi-2026.10.23-py3-none-any.whl
+    sha256: e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1
   - *id005
   - *id014
   - &id018
     type: file
-    url: https://files.pythonhosted.org/packages/5c/12/c70b835487ace3b9ba1502631912e3440082b8ae3a162f60b59cb0b6444d/curl_cffi-0.15.0-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
-    sha256: 2b6c847d86283b07ae69bb72c82eb8a59242277142aa35b89850f89e792a02fc
+    url: https://files.pythonhosted.org/packages/e5/ef/7bb612007cf254ad6406e9563201baf87f57686308353b0fefde4b356212/curl_cffi-0.17.0-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+    sha256: af0782d5e340b65fd76701630f0284a8f8243d77df5f2637efd09a4b009f4e24
   - &id026
     type: file
     url: https://files.pythonhosted.org/packages/38/74/f94141b38a51a553efef7f510fc213894161ae49b88bffd037f8d2a7cb2f/frozendict-2.4.7-py3-none-any.whl
@@ -316,13 +316,13 @@ modules:
     url: https://files.pythonhosted.org/packages/6f/28/258ebab549c2bf3e64d2b0217b973467394a9cea8c42f70418ca2c5d0d2e/websockets-16.0-py3-none-any.whl
     sha256: 1637db62fad1dc833276dded54215f2c7fa46912301a24bd94d45d46a011ceec
   - type: file
-    path: sources/yfinance-1.7.0-py3-none-any.whl
-    sha256: 91281ecd1f71069a37155ff8653aff2d3085f3492bd8721f18b70955da62911a
+    path: sources/yfinance-1.8.0-py3-none-any.whl
+    sha256: f148b6db4151389625f2da5b07b4c067144fbb4d0537d0de19699c447f4405d5
 - name: python3-curl-cffi
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "curl-cffi==0.15.0" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "curl-cffi==0.17.0" --no-build-isolation
   sources:
   - *id017
   - *id005
@@ -377,7 +377,7 @@ modules:
   buildsystem: simple
   build-commands:
   - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
-    --prefix=${FLATPAK_DEST} "certifi==2026.2.25" --no-build-isolation
+    --prefix=${FLATPAK_DEST} "certifi==2026.10.23" --no-build-isolation
   sources:
   - *id017
 - name: python3-frozendict

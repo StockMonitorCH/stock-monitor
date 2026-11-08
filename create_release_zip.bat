@@ -29,6 +29,8 @@ if exist "%SRC%\_internal\.stock_monitor_active_portfolio" del /q "%SRC%\_intern
 if exist "%SRC%\_internal\.stock_monitor_portfolio.json"   del /q "%SRC%\_internal\.stock_monitor_portfolio.json"
 if exist "%SRC%\_internal\.stock_monitor_companies.json"   del /q "%SRC%\_internal\.stock_monitor_companies.json"
 if exist "%SRC%\_internal\.stock_monitor_sectors.json"     del /q "%SRC%\_internal\.stock_monitor_sectors.json"
+if exist "%SRC%\_internal\.stock_monitor_countries.json"   del /q "%SRC%\_internal\.stock_monitor_countries.json"
+if exist "%SRC%\_internal\.stock_monitor_age.json"         del /q "%SRC%\_internal\.stock_monitor_age.json"
 if exist "%SRC%\_internal\.stock_monitor_configs"          rmdir /s /q "%SRC%\_internal\.stock_monitor_configs"
 
 :: Alle .smpf-Portfolios ausser Demo löschen
