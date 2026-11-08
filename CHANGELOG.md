@@ -8,33 +8,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [5.9.0] – 2026-11-08
 
 ### Added
-- **Logarithmic price axis:** new "Log" checkbox in the zoom view (line and candlesticks); equal percentage moves appear equally high, crosshair and Bollinger Bands scale correctly, setting is saved (request from an App Store review)
-- **Dividend account:** multi-currency account in the dividend window — dividends are credited on the ex-date with the holdings at that time, withholding tax by company domicile and own tax residence (CH/DE/AT/UK/US, W-8BEN), gross/net toggle, total in portfolio currency, booking history per account, manual deposits/withdrawals, export PDF/XLSX/ODS; stored encrypted with the portfolio
-- **Austrian tax report – AGE:** enter accumulated income of accumulating funds from the OeKB report; KESt on AGE calculated with the holdings on the inflow date and included in summary, total tax and all exports
-- **Sales history:** sales (manual partial sale, broker import) are stored internally with date; main view still shows only open positions, but dividend account and tax report know the holdings on every ex-date, also for fully sold positions. Partial sale dialog now asks for the sale date (default: last trading day; weekends rejected, warning on exchange holidays; crypto 24/7)
+
+- **Logarithmic price axis** – new "Log" checkbox in the zoom view (line and candlesticks). Equal percentage changes appear equally high – ideal for long periods (5Y, Max). Clearly readable axis labels; crosshair and Bollinger Bands are scaled correctly; the setting is saved. *(Requested in an App Store review)*
+- **Dividend account** – new multi-currency account in the dividend window (button "💰 Dividend account"). Dividends are automatically credited on the ex-date, with the holdings at that time, to the account of their currency; withholding tax depends on the company's country of domicile and your own tax residence (CH/DE/AT/UK/US, W-8BEN). Gross/net toggle, total balance in the portfolio currency, double-click shows all bookings of an account with running balance. Manual deposits/withdrawals, dividends can be corrected, export to PDF/XLSX/ODS. Stored encrypted together with the portfolio. New files: `dividend_account.py`, `dividend_account_translations.py`. While loading, the familiar dollar bill with progress indicator appears.
+- **Austrian tax report: accumulated income (AGE)** – new button "📝 Enter AGE": manually enter the values of accumulating funds from the OeKB report (AGE and creditable withholding tax per unit, inflow date). KESt on AGE is calculated with the holdings on the inflow date and appears in separate columns, in the summary, in the total tax and in all exports. The dialog shows only funds/ETFs (option "Show all positions"); the currency of the OeKB report can be selected and is converted at the rate on the inflow date. Alternating light/grey rows (also with hidden rows and in dark mode); OeKB link readable in dark mode.
+- **Sales history** – sales (manual partial sale, broker import) are stored internally with their date. The main view still shows only open positions, but the dividend account and tax report know the holdings on every ex-date – even for positions sold completely (they appear in the tax report of the year of sale with quantity 0). The partial sale dialog now also asks for the sale date (also retroactively; default = last trading day; weekends are rejected, on holidays of the respective exchange a warning appears with "Use this date anyway?"; crypto 24/7). Stored encrypted together with the portfolio.
 
 ### Changed
-- **Exchange calendar:** holidays are now calculated from rules (Easter, "3rd Monday in January", substitute days) for 2024–2028; new exchanges: Vienna, Milan, Madrid, Lisbon, Stockholm, Oslo, Copenhagen, Helsinki, Johannesburg, Mexico, São Paulo, NZX, CME
-- **Help extended:** log scale, dividend account, tax module (currency, domicile & withholding tax, AT AGE)
-- **Tax report window size:** opens wide enough for all buttons, compact layout on small screens
-- **Monte Carlo legends:** legend bar above the charts instead of inside; single Y-axis label in comparison mode
-- **yfinance 1.8.0** (with curl_cffi 0.17.0)
+
+- **Help extended** – new sections on log scale, dividend account and tax module (currency, country of domicile & withholding tax, AT AGE); Austrian tax help with the new columns and AGE instructions (DE/EN).
+- **Tax report: window size** – opens wide enough for all buttons to be fully visible (max. 95 % of the screen), centred. On small screens (e.g. Full HD at 150 % scaling) a compact header and a lower table.
+- **Monte Carlo (portfolio and scenarios): legend** – legend bar above the charts instead of a legend inside the chart; on Full HD the curves are no longer covered. The gap to the title is measured and identical at every resolution/scaling. In comparison mode a single shared Y-axis label instead of two overlapping ones.
+- **Exchange calendar** – holidays are now calculated from fixed rules (Easter, "3rd Monday in January", substitute days) instead of being maintained by hand, for 2024–2028. New with holidays: Vienna, Milan, Madrid, Lisbon, Stockholm, Oslo, Copenhagen, Helsinki, Johannesburg, Mexico, São Paulo, NZX, CME. Used for the exchange hours display and in the partial sale dialog.
+- **yfinance 1.8.0** – data library updated to the latest version.
 
 ### Fixed
-- Monte Carlo Scenarios: result table unreadable in dark mode; grid lines and 1-pixel column offset on scaled screens
-- Help table of contents: "Candlestick" and "News" (EN) links
-- Tax help: price description corrected (current price, not year-end price)
-- Monte Carlo axis label showed the currency twice
-- Tax report: country of domicile was never detected; now from Yahoo company data, ETF names or exchange suffix
-- Tax report CH/AT: correct treaty withholding rates per country
-- Tax report: UK dividends 100× too high (pence vs. pounds)
-- Tax report: mixed currencies added without conversion; now everything in the report currency
-- Tax report: purchase price was shown as current price
-- Tax report: sale on the ex-date now keeps the dividend entitlement; purchase on the ex-date no longer counted
-- Exchange hours: wrong 2027 holidays (Easter), SIX, Toronto, ASX and Tokyo corrections
-- Dividend Kings / Aristocrats updated (as of November 2026)
-- Tax report AT: missing notes column
-- macOS: digits with wide spacing in labels/buttons containing emoji
+
+- **Monte Carlo Scenarios: result table unreadable in dark mode** – light row colours with light text; now a dark palette as in the portfolio view. Better contrast for green/red in light mode as well. Grid lines of both Monte Carlo tables clearly visible in dark mode. Column lines of header and table no longer offset by 1 pixel on scaled screens (125 % and above, e.g. 4K).
+- **Help: table of contents** – "Candlestick" jumped to "Stop-Loss & Target Price", "News" (EN) led nowhere.
+- **Tax help: price information** – described "price as of 31 Dec (year-end price)", but the report uses the current price; texts corrected.
+- **Monte Carlo: axis label** – "Portfolio value (USD) (USD)", or for CHF portfolios "Portfolio value (USD) (CHF)"; now only the actual currency.
+- **Tax report: country of domicile of securities** – the country of domicile was never detected (positions store no country): in the CH report every foreign share was treated as a US share, in the AT report as an Austrian one. The country is now determined from Yahoo company data (Apple stays US, even on the Frankfurt exchange), for ETFs from the fund name (UCITS → IE/LU without withholding tax, "(CH)" → Swiss withholding tax), otherwise from the exchange suffix. The result is cached.
+- **Tax report CH/AT: correct treaty rates** – new table with the residual rates per country (UK, HK, SG, UCITS funds 0 %; FR 12.8 %; JP/FI 10 %; mostly 15 %). Fixed among others: UK dividends in AT wrongly with 15 % withholding tax, Austrian shares in the CH report with a flat 30 %, unknown exchanges in the AT report treated as Austrian, UCITS ETFs on SIX with 35 % Swiss withholding tax.
+- **Tax report: UK dividends 100× too high** – Yahoo delivers dividends of London shares in pence; they were counted as pounds. Now converted correctly (also ZAc, ILA).
+- **Tax report: mixed currencies** – dividends and prices in USD, GBP, CHF etc. were added without conversion and shown as EUR/CHF. Now everything is in the report currency (AT/DE EUR, CH CHF, UK GBP, US USD): dividends at the rate on the ex-date, prices/market values at the current rate. Note in the report if a rate is missing.
+- **Tax report: current price** – the purchase price was always shown as the current price (price cache read incorrectly); market value and the KESt estimate on capital gains were therefore wrong.
+- **Tax report: sale on the ex-date** – positions sold on the ex-date wrongly lost their dividend entitlement; positions bought on the ex-date were wrongly counted. Now the same rule as in the dividend account (bought before the ex-date, not sold before the ex-date).
+- **Exchange hours: wrong holidays 2027** – Easter 2027 was stored as 25 April instead of 28 March; Good Friday/Easter Monday (all exchanges) and Ascension/Whit Monday (SIX) were wrong. Further corrections: SIX without a substitute day for 1 August, Berchtold's Day added; Toronto Civic Holiday added; ASX/Toronto substitute days at Christmas; Tokyo substitute and bridge holidays.
+- **Dividend Kings / Aristocrats updated (as of November 2026)** – the list had not been maintained since 2025 and contained errors: among others 3M and V.F. Corp (dividend cut) still listed as Kings, AT&T, Walgreens, Ventas and others wrongly as Aristocrats. New among others: Carlisle, McDonald's, MGE Energy, Pentair, ADM, RLI, United Bankshares (Kings); Erie, Eversource, FactSet, Brown-Forman, Cardinal Health, West Pharmaceutical and others (Aristocrats). Renamings taken into account (Marzetti MZTI, H2O America HTO).
+- **Austrian tax report: notes column missing** – the table had one column too few, so the treaty notes were never shown; the column titles "Withholding tax/treaty rate" did not match the values (KESt / foreign withholding tax).
+- **macOS: digits with wide spacing** – in labels and buttons containing emoji (e.g. ECY row "4 1 . 0", Monte Carlo Scenarios "± 1 0 % limit") "Apple Color Emoji" was used as the main font, whose digits are wide keycap glyphs. Now the system font with the emoji font as fallback.
 
 ---
 
