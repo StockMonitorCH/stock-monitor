@@ -29707,11 +29707,43 @@ class StockMonitorApp(QMainWindow):
         btn_row.addWidget(close_btn)
         lay.addLayout(btn_row)
 
-        # Countdown-Timer: schließt automatisch nach 10 Sekunden
+        # Countdown-Timer: schließt automatisch nach 10 Sekunden.
+        # Sobald der User im Dialog klickt, scrollt oder eine Taste drückt,
+        # wird der Countdown gestoppt (User liest die Release Notes).
+        # Betrifft nur das automatische Schliessen – nicht die Update-Funktion.
         _remaining = [10]
+        _stopped = [False]
+
+        def _stop_countdown(*_a):
+            if _stopped[0]:
+                return
+            _stopped[0] = True
+            try:
+                countdown_lbl.setText("")
+            except RuntimeError:
+                pass
+
+        from PyQt6.QtCore import QObject as _QObject_upd
+        class _CountdownStopFilter(_QObject_upd):
+            def eventFilter(self, obj, ev):
+                if ev.type() in (QEvent.Type.MouseButtonPress,
+                                 QEvent.Type.Wheel,
+                                 QEvent.Type.KeyPress):
+                    _stop_countdown()
+                return False   # Event normal weiterreichen
+        try:
+            from PyQt6.QtWidgets import QWidget as _QWidget_upd, QAbstractScrollArea
+            _cd_filter = _CountdownStopFilter(dlg)
+            for _w in [dlg] + dlg.findChildren(_QWidget_upd):
+                _w.installEventFilter(_cd_filter)
+            for _sa in dlg.findChildren(QAbstractScrollArea):
+                _sa.verticalScrollBar().valueChanged.connect(_stop_countdown)
+        except Exception:
+            pass   # im Zweifel: normaler Countdown wie bisher
+
         def _tick():
             try:
-                if not dlg.isVisible():
+                if not dlg.isVisible() or _stopped[0]:
                     return
                 countdown_lbl.setText(f"({_remaining[0]}s)")
                 if _remaining[0] <= 0:

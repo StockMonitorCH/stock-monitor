@@ -13,7 +13,7 @@
 
 ## Verbesserungen
 
-*(noch leer)*
+- **Update-Dialog: Countdown stoppt beim Lesen** – Sobald im Update-Fenster gescrollt, geklickt oder eine Taste gedrückt wird, schliesst sich das Fenster nicht mehr nach 10 Sekunden automatisch. Die Update-Funktion selbst ist unverändert.
 
 ---
 
@@ -38,9 +38,9 @@
 
 ## Ideen / Backlog
 
-- [ ] Timer-Stopp im Update-Dialog beim Scrollen / Info öffnen
 - [ ] Februar 2027: `dividend_lists.json` nach S&P-Rebalancing (Ende Januar) erneut abgleichen; Kenvue-Übernahme, GPC-Aufspaltung beachten
 - [ ] Börsenfeiertage nach offiziellen Kalendern ergänzen: Hongkong 2028 (Mondkalender, Liste 2026/27 prüfen), Shanghai/Shenzhen, Korea, Singapur, Indien, Tel Aviv (Handel Mo–Fr seit 2026) – erst wenn die Börsen sie veröffentlicht haben; in `market_data.py` unter `_MANUAL_HOLIDAYS`
+- [ ] Generischer CSV-Import: optionale Währungsspalte (Auto-Erkennung + Spalten-Dialog), dann Swissquote-Regeln übernehmen (Börsensuffix aus Handelswährung, GBP→Pence, EUR-Börsen bevorzugen). Erst umsetzen, wenn eine echte Beispiel-CSV einer anderen Bank vorliegt.
 - [ ] Analysten-Ampel: eigene Berechnung statt Yahoo-Label (gewichteter Mittelwert)
 - [ ] Stresstest Komplex: Zinserhöhungs-Szenario einbauen
 - [ ] (später, nicht 5.9.0) Zentrales Dark-Mode-Theme `theme.py`: eine Dark-Erkennung statt 38, Farben nach Bedeutung (Zeile pessimistisch/optimistisch, positiv/negativ, Infobox, Trennlinie, Link) mit Hell-/Dunkel-Variante; ab dann für Neues verwenden, Bestehendes schrittweise umstellen (910 feste Farben in stock_monitor.py). Optional: automatischer Dark-Mode-Kontrasttest.
