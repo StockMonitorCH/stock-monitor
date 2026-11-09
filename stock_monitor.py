@@ -9294,6 +9294,8 @@ class PortfolioDialog(QMainWindow):
                "sell_date": str(sell_date)[:10]}
         if "hist_fx_to_chf" in lot:
             rec["hist_fx_to_chf"] = lot["hist_fx_to_chf"]
+        if lot.get("staking"):
+            rec["staking"] = True
         try:
             if sell_price and float(sell_price) > 0:
                 rec["sell_price"] = float(sell_price)
@@ -10498,6 +10500,7 @@ class PortfolioDialog(QMainWindow):
         kauf_rows  = []
         verkauf_rows = []
         split_rows = []
+        staking_rows = []   # Krypto-Staking-Erträge ('Crypto Deposit', Stückpreis 0)
         skipped    = []
 
         for i, line in enumerate(lines[1:], start=2):
@@ -10509,7 +10512,7 @@ class PortfolioDialog(QMainWindow):
                 continue
 
             typ = parts[idx_typ].strip()
-            if typ not in ('Kauf', 'Verkauf', 'Split'):
+            if typ not in ('Kauf', 'Verkauf', 'Split', 'Crypto Deposit'):
                 continue
 
             symbol_raw = parts[idx_symbol].strip()
@@ -10615,10 +10618,14 @@ class PortfolioDialog(QMainWindow):
                 kauf_rows.append(entry)
             elif typ == 'Split':
                 split_rows.append(entry)
+            elif typ == 'Crypto Deposit':
+                # Swissquote bucht Staking-Erträge als 'Crypto Deposit' (Krypto-ISIN EX0X…)
+                if _is_crypto_isin(isin):
+                    staking_rows.append(entry)
             else:
                 verkauf_rows.append(entry)
 
-        total_found = len(kauf_rows) + len(verkauf_rows)
+        total_found = len(kauf_rows) + len(verkauf_rows) + len(staking_rows)
         if total_found == 0:
             QMessageBox.information(
                 self, "Keine Transaktionen",
@@ -10723,6 +10730,33 @@ class PortfolioDialog(QMainWindow):
         opt_layout.addWidget(chk_verkauf)
         opt_layout.addWidget(chk_skip_existing)
         opt_layout.addWidget(chk_yahoo_price)
+
+        # Staking-Erträge: Checkbox nur anzeigen, wenn die CSV welche enthält
+        chk_staking = None
+        if staking_rows:
+            _stk_tot = {}
+            for _r in staking_rows:
+                _stk_tot[_r['symbol']] = _stk_tot.get(_r['symbol'], 0.0) + _r['quantity']
+            _stk_txt = ", ".join(f"{q:.6g} {s.replace('-USD', '')}"
+                                 for s, q in sorted(_stk_tot.items()))
+            chk_staking = QCheckBox(TR("chk_import_staking", n=len(staking_rows), coins=_stk_txt))
+            chk_staking.setChecked(True)
+            chk_staking.setToolTip(TR("tip_import_staking"))
+            opt_layout.addWidget(chk_staking)
+            # Warnung: auffällig grosse Einzelbuchung (evtl. Übertrag von externer Wallet)
+            _big = []
+            for _s in _stk_tot:
+                _qs = sorted(r['quantity'] for r in staking_rows if r['symbol'] == _s)
+                _med = _qs[len(_qs) // 2]
+                for _r in staking_rows:
+                    if _r['symbol'] == _s and len(_qs) >= 3 and _r['quantity'] > 5 * _med:
+                        _big.append(f"{_app_config.fmt_date(_r['date'])} {_r['quantity']:.6g} "
+                                    f"{_s.replace('-USD', '')}")
+            if _big:
+                _stk_warn = QLabel(TR("lbl_staking_big_warn", items=", ".join(_big[:5])))
+                _stk_warn.setWordWrap(True)
+                _stk_warn.setStyleSheet("color: #f0b429;" if _dm_sq else "color: #b9770e;")
+                opt_layout.addWidget(_stk_warn)
         dlg_layout.addWidget(opt_frame)
 
         # Progress-Anzeige für den Import
@@ -10963,6 +10997,30 @@ class PortfolioDialog(QMainWindow):
                         self.portfolio_data[check_sym] = pre + post
                         break
 
+            # --- STAKING-ERTRÄGE: Coins mit Einstandspreis 0 ---
+            # Der Ertrag erscheint so als Gewinn der Position (nicht im Dividendenkonto).
+            imported_staking = 0
+            if chk_staking is not None and chk_staking.isChecked():
+                for entry in staking_rows:
+                    sym  = entry['symbol']          # bereits XXX-USD
+                    date = entry['date']
+                    qty  = entry['quantity']
+                    if skip_dup and sym in self.portfolio_data and any(
+                            p.get('staking') and p['buy_date'] == date
+                            and abs(p['quantity'] - qty) < 1e-9
+                            for p in self.portfolio_data[sym]):
+                        skipped_dup += 1
+                        continue
+                    self.portfolio_data.setdefault(sym, []).append({
+                        'buy_date':       date,
+                        'buy_price':      0.0,
+                        'quantity':       qty,
+                        'hist_fx_to_chf': None,
+                        'cost_chf':       0.0,
+                        'staking':        True,
+                    })
+                    imported_staking += 1
+
             # --- VERKÄUFE ---
             if do_verkauf:
                 total_v = len(verkauf_rows)
@@ -11028,6 +11086,8 @@ class PortfolioDialog(QMainWindow):
             # Zusammenfassung
             msg  = "✅ Import abgeschlossen!\n\n"
             msg += TR("msg_import_buys_done", n=imported_kauf)
+            if imported_staking:
+                msg += TR("msg_import_staking_done", n=imported_staking)
             if use_yahoo:
                 msg += f"   davon hist. USD→CHF Kurs geholt: {yahoo_fetched}\n"
                 if yahoo_fallback:
@@ -11741,7 +11801,8 @@ class PortfolioDialog(QMainWindow):
                 if _ComboDelegate is not None:
                     cmb2.setItemDelegate(_ComboDelegate(cmb2))
                 cmb2.addItems([TR("combo_skip"), TR("lbl_tx_as_buy"), TR("lbl_tx_as_sell"),
-                               TR("lbl_tx_as_split"), TR("lbl_tx_as_div")])
+                               TR("lbl_tx_as_split"), TR("lbl_tx_as_div"),
+                               TR("lbl_tx_as_staking")])
                 row_h2.addWidget(cmb2)
                 row_h2.addStretch()
                 unk_layout.addWidget(row_w2)
@@ -11767,6 +11828,9 @@ class PortfolioDialog(QMainWindow):
                         split_rows.append(base | {'type': 'Split'})
                     elif choice == 4:
                         div_rows.append(base | {'type': 'Dividende'})
+                    elif choice == 5:
+                        # Staking-Ertrag: Coins mit Einstandspreis 0 (wie Swissquote-Import)
+                        kauf_rows.append(base | {'type': 'Kauf', 'price': 0.0, 'staking': True})
                     else:
                         skipped.append(f"Zeile {r['line']}: Typ '{r['raw_type']}' übersprungen")
 
@@ -11991,6 +12055,7 @@ class PortfolioDialog(QMainWindow):
                         'quantity':       qty,
                         'hist_fx_to_chf': None,
                         'cost_chf':       0.0,
+                        **({'staking': True} if entry.get('staking') else {}),
                     })
                     imported_k += 1
 
@@ -26066,7 +26131,9 @@ class PortfolioDialog(QMainWindow):
                     color = "green" if pnl >= 0 else "red"
                     sign  = "+" if pnl >= 0 else ""
                     row_layout.addWidget(lbl(f"{sign}{currency} {pnl:.2f}", 115, color, True))
-                    row_layout.addWidget(lbl(f"{sign}{pnl_pct:.1f}%", 90, color, True))
+                    # pnl_pct ist None bei Einstandspreis 0 (z.B. Staking-Ertrag)
+                    _pct_txt = f"{sign}{pnl_pct:.1f}%" if pnl_pct is not None else "–"
+                    row_layout.addWidget(lbl(_pct_txt, 90, color, True))
                     total_invested += buy_value
                     total_current  += curr_value
                 else:
