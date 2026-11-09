@@ -19,7 +19,10 @@
 
 ## Bug-Fixes
 
-*(noch leer)*
+- **Swissquote-Import: falsche Symbole bei kurzen Tickern** – Kinross Gold (`K`) wurde als KOSPI-Index (`^KS11`) importiert, weil die Yahoo-Suche den Index zuerst lieferte. Die Symbol-Auflösung akzeptiert jetzt keine Indizes, Währungen oder Futures mehr; bei Importen werden nur noch exakte Treffer übernommen.
+- **Swissquote-Import: Börsenplatz aus Handelswährung** – Das Suffix wird jetzt aus der Handelswährung abgeleitet (CAD → `.TO`, CHF → `.SW`, GBP → `.L`, JPY → `.T`, SEK → `.ST`, HKD, AUD, NOK, DKK). Kinross in CAD wird so zu `K.TO`. In USD gehandelte Titel mit ausländischer ISIN (z.B. Garmin, Chubb) bekommen kein falsches `.SW`/`.L` mehr. Aktienklassen wie `SAAB^B` werden zu `SAAB-B.ST`.
+- **Swissquote-Import: Londoner Aktien fehlten** – Swissquote schreibt LSE-Ticker mit Punkt am Ende (`RR.` = Rolls-Royce), daraus wurde das ungültige Symbol `RR.`. Wird jetzt zu `RR.L`. Zudem werden GBP-Preise aus der CSV in Pence umgerechnet (Yahoo notiert LSE in GBp), und der historische FX-Kurs nutzt `GBPCHF=X` statt des nicht existierenden `GBpCHF=X`.
+- **Swissquote-Import: in EUR gekaufte US-Aktien** – Bei Handelswährung EUR wird ein europäischer Börsenplatz bevorzugt (z.B. `NVD` → `NVD.DE` statt des gleichnamigen US-ETFs, `WMT` → `WMT.MU`, `ASML` → `ASML.AS`). Gleiche Ticker in verschiedenen Währungen werden nicht mehr vermischt.
 
 ---
 

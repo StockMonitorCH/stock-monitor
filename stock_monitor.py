@@ -10477,6 +10477,14 @@ class PortfolioDialog(QMainWindow):
         idx_preis       = col('Stückpreis')
         idx_netto_konto = col('Nettobetrag in der Währung des Kontos')   # CHF-Betrag
         idx_waehrung    = col('Währung')   # letzte Spalte = Kontowährung
+        idx_trade_cur   = col('Währung Nettobetrag')   # Handelswährung (Börsenplatz)
+
+        # Handelswährung → Yahoo-Börsensuffix (nur eindeutige Fälle; EUR/USD nicht,
+        # da mehrere Börsen bzw. US-Börsen ohne Suffix)
+        _CUR_SUFFIX = {
+            'CHF': '.SW', 'CAD': '.TO', 'GBP': '.L', 'GBX': '.L', 'JPY': '.T',
+            'HKD': '.HK', 'AUD': '.AX', 'SEK': '.ST', 'NOK': '.OL', 'DKK': '.CO',
+        }
 
         if -1 in (idx_datum, idx_typ, idx_symbol, idx_anzahl, idx_preis):
             QMessageBox.warning(self, TR("msg_title_error"), TR("msg_swissquote_cols"))
@@ -10551,8 +10559,23 @@ class PortfolioDialog(QMainWindow):
 
             # ── Symbol-Suffix aus ISIN ableiten ──────────────────────────────────
             # Swissquote Krypto hat ISIN=EX0X... → XXX-USD für Yahoo Finance
+            trade_cur = (parts[idx_trade_cur].strip().upper()
+                         if idx_trade_cur >= 0 and len(parts) > idx_trade_cur else '')
+            # Swissquote schreibt Aktienklassen als 'SAAB^B' – Yahoo: 'SAAB-B'
+            if not _is_crypto_isin(isin):
+                symbol_raw = symbol_raw.replace('^', '-')
+                # Swissquote schreibt LSE-Ticker mit Punkt am Ende ('RR.', 'BP.')
+                symbol_raw = symbol_raw.rstrip('.')
             if _is_crypto_isin(isin):
                 symbol_raw = symbol_raw + '-USD'
+            # Handelswährung bestimmt den Börsenplatz (z.B. Kinross 'K' in CAD → K.TO,
+            # in USD wäre es KGC an der NYSE). Hat Vorrang vor der ISIN.
+            elif '.' not in symbol_raw and trade_cur in _CUR_SUFFIX:
+                symbol_raw = symbol_raw + _CUR_SUFFIX[trade_cur]
+            # In USD gehandelt → US-Börse, kein Suffix (auch bei CH/GB/AU-ISIN,
+            # z.B. Garmin, Chubb, IREN)
+            elif trade_cur == 'USD':
+                pass
             # Deutsche Aktien (ISIN=DE...) → Symbol.DE oder Symbol.F
             elif isin.upper().startswith('DE') and '.' not in symbol_raw:
                 symbol_raw = symbol_raw + '.DE'
@@ -10586,6 +10609,7 @@ class PortfolioDialog(QMainWindow):
                 'type':      typ,
                 'isin':      isin,
                 'netto_chf': netto_chf,   # echter CHF-Kaufwert inkl. FX
+                'trade_cur': trade_cur,   # Handelswährung laut CSV (z.B. GBP)
             }
             if typ == 'Kauf':
                 kauf_rows.append(entry)
@@ -10737,7 +10761,8 @@ class PortfolioDialog(QMainWindow):
                 end    = (buy_dt + timedelta(days=7)).strftime("%Y-%m-%d")
                 # FX-Ticker: z.B. USDCHF=X (wie viele CHF pro USD)
                 # EUR→CHF: EURCHF=X, JPY→CHF: JPYCHF=X
-                fx_ticker = f"{instrument_currency}CHF=X"
+                _fx_base  = 'GBP' if instrument_currency == 'GBp' else instrument_currency
+                fx_ticker = f"{_fx_base}CHF=X"
                 hist = yf.Ticker(fx_ticker).history(start=start, end=end, auto_adjust=False)
                 if hist.empty:
                     _fx_hist_cache[cache_key] = None
@@ -10761,6 +10786,17 @@ class PortfolioDialog(QMainWindow):
                 return getattr(yf.Ticker(sym).fast_info, 'currency', 'USD') or 'USD'
             except Exception:
                 return 'USD' 
+
+        _sym_currency_cache = {}  # sym → instrument_currency (Yahoo)
+
+        def _price_factor(sym, entry):
+            """Swissquote gibt LSE-Preise in GBP an, Yahoo notiert in Pence (GBp).
+            Gibt den Faktor zurück, mit dem der CSV-Preis multipliziert werden muss."""
+            if entry.get('trade_cur') != 'GBP' or not sym.endswith('.L'):
+                return 1.0
+            if sym not in _sym_currency_cache:
+                _sym_currency_cache[sym] = get_instrument_currency(sym)
+            return 100.0 if _sym_currency_cache[sym] == 'GBp' else 1.0
 
         def do_import():
             do_kauf      = chk_kauf.isChecked()
@@ -10815,7 +10851,7 @@ class PortfolioDialog(QMainWindow):
             yahoo_fetched        = 0
             yahoo_fallback       = 0
             errors               = []
-            _sym_currency_cache  = {}  # sym → instrument_currency
+            _sym_currency_cache.clear()  # sym → instrument_currency
             _resolve_cache       = {}  # raw → resolved sym (verhindert inkonsistente Suffixe)
 
             # --- KÄUFE ---
@@ -10831,9 +10867,11 @@ class PortfolioDialog(QMainWindow):
                     QApplication.processEvents()
 
                     # Symbol auflösen (gecacht → konsistentes Suffix pro Basisticker)
-                    if sym_raw not in _resolve_cache:
-                        _resolve_cache[sym_raw] = self.resolve_symbol(sym_raw)
-                    sym = _resolve_cache[sym_raw]
+                    _rk = (sym_raw, entry.get('trade_cur', ''))
+                    if _rk not in _resolve_cache:
+                        _resolve_cache[_rk] = self.resolve_symbol(
+                            sym_raw, strict=True, trade_cur=entry.get('trade_cur'))
+                    sym = _resolve_cache[_rk]
 
                     # Duplikat-Check
                     skip_this = False
@@ -10849,7 +10887,7 @@ class PortfolioDialog(QMainWindow):
 
                     # Kaufpreis: immer CSV-Stückpreis (kein Yahoo-Dividend-Adjustment)
                     # Splits werden separat durch die Split-Verarbeitung berücksichtigt
-                    buy_price = csv_price
+                    buy_price = csv_price * _price_factor(sym, entry)
 
                     # Historischen FX-Kurs holen für CHF-Performance-Berechnung
                     hist_fx_to_chf = None
@@ -10885,9 +10923,11 @@ class PortfolioDialog(QMainWindow):
                     sym_raw    = entry['symbol']
                     split_date = entry['date']
                     qty_delta  = entry['quantity']
-                    if sym_raw not in _resolve_cache:
-                        _resolve_cache[sym_raw] = self.resolve_symbol(sym_raw)
-                    sym = _resolve_cache[sym_raw]
+                    _rk = (sym_raw, entry.get('trade_cur', ''))
+                    if _rk not in _resolve_cache:
+                        _resolve_cache[_rk] = self.resolve_symbol(
+                            sym_raw, strict=True, trade_cur=entry.get('trade_cur'))
+                    sym = _resolve_cache[_rk]
                     for check_sym in ([sym, sym_raw] if sym != sym_raw else [sym]):
                         if check_sym not in self.portfolio_data:
                             continue
@@ -10934,9 +10974,11 @@ class PortfolioDialog(QMainWindow):
                     progress_label.setText(TR("status_processing_sell", n=vi+1, total=total_v, sym=sym_raw))
                     QApplication.processEvents()
 
-                    if sym_raw not in _resolve_cache:
-                        _resolve_cache[sym_raw] = self.resolve_symbol(sym_raw)
-                    sym = _resolve_cache[sym_raw]
+                    _rk = (sym_raw, entry.get('trade_cur', ''))
+                    if _rk not in _resolve_cache:
+                        _resolve_cache[_rk] = self.resolve_symbol(
+                            sym_raw, strict=True, trade_cur=entry.get('trade_cur'))
+                    sym = _resolve_cache[_rk]
 
                     # Suche Symbol im Portfolio (raw oder aufgelöst)
                     found_sym = None
@@ -10948,6 +10990,10 @@ class PortfolioDialog(QMainWindow):
                         errors.append(f"Verkauf {sym} {date}: Symbol nicht im Portfolio – übersprungen")
                         continue
 
+                    _sell_px = entry.get('price')
+                    if _sell_px is not None:
+                        _sell_px = _sell_px * _price_factor(found_sym, entry)
+
                     # FIFO – verkaufte Lots mit Datum in der Verkaufshistorie merken
                     remaining  = qty
                     positions  = sorted(self.portfolio_data[found_sym], key=lambda p: p['buy_date'])
@@ -10957,11 +11003,11 @@ class PortfolioDialog(QMainWindow):
                             new_pos.append(pos)
                         elif pos['quantity'] <= remaining + 0.0001:
                             self._record_sale(found_sym, pos, pos['quantity'], date,
-                                              entry.get('price'), dedupe=True)
+                                              _sell_px, dedupe=True)
                             remaining -= pos['quantity']
                         else:
                             self._record_sale(found_sym, pos, remaining, date,
-                                              entry.get('price'), dedupe=True)
+                                              _sell_px, dedupe=True)
                             pos = dict(pos)
                             pos['quantity'] -= remaining
                             remaining = 0
@@ -11919,7 +11965,7 @@ class PortfolioDialog(QMainWindow):
                     prog2_lbl.setText(TR("status_importing_buy", n=ki2+1, total=len(kauf_rows), sym=entry['symbol']))
                     QApplication.processEvents()
 
-                    sym = self.resolve_symbol(entry['symbol'])
+                    sym = self.resolve_symbol(entry['symbol'], strict=True)
                     date  = entry['date']
                     qty   = entry['quantity']
                     price = entry['price']
@@ -11954,7 +12000,7 @@ class PortfolioDialog(QMainWindow):
                 sym_raw    = entry['symbol']
                 split_date = entry['date']
                 qty_delta  = entry.get('qty_signed', entry['quantity'])
-                sym = self.resolve_symbol(sym_raw)
+                sym = self.resolve_symbol(sym_raw, strict=True)
                 prog2_lbl.setText(TR("lbl_processing_split", sym=sym, date=split_date))
                 QApplication.processEvents()
                 for check_sym in ([sym, sym_raw] if sym != sym_raw else [sym]):
@@ -12002,7 +12048,7 @@ class PortfolioDialog(QMainWindow):
                     prog2_lbl.setText(TR("status_importing_sell", n=vi2+1, total=len(verkauf_rows), sym=entry['symbol']))
                     QApplication.processEvents()
 
-                    sym = self.resolve_symbol(entry['symbol'])
+                    sym = self.resolve_symbol(entry['symbol'], strict=True)
                     date  = entry['date']
                     qty   = entry['quantity']
 
@@ -25513,8 +25559,14 @@ class PortfolioDialog(QMainWindow):
             dialog.finished.connect(lambda: (self.raise_(), self.activateWindow()))
         dialog.exec()
 
-    def resolve_symbol(self, raw):
-        """Löst ein Symbol auf – versucht automatisch den richtigen Suffix zu finden"""
+    def resolve_symbol(self, raw, strict=False, trade_cur=None):
+        """Löst ein Symbol auf – versucht automatisch den richtigen Suffix zu finden.
+
+        strict=True (Broker-Importe): Nur exakte Ticker-Treffer bzw. Suffix-Treffer
+        übernehmen, sonst Symbol unverändert lassen. Verhindert z.B. dass 'K'
+        (Kinross Gold) zu '^KS11' (KOSPI) wird, weil Yahoo das Index-Ergebnis
+        zuerst liefert.
+        """
         raw = raw.upper().strip()
         # Rohstoffe (XAU, XAG) direkt zurückgeben – kein Suffix nötig
         if _is_commodity(raw):
@@ -25522,24 +25574,64 @@ class PortfolioDialog(QMainWindow):
         # Hat bereits einen Suffix → direkt verwenden
         if '.' in raw:
             return raw
+
+        _OK_TYPES = ('EQUITY', 'ETF', 'MUTUALFUND')
+
+        def _is_security(q):
+            sym = q.get('symbol', '')
+            if not sym or sym.startswith('^') or '=' in sym:
+                return False   # Index, Währung, Future
+            qt = (q.get('quoteType') or '').upper()
+            return (not qt) or qt in _OK_TYPES
+
         # Yahoo Finance Suche für automatischen Suffix
         try:
-            url = f"https://query1.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(raw)}&quotesCount=5&newsCount=0"
+            url = f"https://query1.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(raw)}&quotesCount=10&newsCount=0"
             req = urllib.request.Request(url)
             req.add_header('User-Agent', 'Mozilla/5.0')
             with urllib.request.urlopen(req, timeout=4) as resp:
                 data = json.loads(resp.read().decode())
-            quotes = data.get('quotes', [])
-            # Suche exaktes Symbol-Match zuerst
+            quotes = [q for q in data.get('quotes', []) if _is_security(q)]
+            # 0. In EUR gehandelt → europäischen Börsenplatz bevorzugen
+            #    (z.B. NVD in EUR = Nvidia Frankfurt → NVD.DE, nicht US-ETF 'NVD';
+            #     WMT in EUR → WMT.MU statt WMT in USD)
+            if (trade_cur or '').upper() == 'EUR':
+                _EUR_SFX = ['.DE', '.F', '.AS', '.PA', '.MI', '.MC', '.MU', '.SG',
+                            '.DU', '.HA', '.HM', '.BE', '.VI', '.BR', '.LS', '.HE', '.IR']
+                _best = None
+                for q in quotes:
+                    sym = q.get('symbol', '')
+                    if '.' not in sym or sym.split('.')[0] != raw:
+                        continue
+                    sfx = '.' + sym.split('.', 1)[1]
+                    if sfx in _EUR_SFX:
+                        rank = _EUR_SFX.index(sfx)
+                        if _best is None or rank < _best[0]:
+                            _best = (rank, sym)
+                if _best:
+                    return _best[1]
+            # 1. Exakter Treffer ohne Suffix (z.B. IREN, K)
+            for q in quotes:
+                if q.get('symbol', '') == raw:
+                    return raw
+            # 2. Gleicher Basis-Ticker mit Suffix (z.B. SREN → SREN.SW)
             for q in quotes:
                 sym = q.get('symbol', '')
-                base = sym.split('.')[0]
-                if base == raw:
-                    return sym  # z.B. SREN → SREN.SW
-            # Sonst erstes Ergebnis
+                if sym.split('.')[0] == raw:
+                    return sym
+            if strict:
+                return raw
+            # 3. Manuelle Eingabe: existiert das Symbol selbst? Dann behalten
+            try:
+                h = yf.Ticker(raw).history(period='5d')
+                if h is not None and not h.empty:
+                    return raw
+            except Exception:
+                pass
+            # 4. Sonst erstes Wertpapier-Ergebnis (z.B. Firmenname eingegeben)
             if quotes:
                 return quotes[0].get('symbol', raw)
-        except:
+        except Exception:
             pass
         return raw  # Fallback: unverändert
 
