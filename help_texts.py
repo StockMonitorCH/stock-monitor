@@ -223,6 +223,27 @@ _HTML_DE = """
             <li>Klick auf Symbol in der Portfolio-Übersicht &rarr; Chart in neuem Fenster</li>
         </ul>
 
+        <a name="firmensuche"><h2>&#128269; Firmensuche (Symbol unbekannt)</h2></a>
+        <p>Wer das Börsenkürzel nicht kennt, klickt im Chart auf <b>&#8981;</b> neben dem Symbolfeld und gibt den <b>Firmennamen</b> ein (z.B. &quot;Nestlé&quot;, &quot;Apple&quot;).</p>
+        <ul>
+            <li>Alle Treffer erscheinen als <b>Liste</b> mit Symbol, Börse und Firmenname</li>
+            <li>Der <b>wahrscheinlichste Treffer</b> steht oben, ist <b>fett</b> mit &#9733; markiert und bereits ausgewählt</li>
+            <li>Übernehmen per <b>Doppelklick</b>, <b>Enter</b> oder Button <b>Übernehmen</b></li>
+            <li>Es werden nur Treffer angezeigt, für die auch <b>Kursdaten</b> vorhanden sind &ndash; Futures, Optionen und Titel ohne Kurse werden ausgeblendet</li>
+        </ul>
+        <div class="tip"><b>Tipp:</b> Viele Firmen sind an mehreren Börsen gelistet (z.B. Nestlé als NESN.SW in Zürich, NSRGY in den USA). Ist der erste Treffer nur ein Zweitlisting (z.B. Frankfurt), wird automatisch die Heimatbörse bevorzugt &ndash; bei Schweizer Firmen die SIX (Mobimo &rarr; MOBN.SW).</div>
+        <h3>Indizes anzeigen</h3>
+        <p>Auch Börsenindizes lassen sich als Chart anzeigen. Einfach den Namen ins Symbolfeld oder in die Firmensuche eingeben &ndash; er wird automatisch in das Yahoo-Symbol umgewandelt:</p>
+        <table>
+            <tr><th>Eingabe</th><th>Index</th><th>Symbol</th></tr>
+            <tr><td>SMI</td><td>Swiss Market Index</td><td>^SSMI</td></tr>
+            <tr><td>SPI</td><td>Swiss Performance Index</td><td>^SSHI</td></tr>
+            <tr><td>DAX40, MDAX, TecDAX</td><td>Deutschland</td><td>^GDAXI, ^MDAXI, ^TECDAX</td></tr>
+            <tr><td>S&amp;P 500, Nasdaq 100, Dow Jones</td><td>USA</td><td>^GSPC, ^NDX, ^DJI</td></tr>
+            <tr><td>Euro Stoxx 50, FTSE, CAC 40, Nikkei, Hang Seng</td><td>Europa / Asien</td><td>^STOXX50E, ^FTSE, ^FCHI, ^N225, ^HSI</td></tr>
+        </table>
+        <div class="tip"><b>Tipp:</b> &quot;DAX&quot; und &quot;Dow&quot; sind bei Yahoo auch Namen von Wertpapieren (ein DAX-ETF bzw. die Aktie Dow Inc.). Direkt eingegeben öffnen sie deshalb das Wertpapier &ndash; den Index findet man über die Firmensuche (ganz oben) oder mit &quot;DAX40&quot; bzw. &quot;Dow Jones&quot;.</div>
+
         <a name="rsi-indikator"><h2>&#128200; RSI-Indikator</h2></a>
         <p><b>Aktivieren:</b> Checkbox <b>RSI</b> im Zoom-Modus (Vollbild-Chart) &rarr; separates Panel unterhalb des Charts.</p>
         <table>
@@ -430,7 +451,15 @@ _HTML_DE = """
         <div class="tip"><b>Tipp:</b> Der Button wird nur bei ETFs und Fonds eingeblendet &ndash; bei Aktien oder Krypto ist er nicht sichtbar.</div>
 
         <a name="vergleich"><h2>&#9878; Vergleich</h2></a>
-        <p>Mehrere Aktien als Overlay übereinanderlegen &mdash; ideal um relative Performance zu vergleichen.</p>
+        <p>Mehrere Aktien als Overlay übereinanderlegen &mdash; ideal um relative Performance zu vergleichen. Alle Kurse starten bei 0&nbsp;% und zeigen die prozentuale Veränderung im gewählten Zeitraum.</p>
+        <ul>
+            <li>Aktien aus den Charts per <b>Checkbox</b> auswählen (2&ndash;6 gleichzeitig) &rarr; <b>Vergleichen</b></li>
+            <li><b>&#10133; Weitere Aktie&hellip;</b>: Aktie per Firmensuche hinzufügen, die in <b>keinem Chart</b> geöffnet ist. Sie erscheint <i>kursiv</i> als zusätzliche Checkbox und wird sofort verglichen.</li>
+            <li>Bis zu <b>4 zusätzliche Aktien</b> &ndash; sie werden <b>gespeichert</b> und stehen beim nächsten Öffnen wieder zur Verfügung</li>
+            <li><b>Rechtsklick</b> auf eine kursive Aktie &rarr; <b>entfernen</b> (die Aktien aus den Charts bleiben unberührt)</li>
+            <li><b>Exportieren</b>: Vergleich als PDF, Excel oder OpenDocument speichern</li>
+        </ul>
+        <div class="tip"><b>Tipp:</b> So lässt sich z.B. eine Aktie aus dem Depot schnell mit einem Konkurrenten vergleichen, ohne einen Chart dafür zu ersetzen.</div>
 
         <a name="performance-diagramm"><h2>&#128202; Performance-Diagramm</h2></a>
         <p>Alle aktiven Charts als Balkendiagramm. Hover-Tooltip zeigt Symbol und Prozent.</p>
@@ -472,8 +501,15 @@ _HTML_DE = """
         <p>Hauptmenü &rarr; <b>Watchlist</b>-Button in der Toolbar.</p>
         <h3>Symbole verwalten</h3>
         <ul>
-            <li><b>Symbol eingeben + Enter</b> oder <b>&#10133; Hinzufügen</b></li>
+            <li><b>Symbol eingeben + Enter</b> oder <b>&#10133; Hinzufügen</b> &ndash; mehrere Symbole mit Leerzeichen oder Komma getrennt</li>
+            <li><b>&#8981;</b>: Symbol per Firmenname suchen</li>
             <li><b>&#128190; Speichern / &#128194; Laden</b>: Watchlist als JSON-Datei sichern und laden</li>
+        </ul>
+        <h3>Symbol-Prüfung</h3>
+        <p>Jedes Symbol wird vor dem Hinzufügen geprüft. <b>Unbekannte Symbole</b> werden nicht übernommen, sondern bleiben im Eingabefeld zur Korrektur stehen.</p>
+        <ul>
+            <li>Bei Tippfehlern erscheinen <b>Vorschläge</b> (z.B. NVAD &rarr; <b>NVDA</b>) &ndash; ein Klick fügt den Vorschlag direkt hinzu</li>
+            <li>Kürzel ohne Börse werden automatisch ergänzt (z.B. NESN &rarr; NESN.SW)</li>
         </ul>
         <h3>Berechnen</h3>
         <p>Zeitraum wählen &rarr; <b>&#9654; Berechnen</b> klicken. Alle Symbole werden parallel abgerufen.</p>
@@ -1254,7 +1290,17 @@ _HTML_DE = """
         <p>Zentrale Schaltstelle für alle Portfolio-Verwaltungsaufgaben.</p>
         <h3>Position hinzufügen</h3>
         <p>1. Symbol eingeben &rarr; 2. Kaufdatum &rarr; 3. Stückzahl &rarr; <b>Hinzufügen</b><br>
-        Kaufkurs wird automatisch von Yahoo Finance geladen.</p>
+        Der Kaufkurs wird automatisch von Yahoo Finance geladen (Schlusskurs des Kauftags) und in einem
+        Fenster <b>zur Bestätigung</b> angezeigt.</p>
+        <ul>
+            <li>Hast du zu einem anderen Kurs gekauft, den Kurs einfach <b>überschreiben</b> &ndash; z.B. bei starken Schwankungen während des Tages</li>
+            <li>Die <b>Tagesspanne</b> (Tief &ndash; Hoch) hilft bei der Einordnung; liegt dein Kurs deutlich ausserhalb, fragt Stock Monitor zur Sicherheit nach</li>
+            <li><b>&#8634; Schlusskurs</b> setzt den automatischen Kurs wieder ein</li>
+            <li><b>Zukauf (+) und Teilverkauf (&minus;):</b> Datum, Stückzahl und Kurs stehen im selben Fenster. Der Schlusskurs wird zum gewählten Datum automatisch geladen und kann überschrieben werden; wer den Kurs von Hand ändert, behält ihn auch bei einem Datumswechsel</li>
+            <li>Findet Yahoo keinen Kurs (z.B. sehr kleine Nebenwerte), kann der Kurs beim Zukauf von Hand eingetragen werden</li>
+            <li>Der Kurs gilt in der Währung der Börse; Londoner Aktien in <b>Pence (GBp)</b></li>
+        </ul>
+        <div class="tip"><b>Tipp:</b> Den genauen Kaufkurs findest du in der Kaufabrechnung deiner Bank. Beim Import (z.B. Swissquote-CSV) wird der Kurs automatisch aus der Datei übernommen.</div>
 
         <a name="swissquote_import"><h2>&#128229; Swissquote Import</h2></a>
         <p>In Swissquote: <b>Depot &rarr; Transaktionen &rarr; Export als CSV</b></p>
@@ -1448,6 +1494,27 @@ _HTML_EN = """
             <li>Multiple layouts: 4 &bull; 6 &bull; 8 &bull; 12 &bull; 16 simultaneous charts &ndash; <i>16 charts (4&times;4) requires a 4K display</i></li>
             <li>Click a symbol in the portfolio overview &rarr; opens chart in new window</li>
         </ul>
+
+        <a name="firmensuche"><h2>&#128269; Company Search (unknown symbol)</h2></a>
+        <p>If you don't know the ticker, click <b>&#8981;</b> next to the symbol field in the chart and enter the <b>company name</b> (e.g. "Nestlé", "Apple").</p>
+        <ul>
+            <li>All results are shown as a <b>list</b> with symbol, exchange and company name</li>
+            <li>The <b>most likely match</b> is at the top, shown in <b>bold</b> with &#9733; and already selected</li>
+            <li>Apply with a <b>double-click</b>, <b>Enter</b> or the <b>Apply</b> button</li>
+            <li>Only results with available <b>price data</b> are shown &ndash; futures, options and symbols without prices are hidden</li>
+        </ul>
+        <div class="tip"><b>Tip:</b> Many companies are listed on several exchanges (e.g. Nestlé as NESN.SW in Zurich, NSRGY in the US). If the first result is only a secondary listing (e.g. Frankfurt), the home exchange is preferred automatically &ndash; for Swiss companies SIX (Mobimo &rarr; MOBN.SW).</div>
+        <h3>Showing Indices</h3>
+        <p>Stock market indices can be shown as charts too. Just enter the name in the symbol field or the company search &ndash; it is converted to the Yahoo symbol automatically:</p>
+        <table>
+            <tr><th>Input</th><th>Index</th><th>Symbol</th></tr>
+            <tr><td>SMI</td><td>Swiss Market Index</td><td>^SSMI</td></tr>
+            <tr><td>SPI</td><td>Swiss Performance Index</td><td>^SSHI</td></tr>
+            <tr><td>DAX40, MDAX, TecDAX</td><td>Germany</td><td>^GDAXI, ^MDAXI, ^TECDAX</td></tr>
+            <tr><td>S&amp;P 500, Nasdaq 100, Dow Jones</td><td>USA</td><td>^GSPC, ^NDX, ^DJI</td></tr>
+            <tr><td>Euro Stoxx 50, FTSE, CAC 40, Nikkei, Hang Seng</td><td>Europe / Asia</td><td>^STOXX50E, ^FTSE, ^FCHI, ^N225, ^HSI</td></tr>
+        </table>
+        <div class="tip"><b>Tip:</b> "DAX" and "Dow" are also names of securities on Yahoo (a DAX ETF and Dow Inc. stock). Entered directly they open the security &ndash; the index is found via the company search (at the top) or with "DAX40" or "Dow Jones".</div>
 
         <a name="rsi-indikator"><h2>&#128200; RSI Indicator</h2></a>
         <p><b>Activate:</b> Checkbox <b>RSI</b> in zoom mode (fullscreen chart) &rarr; separate panel below the chart.</p>
@@ -1654,7 +1721,15 @@ _HTML_EN = """
         <div class="tip"><b>Tip:</b> The button is only shown for ETFs and funds &ndash; it is not visible for stocks or crypto.</div>
 
         <a name="vergleich"><h2>&#9878; Comparison</h2></a>
-        <p>Overlay multiple stocks for comparison &mdash; ideal for comparing relative performance.</p>
+        <p>Overlay multiple stocks for comparison &mdash; ideal for comparing relative performance. All prices start at 0&nbsp;% and show the percentage change over the selected period.</p>
+        <ul>
+            <li>Select stocks from the charts via <b>checkbox</b> (2&ndash;6 at a time) &rarr; <b>Compare</b></li>
+            <li><b>&#10133; Add stock&hellip;</b>: add a stock via company search that is <b>not open in any chart</b>. It appears in <i>italics</i> as an extra checkbox and is compared right away.</li>
+            <li>Up to <b>4 additional stocks</b> &ndash; they are <b>saved</b> and available again next time</li>
+            <li><b>Right-click</b> an italic stock &rarr; <b>remove</b> (stocks from the charts are not affected)</li>
+            <li><b>Export</b>: save the comparison as PDF, Excel or OpenDocument</li>
+        </ul>
+        <div class="tip"><b>Tip:</b> This makes it easy to compare a portfolio stock with a competitor without replacing one of your charts.</div>
 
         <a name="performance-diagramm"><h2>&#128202; Performance Chart</h2></a>
         <p>All active charts as a bar chart. Hover tooltip shows symbol and percentage.</p>
@@ -1696,8 +1771,15 @@ _HTML_EN = """
         <p>Main menu &rarr; <b>Watchlist</b> button in the toolbar.</p>
         <h3>Manage Symbols</h3>
         <ul>
-            <li><b>Enter symbol + Enter</b> or <b>&#10133; Add</b></li>
+            <li><b>Enter symbol + Enter</b> or <b>&#10133; Add</b> &ndash; several symbols separated by spaces or commas</li>
+            <li><b>&#8981;</b>: search for a symbol by company name</li>
             <li><b>&#128190; Save / &#128194; Load</b>: Save and load watchlist as JSON file</li>
+        </ul>
+        <h3>Symbol Check</h3>
+        <p>Every symbol is checked before it is added. <b>Unknown symbols</b> are not added but stay in the input field so you can correct them.</p>
+        <ul>
+            <li>For typos, <b>suggestions</b> are shown (e.g. NVAD &rarr; <b>NVDA</b>) &ndash; one click adds the suggestion</li>
+            <li>Tickers without an exchange are completed automatically (e.g. NESN &rarr; NESN.SW)</li>
         </ul>
         <h3>Calculate</h3>
         <p>Select time period &rarr; click <b>&#9654; Calculate</b>. All symbols are fetched in parallel.</p>
@@ -2469,7 +2551,17 @@ _HTML_EN = """
         <p>Central hub for all portfolio management tasks.</p>
         <h3>Add a position</h3>
         <p>1. Enter symbol &rarr; 2. Purchase date &rarr; 3. Quantity &rarr; <b>Add</b><br>
-        Purchase price is loaded automatically from Yahoo Finance.</p>
+        The purchase price is loaded automatically from Yahoo Finance (closing price on the purchase day)
+        and shown in a window <b>for confirmation</b>.</p>
+        <ul>
+            <li>If you bought at a different price, simply <b>overwrite</b> it &ndash; e.g. on days with large intraday swings</li>
+            <li>The <b>day range</b> (low &ndash; high) helps as a reference; if your price is well outside it, Stock Monitor asks for confirmation</li>
+            <li><b>&#8634; Closing price</b> restores the automatic price</li>
+            <li><b>Buy more (+) and partial sale (&minus;):</b> date, quantity and price are in the same window. The closing price for the chosen date is loaded automatically and can be overwritten; a manually changed price is kept when the date changes</li>
+            <li>If Yahoo has no price (e.g. very small caps), the price can be entered manually when buying more</li>
+            <li>The price is in the exchange's currency; London shares in <b>pence (GBp)</b></li>
+        </ul>
+        <div class="tip"><b>Tip:</b> You'll find the exact purchase price in your bank's trade confirmation. When importing (e.g. Swissquote CSV), the price is taken from the file automatically.</div>
 
         <a name="swissquote_import"><h2>&#128229; Swissquote Import</h2></a>
         <p>In Swissquote: <b>Depot &rarr; Transactions &rarr; Export as CSV</b></p>
@@ -2591,6 +2683,7 @@ _TOC_DE = [
     "Überblick",
     "── 📊 CHARTS ──",
     "Charts erstellen",
+    "Firmensuche",
     "Zeiträume",
     "Moving Averages (MA)",
     "RSI-Indikator",
@@ -2683,6 +2776,7 @@ _TOC_EN = [
     "Overview",
     "── 📊 CHARTS ──",
     "Creating Charts",
+    "Company Search",
     "Time Periods",
     "Moving Averages (MA)",
     "RSI Indicator",
@@ -2777,6 +2871,7 @@ _ANCHOR_DE = {
     "überblick":                  "überblick",
     # Charts
     "charts erstellen":           "charts_erstellen",
+    "firmensuche":                "firmensuche",
     "zeiträume":                  "zeiträume",
     "moving averages (ma)":       "moving_averages_ma",
     "rsi-indikator":              "rsi-indikator",
@@ -2880,6 +2975,7 @@ _ANCHOR_EN = {
     "overview":                   "überblick",
     # Charts
     "creating charts":            "charts_erstellen",
+    "company search":             "firmensuche",
     "time periods":               "zeiträume",
     "moving averages (ma)":       "moving_averages_ma",
     "rsi indicator":              "rsi-indikator",

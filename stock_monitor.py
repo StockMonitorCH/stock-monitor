@@ -119,7 +119,7 @@ except ImportError:
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QComboBox, QLabel, QPushButton, QGridLayout,
                              QLineEdit, QFrame, QCheckBox, QDialog, QDialogButtonBox, 
-                             QMessageBox, QListWidget, QDateEdit, QScrollArea, QTabWidget, QProgressBar,
+                             QMessageBox, QListWidget, QListWidgetItem, QDateEdit, QScrollArea, QTabWidget, QProgressBar,
                              QStackedWidget)
 from PyQt6.QtCore import QTimer, Qt, pyqtSignal, QThread, QUrl, QDate, QEvent
 from PyQt6.QtGui import QFont, QIcon
@@ -698,6 +698,302 @@ _COMMODITY_SYMBOLS = {'XAU', 'XAG', 'XPT', 'XPD', 'XCU'}
 def _is_commodity(sym: str) -> bool:
     """Gibt True zurück wenn Symbol ein Rohstoff (Edelmetall/Kupfer) ist."""
     return sym.upper() in _COMMODITY_SYMBOLS
+
+
+# ── Index-Kurznamen → Yahoo-Symbol ──────────────────────────────────────────
+# Nur Kurznamen, die bei Yahoo KEIN eigenes Wertpapier sind (geprüft 11/2026).
+# Nicht enthalten: DOW (Dow Inc.), CAC (Camden National), DJIA (ETF), HSI.
+_INDEX_ALIASES = {
+    'SMI': ('^SSMI', 'SMI – Swiss Market Index'),
+    'SPI': ('^SSHI', 'SPI – Swiss Performance Index'),
+    'DAX40': ('^GDAXI', 'DAX'),
+    'MDAX': ('^MDAXI', 'MDAX'),
+    'TECDAX': ('^TECDAX', 'TecDAX'),
+    'SPX': ('^GSPC', 'S&P 500'), 'SP500': ('^GSPC', 'S&P 500'),
+    'NDX': ('^NDX', 'NASDAQ 100'), 'NASDAQ100': ('^NDX', 'NASDAQ 100'),
+    'NASDAQ': ('^IXIC', 'NASDAQ Composite'), 'NASDAQCOMPOSITE': ('^IXIC', 'NASDAQ Composite'),
+    'DOWJONES': ('^DJI', 'Dow Jones Industrial Average'),
+    'SX5E': ('^STOXX50E', 'EURO STOXX 50'), 'EUROSTOXX50': ('^STOXX50E', 'EURO STOXX 50'),
+    'EUROSTOXX': ('^STOXX50E', 'EURO STOXX 50'),
+    'STOXX600': ('^STOXX', 'STOXX Europe 600'),
+    'FTSE': ('^FTSE', 'FTSE 100'), 'FTSE100': ('^FTSE', 'FTSE 100'),
+    'CAC40': ('^FCHI', 'CAC 40'),
+    'NIKKEI': ('^N225', 'Nikkei 225'), 'NIKKEI225': ('^N225', 'Nikkei 225'),
+    'N225': ('^N225', 'Nikkei 225'),
+    'HANGSENG': ('^HSI', 'Hang Seng'),
+    'RUSSELL2000': ('^RUT', 'Russell 2000'), 'RUT': ('^RUT', 'Russell 2000'),
+    'AEX': ('^AEX', 'AEX'), 'ATX': ('^ATX', 'ATX'),
+    'IBEX35': ('^IBEX', 'IBEX 35'), 'FTSEMIB': ('FTSEMIB.MI', 'FTSE MIB'),
+    'OMX30': ('^OMX', 'OMX Stockholm 30'), 'OMXS30': ('^OMX', 'OMX Stockholm 30'),
+    'ASX200': ('^AXJO', 'S&P/ASX 200'), 'TSX': ('^GSPTSE', 'S&P/TSX Composite'),
+    'KOSPI': ('^KS11', 'KOSPI'), 'SENSEX': ('^BSESN', 'BSE SENSEX'),
+    'NIFTY': ('^NSEI', 'NIFTY 50'), 'NIFTY50': ('^NSEI', 'NIFTY 50'),
+    'BOVESPA': ('^BVSP', 'Bovespa'), 'IBOVESPA': ('^BVSP', 'Bovespa'),
+}
+# Nur in der Firmensuche (als Treffer oben), nicht bei direkter Symbol-Eingabe,
+# weil es gleichnamige Wertpapiere gibt (DAX = Global X DAX ETF, DOW = Dow Inc.)
+_INDEX_ALIASES_SEARCH_ONLY = {
+    'DAX': ('^GDAXI', 'DAX'),
+    'DOW': ('^DJI', 'Dow Jones Industrial Average'),
+    'DJIA': ('^DJI', 'Dow Jones Industrial Average'),
+    'CAC': ('^FCHI', 'CAC 40'),
+    'HSI': ('^HSI', 'Hang Seng'),
+}
+
+
+def _fetch_day_price(symbol, day):
+    """Schlusskurs, Tagestief/-hoch und Währung für ein Datum (oder den nächsten
+    Handelstag danach, sonst den letzten davor). day: datetime.date.
+    Gibt dict(close, low, high, cur, date) oder None zurück."""
+    from datetime import datetime as _dt, timedelta as _td
+    cands = [symbol]
+    if _is_commodity(symbol):
+        cands = list(_COMMODITY_YAHOO.get(symbol.upper(), ('XAUUSD=X', 'GC=F')))
+    start = (day - _td(days=7)).strftime("%Y-%m-%d")
+    end   = (day + _td(days=7)).strftime("%Y-%m-%d")
+    for fs in cands:
+        try:
+            t = yf.Ticker(fs)
+            h = t.history(start=start, end=end, auto_adjust=False)
+            if h is None or h.empty:
+                continue
+            h.index = h.index.tz_localize(None) if h.index.tz else h.index
+            day_dt = _dt.combine(day, _dt.min.time())
+            after = h[h.index >= day_dt]
+            row = h.iloc[-1] if after.empty else after.iloc[0]
+            try:
+                cur = (t.history_metadata or {}).get('currency', '') or ''
+            except Exception:
+                cur = ''
+            return {'close': float(row['Close']), 'low': float(row['Low']),
+                    'high': float(row['High']), 'cur': cur,
+                    'date': row.name.strftime("%Y-%m-%d")}
+        except Exception:
+            continue
+    return None
+
+
+class _DayPriceField:
+    """Kursfeld für Kauf-/Verkaufsdialoge: Schlusskurs des gewählten Tages wird
+    automatisch geladen (inkl. Tagesspanne), kann aber von Hand überschrieben werden.
+    Nach manueller Änderung überschreibt ein Datumswechsel den Kurs nicht mehr."""
+
+    def __init__(self, symbol, form, label, parent):
+        from PyQt6.QtWidgets import QDoubleSpinBox
+        from PyQt6.QtCore import QLocale
+        self.symbol = symbol
+        self.parent = parent
+        self.info = None
+        self._manual = False
+        self._setting = False
+        self.spin = QDoubleSpinBox()
+        self.spin.setLocale(QLocale.c())       # Eingabe mit Punkt (wie überall)
+        self.spin.setDecimals(4)
+        self.spin.setRange(0.0, 1e9)
+        self.spin.valueChanged.connect(self._on_edit)
+        self.reset_btn = QPushButton(TR("btn_reset_auto_price"))
+        self.reset_btn.setAutoDefault(False)
+        self.reset_btn.setEnabled(False)
+        self.reset_btn.clicked.connect(self.reset)
+        # Währung als feste Beschriftung neben dem Feld – nicht editierbar
+        self.cur_lbl = QLabel("")
+        self.cur_lbl.setStyleSheet("color: gray; font-weight: bold;")
+        self.cur_lbl.setMinimumWidth(self.cur_lbl.fontMetrics().horizontalAdvance("GBp") + 6)
+        row = QHBoxLayout()
+        row.addWidget(self.spin, 1)
+        row.addWidget(self.cur_lbl)
+        row.addWidget(self.reset_btn)
+        form.addRow(label, row)
+        self.hint = QLabel("")
+        self.hint.setWordWrap(True)
+        self.hint.setTextFormat(Qt.TextFormat.RichText)
+        self.hint.setStyleSheet("color: gray; font-size: 11px;")
+        # Platz für bis zu 4 Zeilen reservieren – der Text kommt erst nach dem Öffnen
+        self.hint.setMinimumHeight(self.hint.fontMetrics().lineSpacing() * 4 + 4)
+        self.hint.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        form.addRow(self.hint)
+        self._timer = QTimer()
+        self._timer.setSingleShot(True)
+        self._timer.setInterval(400)
+        self._pending = None
+        self._timer.timeout.connect(lambda: self.load(self._pending))
+
+    def _on_edit(self, _v):
+        if not self._setting:
+            self._manual = True
+
+    def _set(self, v):
+        self._setting = True
+        self.spin.setValue(v)
+        self._setting = False
+
+    def _f(self, v):
+        dec = 4 if (self.info and self.info['close'] < 10) else 2
+        return _fmt(v, dec)
+
+    def schedule_load(self, qdate):
+        """Für dateChanged: kurz warten, damit nicht jeder Tastendruck lädt."""
+        self._pending = qdate
+        self._timer.start()
+
+    def load(self, qdate):
+        day = qdate.toPyDate() if hasattr(qdate, 'toPyDate') else qdate
+        self.hint.setText(TR("status_loading_price"))
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        QApplication.processEvents()
+        try:
+            self.info = _fetch_day_price(self.symbol, day)
+        finally:
+            QApplication.restoreOverrideCursor()
+        if not self.info:
+            self.reset_btn.setEnabled(False)
+            self.cur_lbl.setText("")
+            self.hint.setText(TR("lbl_price_not_found_manual"))
+            self._fit_dialog()
+            return
+        i = self.info
+        self.spin.setDecimals(4 if i['close'] < 10 else 2)
+        self.cur_lbl.setText(i['cur'] or "")
+        if not self._manual:
+            self._set(i['close'])
+        self.reset_btn.setEnabled(True)
+        hint = TR("lbl_buy_price_auto_hint", price=self._f(i['close']), cur=i['cur'])
+        hint += "<br>" + TR("lbl_buy_price_day_range", low=self._f(i['low']),
+                            high=self._f(i['high']), cur=i['cur'])
+        if i['date'] != day.strftime("%Y-%m-%d"):
+            hint += "<br>ℹ️ " + TR("lbl_price_from_trading_day",
+                                   date=_app_config.fmt_date(i['date']))
+        if i['cur'] == "GBp":
+            hint += "<br>" + TR("lbl_buy_price_pence_hint")
+        self.hint.setText(hint)
+        self._fit_dialog()
+
+    def _fit_dialog(self):
+        """Fenster an den (nachgeladenen) Hinweistext anpassen – nur vergrössern."""
+        try:
+            dlg = self.parent
+            lay = dlg.layout()
+            if lay is not None:
+                lay.activate()
+            need = dlg.sizeHint().height()
+            if dlg.height() < need:
+                dlg.resize(dlg.width(), need)
+        except Exception:
+            pass
+
+    def reset(self):
+        if self.info:
+            self._set(self.info['close'])
+            self._manual = False
+
+    def value(self):
+        return float(self.spin.value())
+
+    def trading_date(self, fallback):
+        """Tatsächlicher Handelstag des Kurses (YYYY-MM-DD)."""
+        return self.info['date'] if self.info else fallback
+
+    def confirm(self, dlg, title, required=True):
+        """Plausibilitätsprüfung vor dem Speichern. False = abbrechen.
+        required=False: Kurs 0 erlaubt (z.B. Verkauf ohne Yahoo-Kurs)."""
+        price = self.value()
+        if price <= 0:
+            if not required:
+                return True
+            QMessageBox.warning(dlg, title, TR("msg_enter_price"))
+            return False
+        i = self.info
+        if i and abs(price - i['close']) > 1e-9 and \
+                (price < i['low'] * 0.9 or price > i['high'] * 1.1):
+            r = QMessageBox.question(
+                dlg, title,
+                TR("msg_buy_price_outside_range", price=self._f(price), low=self._f(i['low']),
+                   high=self._f(i['high']), cur=i['cur']),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No)
+            return r == QMessageBox.StandardButton.Yes
+        return True
+
+
+def _index_alias(text: str, for_search: bool = False):
+    """Index-Kurzname → (Yahoo-Symbol, Anzeigename) oder None.
+    'S&P 500', 'Euro Stoxx 50', 'dow jones' usw. werden normalisiert."""
+    key = ''.join(c for c in (text or '').upper() if c.isalnum())
+    if not key:
+        return None
+    hit = _INDEX_ALIASES.get(key)
+    if hit is None and for_search:
+        hit = _INDEX_ALIASES_SEARCH_ONLY.get(key)
+    return hit
+
+
+_KNOWN_SYMBOLS_CACHE = None
+
+def _known_symbols() -> dict:
+    """Bekannte Ticker aus den Screener-Indexlisten → Rang (kleiner = bekannter)."""
+    global _KNOWN_SYMBOLS_CACHE
+    if _KNOWN_SYMBOLS_CACHE is None:
+        ranks = {}
+        try:
+            import screener as _scr
+            tiers = [('_NASDAQ100', '_SMI', '_DAX'),
+                     ('_SP500', '_CAC40', '_FTSE100', '_NASDAQ_EXTRA'),
+                     ('_NIKKEI225', '_TSX', '_ASX200', '_STI', '_NIFTY50',
+                      '_HANGSENG', '_EWZ', '_SCANDINAVIA', '_OSTEUROPA'),
+                     ('_RUSSELL2000', '_RUSSELL2000_LARGE')]
+            for rank, names in enumerate(tiers):
+                for name in names:
+                    for x in getattr(_scr, name, []) or []:
+                        ranks.setdefault(str(x).upper(), rank)
+        except Exception:
+            pass
+        _KNOWN_SYMBOLS_CACHE = ranks
+    return _KNOWN_SYMBOLS_CACHE
+
+
+def _typo_distance(a: str, b: str) -> int:
+    """Tippfehler-Distanz (Damerau-Levenshtein/OSA): Buchstabendreher = 1 Fehler."""
+    d = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+    for i in range(len(a) + 1):
+        d[i][0] = i
+    for j in range(len(b) + 1):
+        d[0][j] = j
+    for i in range(1, len(a) + 1):
+        for j in range(1, len(b) + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            d[i][j] = min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost)
+            if i > 1 and j > 1 and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
+                d[i][j] = min(d[i][j], d[i - 2][j - 2] + 1)
+    return d[-1][-1]
+
+
+def _suggest_symbols(raw: str, extra=(), n: int = 3) -> list:
+    """Schlägt bei Tippfehlern ähnliche bekannte Symbole vor (z.B. NVAD → NVDA).
+    Sortierung: wenigste Tippfehler, dann Bekanntheit (Nasdaq 100/SMI/DAX zuerst).
+    Gibt es Vorschläge mit nur 1 Fehler, werden nur diese gezeigt."""
+    raw = raw.upper().strip()
+    base_raw = raw.split('.')[0]
+    if len(base_raw) < 2:
+        return []
+    known = dict(_known_symbols())
+    for x in extra:
+        known.setdefault(str(x).upper(), 0)
+    scored = []
+    seen_base = set()
+    for full, rank in known.items():
+        base = full.split('.')[0]
+        if base == base_raw or base in seen_base or abs(len(base) - len(base_raw)) > 1:
+            continue
+        dist = _typo_distance(base_raw, base)
+        if dist > 2 or (dist == 2 and len(base_raw) <= 3):
+            continue
+        seen_base.add(base)
+        scored.append((dist, rank, abs(len(base) - len(base_raw)), full))
+    if not scored:
+        return []
+    best = min(t[0] for t in scored)
+    scored = sorted(t for t in scored if t[0] == best)
+    return [t[3] for t in scored[:n]]
 
 # Yahoo Finance Ticker-Map für Rohstoffe (Spot-Kurs via Forex-Feed, Fallback Futures)
 _COMMODITY_YAHOO = {
@@ -3215,18 +3511,36 @@ class FinancialDataDialog(QDialog):
 
 
 class NameSearchDialog(QDialog):
-    """Dialog für Suche nach Firmennamen"""
-    
+    """Dialog für Suche nach Firmennamen – zeigt alle Treffer als Liste.
+
+    Der beste Treffer erscheint fett und ist vorausgewählt. Übernehmen per
+    Doppelklick, Enter in der Liste oder Button «Übernehmen».
+    """
+
+    _SWISS_SYMBOLS = {
+        'ABBN': 'ABBN.SW', 'NESN': 'NESN.SW', 'NOVN': 'NOVN.SW',
+        'ROG': 'ROG.SW', 'UBSG': 'UBSG.SW', 'CSGN': 'CSGN.SW',
+        'ZURN': 'ZURN.SW', 'SCMN': 'SCMN.SW', 'CFR': 'CFR.SW',
+        'SIKA': 'SIKA.SW', 'GEBN': 'GEBN.SW', 'LONN': 'LONN.SW',
+        'GIVN': 'GIVN.SW', 'SCHP': 'SCHP.SW',
+    }
+    _SWISS_COMPANIES = ['abb', 'nestlé', 'nestle', 'novartis', 'roche', 'ubs',
+                        'credit suisse', 'zurich', 'swisscom', 'richemont', 'sika',
+                        'geberit', 'lonza', 'givaudan', 'schindler']
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(TR("title_name_search"))
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(560)
+        self.setMinimumHeight(380)
         self.result_symbol = None
+        self.result_name = ""
+        self._last_query = None
         self.setup_ui()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout()
-        
+
         # Suchfeld
         search_layout = QHBoxLayout()
         search_layout.addWidget(QLabel(TR("lbl_company_name")))
@@ -3234,136 +3548,234 @@ class NameSearchDialog(QDialog):
         self.search_input.setPlaceholderText("z.B. 'Nestlé', 'Apple', 'Volkswagen'")
         self.search_input.returnPressed.connect(self.perform_search)
         search_layout.addWidget(self.search_input)
-        
-        search_btn = QPushButton(TR("btn_search"))
-        search_btn.clicked.connect(self.perform_search)
-        search_layout.addWidget(search_btn)
-        
+
+        self.search_btn = QPushButton(TR("btn_search"))
+        self.search_btn.setAutoDefault(False)
+        self.search_btn.clicked.connect(self.perform_search)
+        search_layout.addWidget(self.search_btn)
         layout.addLayout(search_layout)
-        
+
         # Status-Label
-        self.status_label = QLabel("")
+        self.status_label = QLabel(TR("lbl_name_search_hint"))
+        self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
-        
-        # Ergebnis-Label
-        self.result_label = QLabel("")
-        self.result_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        layout.addWidget(self.result_label)
-        
+
+        # Trefferliste
+        self.result_list = QListWidget()
+        self.result_list.setAlternatingRowColors(True)
+        self.result_list.itemDoubleClicked.connect(lambda _it: self._accept_selection())
+        self.result_list.itemActivated.connect(lambda _it: self._accept_selection())
+        self.result_list.currentItemChanged.connect(self._update_ok_state)
+        layout.addWidget(self.result_list, 1)
+
         # Buttons
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        button_box.accepted.connect(self.accept)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
+                                      | QDialogButtonBox.StandardButton.Cancel)
+        self.ok_btn = button_box.button(QDialogButtonBox.StandardButton.Ok)
+        self.ok_btn.setText(TR("btn_apply_selection"))
+        self.ok_btn.setEnabled(False)
+        # Enter im Suchfeld soll suchen, nicht den Dialog schliessen
+        for b in button_box.buttons():
+            b.setAutoDefault(False)
+            b.setDefault(False)
+        button_box.accepted.connect(self._accept_selection)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
-        
+
         self.setLayout(layout)
-    
+
+    def _update_ok_state(self, *_):
+        self.ok_btn.setEnabled(self.result_list.currentItem() is not None)
+
+    def _accept_selection(self):
+        item = self.result_list.currentItem()
+        if item is None:
+            # Text eingegeben, aber noch nicht gesucht → jetzt suchen
+            if self.search_input.text().strip() != (self._last_query or ""):
+                self.perform_search()
+            return
+        self.result_symbol = item.data(Qt.ItemDataRole.UserRole)
+        self.result_name = item.data(Qt.ItemDataRole.UserRole + 1) or ""
+        if self.result_symbol:
+            self.accept()
+
+    def _add_result(self, symbol, name, exchange, qtype, bold=False):
+        parts = [symbol]
+        if exchange:
+            parts.append(f"[{exchange}]")
+        text = "  ".join(parts)
+        if name:
+            text += f"  –  {name}"
+        if qtype and qtype.upper() not in ("EQUITY", ""):
+            text += f"  ({qtype})"
+        item = QListWidgetItem(("★  " if bold else "     ") + text)
+        item.setData(Qt.ItemDataRole.UserRole, symbol)
+        item.setData(Qt.ItemDataRole.UserRole + 1, name or "")
+        if bold:
+            f = item.font()
+            f.setBold(True)
+            item.setFont(f)
+        self.result_list.addItem(item)
+        return item
+
+    @staticmethod
+    def _has_price_data(symbol, min_points=10, on_error=True):
+        """True wenn Yahoo für das Symbol im letzten Jahr genügend Kurse liefert.
+        on_error: Rückgabewert bei Netzwerkproblemen (Timeout etc.)."""
+        url = (f"https://query1.finance.yahoo.com/v8/finance/chart/"
+               f"{urllib.parse.quote(symbol)}?range=1y&interval=1d")
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        try:
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                d = json.loads(resp.read().decode())
+            closes = d['chart']['result'][0]['indicators']['quote'][0].get('close') or []
+            return sum(c is not None for c in closes) >= min_points
+        except urllib.error.HTTPError:
+            return False          # 404 o.ä. → Symbol hat keine Daten
+        except Exception:
+            return on_error       # Netzwerkproblem → Aufrufer entscheidet
+
+    # Zweitlistings (deutsche Regionalbörsen, London IOB, Wien, Mexiko …)
+    _SECONDARY_SFX = ('.F', '.MU', '.SG', '.DU', '.HM', '.HA', '.BE', '.IL',
+                      '.VI', '.XC', '.XD', '.TI', '.MX', '.BA', '.SN')
+
+    @staticmethod
+    def _first_word(q):
+        name = (q.get('shortname') or q.get('longname') or '').upper()
+        for w in name.replace('-', ' ').split():
+            w = ''.join(c for c in w if c.isalnum())
+            if len(w) >= 3:
+                return w
+        return ''
+
+    def _prefer_primary_listing(self, quotes):
+        """Ist der erste Treffer nur ein Zweitlisting (z.B. Mobimo M1H.F in Frankfurt),
+        dieselbe Firma an der Heimatbörse bevorzugen – Schweizer Börse (.SW) zuerst."""
+        top = quotes[0]
+        if not top.get('symbol', '').upper().endswith(self._SECONDARY_SFX):
+            return 0
+        word = self._first_word(top)
+        if not word:
+            return 0
+        same = [i for i, q in enumerate(quotes)
+                if self._first_word(q) == word
+                and not q.get('symbol', '').upper().endswith(self._SECONDARY_SFX)]
+        for i in same:
+            if quotes[i].get('symbol', '').upper().endswith('.SW'):
+                return i
+        return same[0] if same else 0
+
+    def _filter_with_data(self, quotes):
+        """Prüft alle Treffer parallel und behält nur die mit Kursdaten."""
+        from concurrent.futures import ThreadPoolExecutor
+        syms = [q['symbol'] for q in quotes]
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            ok = list(ex.map(self._has_price_data, syms))
+        return [q for q, good in zip(quotes, ok) if good]
+
     def perform_search(self):
-        """Suche nach Firmennamen durchführen"""
+        """Suche nach Firmennamen durchführen und alle Treffer auflisten"""
         query = self.search_input.text().strip()
-        
+        self.result_list.clear()
+        self.result_symbol = None
+        self._update_ok_state()
+
         if len(query) < 2:
             self.status_label.setText(TR("msg_min_2_chars"))
             return
-        
+
+        self._last_query = query
         self.status_label.setText(TR("status_search_running"))
         QApplication.processEvents()
-        
+
         try:
-            # Bekannte Schweizer Symbole - füge .SW automatisch hinzu wenn nötig
-            swiss_symbols = {
-                'ABBN': 'ABBN.SW',
-                'NESN': 'NESN.SW',
-                'NOVN': 'NOVN.SW',
-                'ROG': 'ROG.SW',
-                'UBSG': 'UBSG.SW',
-                'CSGN': 'CSGN.SW',
-                'ZURN': 'ZURN.SW',
-                'SCMN': 'SCMN.SW',
-                'CFR': 'CFR.SW',
-                'SIKA': 'SIKA.SW',
-                'GEBN': 'GEBN.SW',
-                'LONN': 'LONN.SW',
-                'GIVN': 'GIVN.SW',
-                'SCHP': 'SCHP.SW'
-            }
-            
             query_upper = query.upper()
-            
-            # Prüfe ob es ein bekanntes Schweizer Symbol ist
-            if query_upper in swiss_symbols:
-                # Direkt das Schweizer Symbol verwenden
-                self.result_symbol = swiss_symbols[query_upper]
-                self.result_label.setText(f"✅ Gefunden: {self.result_symbol}")
+
+            # Bekanntes Schweizer Kürzel → direkt als Top-Treffer
+            if query_upper in self._SWISS_SYMBOLS:
+                item = self._add_result(self._SWISS_SYMBOLS[query_upper], "", "SWX", "", bold=True)
+                self.result_list.setCurrentItem(item)
                 self.status_label.setText(TR("lbl_swiss_stock"))
+                self.result_list.setFocus()
                 return
-            
-            # Yahoo Finance Suche - mehr Ergebnisse anfordern
-            url = f"https://query1.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(query)}&quotesCount=10&newsCount=0"
+
+            url = (f"https://query1.finance.yahoo.com/v1/finance/search?"
+                   f"q={urllib.parse.quote(query)}&quotesCount=15&newsCount=0")
             req = urllib.request.Request(url)
             req.add_header('User-Agent', 'Mozilla/5.0')
-            
-            with urllib.request.urlopen(req, timeout=3) as response:
+            with urllib.request.urlopen(req, timeout=5) as response:
                 data = json.loads(response.read().decode())
-            
-            if 'quotes' in data and len(data['quotes']) > 0:
-                quotes = data['quotes']
-                
-                # Bevorzuge Schweizer Aktien (.SW) für typische Schweizer Firmen
-                swiss_companies = ['abb', 'nestlé', 'nestle', 'novartis', 'roche', 'ubs', 
-                                 'credit suisse', 'zurich', 'swisscom', 'richemont', 'sika', 
-                                 'geberit', 'lonza', 'givaudan', 'schindler']
-                
-                query_lower = query.lower()
-                prefer_swiss = any(company in query_lower for company in swiss_companies)
-                
-                # Filtere und sortiere Ergebnisse
-                best_match = None
-                
-                if prefer_swiss:
-                    # Suche zuerst nach .SW Symbolen
-                    for quote in quotes:
-                        symbol = quote.get('symbol', '')
-                        if '.SW' in symbol:
-                            best_match = quote
-                            break
-                
-                # Falls kein Schweizer Match oder nicht bevorzugt, nimm erstes Ergebnis
-                if not best_match:
-                    best_match = quotes[0]
-                
-                symbol = best_match.get('symbol', '')
-                name = best_match.get('shortname') or best_match.get('longname', '')
-                exchange = best_match.get('exchange', '')
-                
-                if symbol:
-                    self.result_symbol = symbol
-                    exchange_info = f" [{exchange}]" if exchange else ""
-                    self.result_label.setText(f"✅ Gefunden: {symbol}{exchange_info} - {name}")
-                    self.status_label.setText("")
-                    
-                    # Zeige alternative Ergebnisse wenn verfügbar
-                    if len(quotes) > 1:
-                        alternatives = []
-                        for quote in quotes[1:4]:  # Zeige max 3 Alternativen
-                            alt_symbol = quote.get('symbol', '')
-                            alt_name = quote.get('shortname', '')
-                            if alt_symbol and alt_symbol != symbol:
-                                alternatives.append(f"{alt_symbol} ({alt_name})")
-                        
-                        if alternatives:
-                            alt_text = ", ".join(alternatives)
-                            self.status_label.setText(f"💡 Weitere: {alt_text}")
-                else:
-                    self.status_label.setText(TR("lbl_no_result_found"))
-                    self.result_label.setText("")
-            else:
+
+            # Futures/Optionen ausblenden – für Privatanleger irrelevant, meist ohne Kursdaten
+            quotes = [q for q in data.get('quotes', [])
+                      if q.get('symbol')
+                      and (q.get('quoteType') or '').upper() not in ('FUTURE', 'OPTION')]
+            # Index-Kurzname (SMI, DAX, S&P 500 …) → Index als ersten Treffer einfügen
+            idx_hit = _index_alias(query, for_search=True)
+            if idx_hit:
+                quotes = [{'symbol': idx_hit[0], 'shortname': idx_hit[1],
+                           'exchDisp': 'Index', 'quoteType': 'INDEX'}] + \
+                         [q for q in quotes if q.get('symbol') != idx_hit[0]]
+            if not quotes:
                 self.status_label.setText(TR("msg_no_results"))
-                self.result_label.setText("")
-                
+                return
+
+            # Nur Treffer behalten, für die Yahoo auch wirklich Kursdaten liefert
+            self.status_label.setText(TR("status_checking_price_data"))
+            QApplication.processEvents()
+            n_before = len(quotes)
+            quotes = self._filter_with_data(quotes)
+            n_hidden = n_before - len(quotes)
+            if not quotes:
+                self.status_label.setText(TR("msg_no_results"))
+                return
+
+            # Besten Treffer bestimmen: Schweizer Firmen → .SW bevorzugen
+            best_idx = 0
+            query_lower = query.lower()
+            if idx_hit:
+                pass   # Index bleibt oben
+            elif any(c in query_lower for c in self._SWISS_COMPANIES):
+                for i, q in enumerate(quotes):
+                    if q.get('symbol', '').endswith('.SW'):
+                        best_idx = i
+                        break
+            else:
+                best_idx = self._prefer_primary_listing(quotes)
+
+            # Indische Doppel-Listings: .BO (Bombay) ausblenden wenn dieselbe Aktie
+            # auch an der NSE (.NS) gelistet ist – Yahoo-Daten für .BO oft lückenhaft
+            ns_bases = {q['symbol'][:-3] for q in quotes if q['symbol'].endswith('.NS')}
+            best_sym = quotes[best_idx]['symbol']
+            quotes = [q for q in quotes
+                      if not (q['symbol'].endswith('.BO') and q['symbol'][:-3] in ns_bases)
+                      or q['symbol'] == best_sym]
+            best_idx = next(i for i, q in enumerate(quotes) if q['symbol'] == best_sym)
+
+            ordered = [quotes[best_idx]] + [q for i, q in enumerate(quotes) if i != best_idx]
+            seen = set()
+            first_item = None
+            for i, q in enumerate(ordered):
+                sym = q.get('symbol', '')
+                if sym in seen:
+                    continue
+                seen.add(sym)
+                name = q.get('shortname') or q.get('longname', '')
+                exch = q.get('exchDisp') or q.get('exchange', '')
+                qtype = q.get('typeDisp') or q.get('quoteType', '')
+                it = self._add_result(sym, name, exch, qtype, bold=(i == 0))
+                if first_item is None:
+                    first_item = it
+
+            self.result_list.setCurrentItem(first_item)
+            status = TR("lbl_name_search_found", n=self.result_list.count())
+            if n_hidden:
+                status += "  " + TR("lbl_name_search_hidden", n=n_hidden)
+            self.status_label.setText(status)
+            self.result_list.setFocus()
+
         except Exception as e:
             self.status_label.setText(TR("lbl_error_search", e=e))
-            self.result_label.setText("")
 
 
 class CompareDialog(QDialog):
@@ -3374,8 +3786,9 @@ class CompareDialog(QDialog):
         self.setWindowTitle(TR("title_compare_charts"))
         from PyQt6.QtWidgets import QApplication as _QA
         _scr = (self.screen() or _QA.primaryScreen()).availableGeometry()
-        self.setMinimumSize(int(_scr.width() * 0.82), int(_scr.height() * 0.78))
-        self.charts = charts
+        self.setMinimumSize(int(_scr.width() * 0.95), int(_scr.height() * 0.78))
+        self.charts = list(charts)
+        self._n_main_charts = len(self.charts)   # danach folgen gesuchte Zusatz-Aktien
         self.selected_charts = []
         self._main_app = parent  # StockMonitorApp – für Export gespeichert
         self.custom_start = None  # Für Custom Date Range
@@ -3402,10 +3815,17 @@ class CompareDialog(QDialog):
         compare_btn.clicked.connect(self.compare_charts)
 
         self.selection_label = QLabel()
-        self.selection_label.setMinimumWidth(175)
         self.selection_label.setStyleSheet("color: #1a73e8; font-weight: bold; padding-left: 10px;")
         from PyQt6.QtWidgets import QSizePolicy as _SP
-        self.selection_label.setSizePolicy(_SP.Policy.Fixed, _SP.Policy.Fixed)
+        # Breite an längsten möglichen Text anpassen (sonst abgeschnitten)
+        import re as _re_sel
+        from PyQt6.QtGui import QFontMetrics as _QFM_sel
+        _bf = QFont(self.selection_label.font()); _bf.setBold(True)
+        _fm = _QFM_sel(_bf)
+        _txts = [TR("lbl_min_2_select"), TR("lbl_max_6_select"), TR("lbl_n_stocks_selected", n=6)]
+        _w = max(_fm.horizontalAdvance(_re_sel.sub(r"<[^>]+>", "", t)) for t in _txts)
+        self.selection_label.setMinimumWidth(int(_w * 1.15) + 20)
+        self.selection_label.setSizePolicy(_SP.Policy.Minimum, _SP.Policy.Fixed)
 
         # Export-Button
         def _get_compare_export_data():
@@ -3428,6 +3848,7 @@ class CompareDialog(QDialog):
                                               end=str(self.custom_end.date()), interval='1d')
                     else:
                         data = ticker.history(period=period, interval=interval)
+                    data = data[data['Close'].notna()]
                     if data.empty:
                         continue
                     prices = data['Close'].values
@@ -3554,6 +3975,9 @@ class CompareDialog(QDialog):
                 checkbox.stateChanged.connect(self.on_selection_changed)
                 self.chart_checkboxes.append(checkbox)
                 row1.addWidget(checkbox)
+            self._cb_row = row1
+            row1.addWidget(self._make_add_stock_btn())
+            self._restore_extra_stocks()
             row1.addWidget(QLabel("   |   "))
             row1.addWidget(QLabel(TR("lbl_period")))
             self.timeframe_combo = QComboBox()
@@ -3577,6 +4001,9 @@ class CompareDialog(QDialog):
                 checkbox.stateChanged.connect(self.on_selection_changed)
                 self.chart_checkboxes.append(checkbox)
                 header.addWidget(checkbox)
+            self._cb_row = header
+            header.addWidget(self._make_add_stock_btn())
+            self._restore_extra_stocks()
             header.addWidget(QLabel("   |   "))
             header.addWidget(QLabel(TR("lbl_period")))
             self.timeframe_combo = QComboBox()
@@ -3634,6 +4061,125 @@ class CompareDialog(QDialog):
         self.update_selection_label()
         self.compare_charts()
     
+    def _make_add_stock_btn(self):
+        """Button: Aktie per Namenssuche hinzufügen, die nicht in den Charts ist."""
+        self._add_stock_btn = QPushButton(TR("btn_compare_add_stock"))
+        self._add_stock_btn.setToolTip(TR("tip_compare_add_stock"))
+        self._add_stock_btn.setAutoDefault(False)
+        self._add_stock_btn.clicked.connect(self._add_external_stock)
+        return self._add_stock_btn
+
+    MAX_EXTRA_STOCKS = 4   # mehr passt nicht in die Kopfzeile
+
+    def _extra_count(self):
+        return len(self.charts) - self._n_main_charts
+
+    def _update_add_btn_state(self):
+        """➕-Button deaktivieren wenn bereits MAX_EXTRA_STOCKS Zusatz-Aktien vorhanden."""
+        full = self._extra_count() >= self.MAX_EXTRA_STOCKS
+        self._add_stock_btn.setEnabled(not full)
+        self._add_stock_btn.setToolTip(
+            TR("tip_compare_extra_full", n=self.MAX_EXTRA_STOCKS) if full
+            else TR("tip_compare_add_stock"))
+
+    @staticmethod
+    def _load_extra_stocks():
+        try:
+            data = _app_config.load_config().get('compare_extra_stocks', []) or []
+            return [d for d in data if isinstance(d, dict) and d.get('symbol')]
+        except Exception:
+            return []
+
+    def _save_extra_stocks(self):
+        """Gesuchte Zusatz-Aktien dauerhaft in config.json speichern."""
+        extras = [{'symbol': c.symbol, 'name': c.company_name or ''}
+                  for c in self.charts[self._n_main_charts:]]
+        try:
+            _app_config.save_config({'compare_extra_stocks': extras})
+        except Exception:
+            pass
+
+    def _insert_extra_checkbox(self, sym, name):
+        """Checkbox für eine Zusatz-Aktie vor dem ➕-Button einfügen."""
+        from types import SimpleNamespace
+        self.charts.append(SimpleNamespace(symbol=sym, company_name=name))
+        checkbox = QCheckBox(sym)
+        checkbox.setToolTip(f"{name or sym}\n{TR('tip_compare_extra_remove')}")
+        checkbox.setStyleSheet("font-style: italic;")
+        checkbox.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        checkbox.customContextMenuRequested.connect(
+            lambda pos, cb=checkbox: self._extra_context_menu(cb, pos))
+        self.chart_checkboxes.append(checkbox)
+        self._cb_row.insertWidget(self._cb_row.indexOf(self._add_stock_btn), checkbox)
+        checkbox.stateChanged.connect(self.on_selection_changed)
+        return checkbox
+
+    def _restore_extra_stocks(self):
+        main_syms = {(c.symbol or '').upper() for c in self.charts}
+        for d in self._load_extra_stocks():
+            if self._extra_count() >= self.MAX_EXTRA_STOCKS:
+                break
+            sym = str(d['symbol']).upper()
+            if sym not in main_syms:
+                main_syms.add(sym)
+                self._insert_extra_checkbox(sym, d.get('name', ''))
+        self._update_add_btn_state()
+
+    def _extra_context_menu(self, checkbox, pos):
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu(self)
+        act = menu.addAction(TR("menu_compare_extra_remove", sym=checkbox.text()))
+        if menu.exec(checkbox.mapToGlobal(pos)) == act:
+            self._remove_extra_stock(checkbox)
+
+    def _remove_extra_stock(self, checkbox):
+        try:
+            idx = self.chart_checkboxes.index(checkbox)
+        except ValueError:
+            return
+        if idx < self._n_main_charts:
+            return
+        was_checked = checkbox.isChecked()
+        self.chart_checkboxes.pop(idx)
+        self.charts.pop(idx)
+        self._cb_row.removeWidget(checkbox)
+        checkbox.deleteLater()
+        self._save_extra_stocks()
+        self._update_add_btn_state()
+        self.update_selection_label()
+        if was_checked and 2 <= sum(1 for c in self.chart_checkboxes if c.isChecked()) <= 6:
+            self.compare_charts()
+
+    def _add_external_stock(self):
+        """Öffnet die Namenssuche und fügt das Ergebnis als zusätzliche Checkbox hinzu."""
+        dlg = NameSearchDialog(self)
+        if dlg.exec() != QDialog.DialogCode.Accepted or not dlg.result_symbol:
+            return
+        sym = dlg.result_symbol.upper()
+        # Schon vorhanden → nur anhaken
+        for chart, cb in zip(self.charts, self.chart_checkboxes):
+            if (chart.symbol or "").upper() == sym:
+                if not cb.isChecked():
+                    cb.setChecked(True)
+                    if 2 <= sum(1 for c in self.chart_checkboxes if c.isChecked()) <= 6:
+                        self.compare_charts()
+                return
+        if self._extra_count() >= self.MAX_EXTRA_STOCKS:
+            QMessageBox.information(self, TR("msg_title_info"),
+                                    TR("tip_compare_extra_full", n=self.MAX_EXTRA_STOCKS))
+            return
+        checkbox = self._insert_extra_checkbox(sym, dlg.result_name)
+        checkbox.blockSignals(True)
+        checkbox.setChecked(True)
+        checkbox.blockSignals(False)
+        self._save_extra_stocks()
+        self._update_add_btn_state()
+        self.update_selection_label()
+        # Neu gesuchte Aktie direkt in den Vergleich aufnehmen
+        count = sum(1 for cb in self.chart_checkboxes if cb.isChecked())
+        if 2 <= count <= 6:
+            self.compare_charts()
+
     def on_selection_changed(self):
         """Wird aufgerufen wenn sich die Auswahl ändert"""
         self.update_selection_label()
@@ -3937,6 +4483,8 @@ class CompareDialog(QDialog):
                 else:
                     data = ticker.history(period=period, interval=interval)
                 
+                # Leere Kurse (NaN) entfernen – sonst "nan%" (z.B. 000660.KS)
+                data = data[data['Close'].notna()]
                 if data.empty:
                     continue
                 
@@ -5642,6 +6190,11 @@ class StockChartWidget(QFrame):
     def update_symbol(self):
         """Symbol aktualisieren"""
         self.symbol = self.symbol_input.text().strip().upper()
+        # Index-Kurzname (SMI, S&P 500, Nikkei …) → Yahoo-Indexsymbol (^SSMI …)
+        _idx = _index_alias(self.symbol)
+        if _idx:
+            self.symbol = _idx[0]
+            self.symbol_input.setText(self.symbol)
         self.company_name = ""  # Name wird beim Chart-Update geholt
         # News-Button bei Symbolwechsel zurücksetzen
         if hasattr(self, 'news_btn'):
@@ -6153,7 +6706,12 @@ class StockChartWidget(QFrame):
 
     def _on_fetch_error(self, error_msg):
         """Callback bei Fetch-Fehler"""
-        self.info_label.setText(TR("lbl_error_generic", e=error_msg))
+        # Bekannter yfinance-Fehler bei lückenhaften Yahoo-Daten (z.B. NESTLEIND.BO)
+        # → verständliche Meldung statt technischem Traceback-Text
+        if "out-of-range" in str(error_msg) or "did not expect with interval" in str(error_msg):
+            self.info_label.setText(TR("msg_chart_data_incomplete", symbol=self.symbol))
+        else:
+            self.info_label.setText(TR("lbl_error_generic", e=error_msg))
         self.plot_widget.clear()
 
     def _on_data_ready(self, data, currency, target_price, beta_value, company_name):
@@ -10903,8 +11461,8 @@ class PortfolioDialog(QMainWindow):
                     # Symbol auflösen (gecacht → konsistentes Suffix pro Basisticker)
                     _rk = (sym_raw, entry.get('trade_cur', ''))
                     if _rk not in _resolve_cache:
-                        _resolve_cache[_rk] = self.resolve_symbol(
-                            sym_raw, strict=True, trade_cur=entry.get('trade_cur'))
+                        _resolve_cache[_rk] = self._resolve_import_symbol(
+                            sym_raw, entry.get('isin', ''), entry.get('trade_cur'))
                     sym = _resolve_cache[_rk]
 
                     # Duplikat-Check
@@ -10959,8 +11517,8 @@ class PortfolioDialog(QMainWindow):
                     qty_delta  = entry['quantity']
                     _rk = (sym_raw, entry.get('trade_cur', ''))
                     if _rk not in _resolve_cache:
-                        _resolve_cache[_rk] = self.resolve_symbol(
-                            sym_raw, strict=True, trade_cur=entry.get('trade_cur'))
+                        _resolve_cache[_rk] = self._resolve_import_symbol(
+                            sym_raw, entry.get('isin', ''), entry.get('trade_cur'))
                     sym = _resolve_cache[_rk]
                     for check_sym in ([sym, sym_raw] if sym != sym_raw else [sym]):
                         if check_sym not in self.portfolio_data:
@@ -25700,6 +26258,133 @@ class PortfolioDialog(QMainWindow):
             pass
         return raw  # Fallback: unverändert
 
+    def _confirm_buy_price(self, symbol, quantity, date_display, auto_price,
+                           currency, day_low, day_high, date_note=""):
+        """Dialog: automatischer Kaufkurs (Schlusskurs) vorausgefüllt, von Hand
+        überschreibbar. Gibt den Kurs zurück oder None bei Abbruch."""
+        from PyQt6.QtWidgets import QDoubleSpinBox, QFormLayout
+        dlg = QDialog(self)
+        dlg.setWindowTitle(TR("title_confirm_buy_price"))
+        dlg.setMinimumWidth(420)
+        form = QFormLayout(dlg)
+        if date_note:
+            note = QLabel("ℹ️ " + date_note)
+            note.setWordWrap(True)
+            form.addRow(note)
+        form.addRow(TR("lbl_symbol_colon"), QLabel(f"<b>{symbol}</b>"))
+        form.addRow(TR("lbl_buy_date_colon"), QLabel(date_display))
+        form.addRow(TR("lbl_quantity_colon"), QLabel(f"{quantity:g}"))
+
+        cur = currency or ""
+        decimals = 4 if auto_price < 10 else 2
+        spin = QDoubleSpinBox()
+        # Eingabe immer mit Punkt als Dezimalzeichen (wie überall in der App)
+        from PyQt6.QtCore import QLocale
+        spin.setLocale(QLocale.c())
+        spin.setDecimals(decimals)
+        spin.setRange(0.0001, 1e9)
+        spin.setValue(auto_price)
+        spin.selectAll()
+        # Währung als feste Beschriftung neben dem Feld – nicht editierbar
+        _cur_lbl = QLabel(cur)
+        _cur_lbl.setStyleSheet("color: gray; font-weight: bold;")
+        _price_row = QHBoxLayout()
+        _price_row.addWidget(spin, 1)
+        _price_row.addWidget(_cur_lbl)
+        form.addRow(TR("lbl_buy_price_colon"), _price_row)
+
+        class _F:   # Zahlen im eingestellten Format (CH 1'234.50 / DE 1.234,50 / US)
+            @staticmethod
+            def format(v):
+                return _fmt(v, decimals)
+        fmt = _F()
+        hint = TR("lbl_buy_price_auto_hint", price=fmt.format(auto_price), cur=cur)
+        if day_low and day_high:
+            hint += "<br>" + TR("lbl_buy_price_day_range",
+                                low=fmt.format(day_low), high=fmt.format(day_high), cur=cur)
+        if cur == "GBp":
+            hint += "<br>" + TR("lbl_buy_price_pence_hint")
+        hint_lbl = QLabel(hint)
+        hint_lbl.setWordWrap(True)
+        hint_lbl.setTextFormat(Qt.TextFormat.RichText)
+        hint_lbl.setStyleSheet("color: gray; font-size: 11px;")
+        form.addRow(hint_lbl)
+
+        reset_btn = QPushButton(TR("btn_reset_auto_price"))
+        reset_btn.setAutoDefault(False)
+        reset_btn.clicked.connect(lambda: spin.setValue(auto_price))
+        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok |
+                                QDialogButtonBox.StandardButton.Cancel)
+        btns.addButton(reset_btn, QDialogButtonBox.ButtonRole.ResetRole)
+
+        def _check():
+            price = spin.value()
+            # Plausibilität: deutlich ausserhalb der Tagesspanne → nachfragen (Tippfehler?)
+            if day_low and day_high and abs(price - auto_price) > 1e-9:
+                if price < day_low * 0.9 or price > day_high * 1.1:
+                    r = QMessageBox.question(
+                        dlg, TR("title_confirm_buy_price"),
+                        TR("msg_buy_price_outside_range",
+                           price=fmt.format(price), low=fmt.format(day_low),
+                           high=fmt.format(day_high), cur=cur),
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No)
+                    if r != QMessageBox.StandardButton.Yes:
+                        return
+            dlg.accept()
+        btns.accepted.connect(_check)
+        btns.rejected.connect(dlg.reject)
+        form.addRow(btns)
+        spin.setFocus()
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return None
+        return float(spin.value())
+
+    def _symbol_from_isin(self, isin, trade_cur=None):
+        """Sucht das Yahoo-Symbol über die ISIN (eindeutig, z.B. CH0011108872 → MOBN.SW).
+        Bevorzugt den Börsenplatz passend zur Handelswährung."""
+        isin = (isin or '').strip().upper()
+        if len(isin) != 12 or isin.startswith('EX'):
+            return None
+        try:
+            url = (f"https://query1.finance.yahoo.com/v1/finance/search?"
+                   f"q={urllib.parse.quote(isin)}&quotesCount=10&newsCount=0")
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+        except Exception:
+            return None
+        syms = [q.get('symbol', '') for q in data.get('quotes', [])
+                if q.get('symbol') and not q['symbol'].startswith('^') and '=' not in q['symbol']]
+        if not syms:
+            return None
+        _cur_sfx = {'CHF': '.SW', 'CAD': '.TO', 'GBP': '.L', 'GBX': '.L', 'JPY': '.T',
+                    'HKD': '.HK', 'AUD': '.AX', 'SEK': '.ST', 'NOK': '.OL', 'DKK': '.CO'}
+        cur = (trade_cur or '').upper()
+        if cur in _cur_sfx:
+            for sym in syms:
+                if sym.endswith(_cur_sfx[cur]):
+                    return sym
+        if cur == 'USD':
+            for sym in syms:
+                if '.' not in sym:
+                    return sym
+        return syms[0]
+
+    def _resolve_import_symbol(self, sym_raw, isin='', trade_cur=None):
+        """Symbol für Broker-Importe auflösen. Liefert das Symbol keine Kurse
+        (z.B. Swissquote 'MOB' → MOB.SW existiert nicht), über die ISIN suchen."""
+        sym = self.resolve_symbol(sym_raw, strict=True, trade_cur=trade_cur)
+        if not isin or str(isin).upper().startswith('EX'):
+            return sym
+        if NameSearchDialog._has_price_data(sym, min_points=2, on_error=True):
+            return sym
+        alt = self._symbol_from_isin(isin, trade_cur)
+        if alt and alt != sym and NameSearchDialog._has_price_data(alt, min_points=2, on_error=False):
+            print(f"[Import] {sym_raw} → {alt} (über ISIN {isin})")
+            return alt
+        return sym
+
     @safe_slot
     def add_position(self):
         symbol = self.resolve_symbol(self.symbol_input.text().strip())
@@ -25732,6 +26417,13 @@ class PortfolioDialog(QMainWindow):
         if buy_dt >= datetime.now():
             QMessageBox.warning(self, TR("msg_title_error"), TR("msg_date_past"))
             return
+        if self._buy_position(symbol, quantity, buy_dt):
+            self.symbol_input.clear()
+            self.quantity_input.clear()
+
+    def _buy_position(self, symbol, quantity, buy_dt):
+        """Kaufkurs holen, bestätigen lassen (überschreibbar) und Position speichern.
+        Gemeinsam für 'Hinzufügen' und Zukauf (+). Gibt True zurück wenn gespeichert."""
         buy_date = buy_dt.strftime("%Y-%m-%d")
 
         # Kaufkurs von Yahoo Finance holen
@@ -25744,6 +26436,7 @@ class PortfolioDialog(QMainWindow):
                 fetch_candidates = [primary, fallback]
 
             hist = None
+            price_cur = ""
             for fetch_sym in fetch_candidates:
                 try:
                     ticker = yf.Ticker(fetch_sym)
@@ -25753,13 +26446,17 @@ class PortfolioDialog(QMainWindow):
                     h = ticker.history(start=start, end=end, auto_adjust=False)
                     if not h.empty:
                         hist = h
+                        try:
+                            price_cur = (ticker.history_metadata or {}).get('currency', '') or ''
+                        except Exception:
+                            price_cur = ''
                         break
                 except Exception:
                     continue
 
             if hist is None or hist.empty:
                 QMessageBox.warning(self, TR("msg_title_error"), TR("msg_no_price_for_symbol", symbol=symbol))
-                return
+                return False
             # Nächsten Handelstag AM oder NACH dem gewünschten Datum suchen
             hist.index = hist.index.tz_localize(None) if hist.index.tz else hist.index
             after = hist[hist.index >= buy_dt_obj]
@@ -25769,24 +26466,29 @@ class PortfolioDialog(QMainWindow):
             else:
                 row = after.iloc[0]
             buy_price   = float(row['Close'])
+            try:
+                day_low  = float(row['Low'])
+                day_high = float(row['High'])
+            except Exception:
+                day_low = day_high = None
             actual_date = row.name.strftime("%Y-%m-%d")
             actual_display = _app_config.fmt_date(actual_date)
         except Exception as e:
             QMessageBox.warning(self, TR("msg_title_error"), f"Kursdaten konnten nicht geladen werden:\n{e}")
-            return
+            return False
 
-        # User informieren wenn Datum angepasst wurde
+        # Kaufkurs bestätigen: automatischer Schlusskurs vorausgefüllt, überschreibbar
         entered_display = _app_config.fmt_date(buy_dt)
+        date_note = ""
         if actual_date != buy_date:
-            QMessageBox.information(
-                self, TR("msg_title_trading_day"),
-                TR("msg_trading_day_adjusted", date=entered_display) +
-                TR("msg_trading_day_price_used", date=actual_display) +
-                TR("msg_buy_price_used", price=f"{buy_price:.2f}")
-            )
+            date_note = (TR("msg_trading_day_adjusted", date=entered_display) +
+                         TR("msg_trading_day_price_used", date=actual_display)).strip()
+        buy_price = self._confirm_buy_price(symbol, quantity, actual_display, buy_price,
+                                            price_cur, day_low, day_high, date_note)
+        if buy_price is None:
+            return False
 
         # Speichern
-        key = f"{symbol}_{actual_date}_{quantity}"
         if symbol not in self.portfolio_data:
             self.portfolio_data[symbol] = []
         self.portfolio_data[symbol].append({
@@ -25795,11 +26497,60 @@ class PortfolioDialog(QMainWindow):
             "quantity": quantity
         })
         self.save_portfolio()
-        self.symbol_input.clear()
-        self.quantity_input.clear()
+        self.refresh_table()
+        return True
+
+    def _buy_more_dialog(self, sym):
+        """Zukauf (+): Datum, Stückzahl und Kaufkurs in einem Fenster.
+        Kurs = Schlusskurs des Tages (automatisch), von Hand überschreibbar."""
+        from PyQt6.QtWidgets import QDoubleSpinBox, QFormLayout
+        from PyQt6.QtCore import QDate, QLocale
+        title = TR("msg_title_buy_more")
+        dlg = QDialog(self)
+        dlg.setWindowTitle(title)
+        dlg.setMinimumWidth(420)
+        form = QFormLayout(dlg)
+        form.addRow(QLabel(f"<b>{sym}</b>"))
+        d_edit = QDateEdit(QDate.currentDate())
+        d_edit.setCalendarPopup(True)
+        d_edit.setDisplayFormat("dd.MM.yyyy")
+        d_edit.setMaximumDate(QDate.currentDate())
+        form.addRow(TR("lbl_buy_date_colon"), d_edit)
+        q_spin = QDoubleSpinBox()
+        q_spin.setLocale(QLocale.c())
+        q_spin.setDecimals(6)
+        q_spin.setRange(0.000001, 1e9)
+        q_spin.setValue(1.0)
+        form.addRow(TR("lbl_quantity_colon"), q_spin)
+        price = _DayPriceField(sym, form, TR("lbl_buy_price_colon"), dlg)
+        d_edit.dateChanged.connect(price.schedule_load)
+        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok |
+                                QDialogButtonBox.StandardButton.Cancel)
+        for b in btns.buttons():
+            b.setAutoDefault(False)
+        def _ok():
+            if price._timer.isActive():          # Datum gerade geändert → erst laden
+                price._timer.stop()
+                price.load(d_edit.date())
+            if price.confirm(dlg, title):
+                dlg.accept()
+        btns.accepted.connect(_ok)
+        btns.rejected.connect(dlg.reject)
+        form.addRow(btns)
+        QTimer.singleShot(0, lambda: price.load(d_edit.date()))
+        q_spin.setFocus()
+        q_spin.selectAll()
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        buy_date = price.trading_date(d_edit.date().toString("yyyy-MM-dd"))
+        self.portfolio_data.setdefault(sym, []).append({
+            "buy_date": buy_date,
+            "buy_price": price.value(),
+            "quantity": float(q_spin.value()),
+        })
+        self.save_portfolio()
         self.refresh_table()
 
-    # ── Loading-Overlay für den Portfolio-Dialog ───────────────────────────────
     def _ensure_overlay(self):
         """Erstellt den Loading-Overlay als Kind des aktuell sichtbaren Widgets."""
         # Immer neu erstellen – Parent muss das jeweils sichtbare Widget sein
@@ -26149,10 +26900,7 @@ class PortfolioDialog(QMainWindow):
                 buy_more_btn.setStyleSheet("font-weight: bold; color: #27ae60; font-size: 14px;")
                 def make_buy_more(sym):
                     def _buy():
-                        self.symbol_input.setText(sym)
-                        self.quantity_input.setFocus()
-                        QMessageBox.information(self, TR("msg_title_buy_more"),
-                            TR("msg_symbol_added", sym=sym))
+                        self._buy_more_dialog(sym)
                     return _buy
                 buy_more_btn.clicked.connect(make_buy_more(symbol))
                 row_layout.addWidget(buy_more_btn)
@@ -26222,6 +26970,9 @@ class PortfolioDialog(QMainWindow):
                         if _bd.isValid():
                             s_date.setMinimumDate(_bd)
                         s_form.addRow(TR("lbl_sell_date"), s_date)
+                        s_price = _DayPriceField(sym, s_form, TR("lbl_sell_price_colon"), s_dlg)
+                        s_date.dateChanged.connect(s_price.schedule_load)
+                        QTimer.singleShot(0, lambda: s_price.load(s_date.date()))
                         _hint = QLabel(TR("lbl_sell_history_hint"))
                         _hint.setWordWrap(True)
                         _hint.setStyleSheet("color: gray; font-size: 11px;")
@@ -26245,6 +26996,11 @@ class PortfolioDialog(QMainWindow):
                                     QMessageBox.StandardButton.No)
                                 if _r != QMessageBox.StandardButton.Yes:
                                     return
+                            if s_price._timer.isActive():
+                                s_price._timer.stop()
+                                s_price.load(s_date.date())
+                            if not s_price.confirm(s_dlg, TR("title_partial_sell"), required=False):
+                                return
                             s_dlg.accept()
                         s_btns.accepted.connect(_check_sell_date)
                         s_btns.rejected.connect(s_dlg.reject)
@@ -26253,7 +27009,8 @@ class PortfolioDialog(QMainWindow):
                         amount = s_qty.value()
                         if ok:
                             self._record_sale(sym, pos, min(amount, qty),
-                                              s_date.date().toString("yyyy-MM-dd"))
+                                              s_date.date().toString("yyyy-MM-dd"),
+                                              sell_price=s_price.value() or None)
                             if amount >= qty:
                                 self.portfolio_data[sym].pop(idx)
                                 if not self.portfolio_data[sym]:
@@ -32155,6 +32912,8 @@ class StockMonitorApp(QMainWindow):
         try:
             status_label.setStyleSheet("color:#666; font-size:11px;")
             status_label.setTextFormat(Qt.TextFormat.RichText)
+            status_label.setOpenExternalLinks(False)
+            status_label.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse)
         except RuntimeError:
             pass
         status_row.addWidget(status_label)
@@ -32178,34 +32937,57 @@ class StockMonitorApp(QMainWindow):
             count_lbl.setText(
                 f"<span style='color:#555'>{len(self._watchlist_symbols)}/50 {TR('chart_stocks_count')}</span>")
 
-        def _resolve_symbol_quick(raw_sym):
-            """Prüft ob Symbol auf yfinance gefunden wird. Gibt (resolved, found) zurück."""
-            import yfinance as yf
-            try:
-                h = yf.Ticker(raw_sym).history(period='5d', interval='1d')
-                if not h.empty and len(h) >= 1:
-                    return raw_sym, True
-            except Exception:
-                pass
-            # Suffix-Suche
-            has_suffix = any(raw_sym.upper().endswith(s.upper()) for s in SUFFIXES)
-            if not has_suffix and len(raw_sym) <= 6:
-                for sfx in SUFFIXES:
-                    try:
-                        test = raw_sym + sfx
-                        h2 = yf.Ticker(test).history(period='5d', interval='1d')
-                        if not h2.empty and len(h2) >= 1:
-                            return test, True
-                    except Exception:
-                        pass
-            return raw_sym, False
+        _WL_SFXS = ['.SW', '.DE', '.F', '.PA', '.L', '.MI', '.AS',
+                    '.BR', '.MC', '.T', '.HK', '.AX', '.TO']
+
+        def _validate_symbols(symbols):
+            """Prüft Symbole parallel auf Kursdaten bei Yahoo.
+            Gibt dict {eingabe: aufgelöstes Symbol oder None} zurück.
+            Ohne Suffix (z.B. NESN) werden gängige Börsen-Suffixe probiert → NESN.SW.
+            """
+            from concurrent.futures import ThreadPoolExecutor
+
+            def _check(sym):
+                if _is_commodity(sym):
+                    return sym
+                if NameSearchDialog._has_price_data(sym, min_points=2):
+                    return sym
+                if any(c in sym for c in '.-=^') or len(sym) > 6:
+                    return None
+                # Suffix-Kandidaten: Fehler/Timeout zählt als "nicht gefunden",
+                # sonst würden erfundene Symbole wie NVAD → NVAD.MI durchrutschen
+                cands = [sym + sfx for sfx in _WL_SFXS]
+                with ThreadPoolExecutor(max_workers=5) as ex:
+                    ok = list(ex.map(lambda c: NameSearchDialog._has_price_data(
+                        c, min_points=2, on_error=False), cands))
+                for c, good in zip(cands, ok):
+                    if good:
+                        return c
+                return None
+
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                return dict(zip(symbols, ex.map(_check, symbols)))
 
         def _add_symbol():
-            """Symbole direkt hinzufügen (wie im Chart: kein Vorcheck, Suffix-Auflösung beim Berechnen)."""
+            """Symbole prüfen und hinzufügen. Unbekannte Symbole werden abgewiesen,
+            Kürzel ohne Börsen-Suffix automatisch aufgelöst (NESN → NESN.SW)."""
             raw = sym_input.text().strip().upper()
             if not raw:
                 return
             symbols = [s.strip() for s in raw.replace(',', ' ').split() if s.strip()]
+            symbols = [s for s in dict.fromkeys(symbols) if s not in self._watchlist_symbols]
+            if not symbols:
+                sym_input.clear()
+                return
+            try:
+                status_label.setText(TR("status_checking_price_data"))
+                QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+                QApplication.processEvents()
+                resolved = _validate_symbols(symbols)
+            finally:
+                QApplication.restoreOverrideCursor()
+            invalid = [s for s in symbols if not resolved.get(s)]
+            symbols = [resolved[s] for s in symbols if resolved.get(s)]
             added = 0
             for sym in symbols:
                 if len(self._watchlist_symbols) >= 50:
@@ -32215,14 +32997,38 @@ class StockMonitorApp(QMainWindow):
                 if sym and sym not in self._watchlist_symbols:
                     self._watchlist_symbols.append(sym)
                     added += 1
-            sym_input.clear()
             _refresh_list()
-            if added:
-                try:
-                    status_label.setText(
-                        TR("msg_watchlist_symbols_added", n=added))
-                except RuntimeError:
-                    pass
+            msg = TR("msg_watchlist_symbols_added", n=added) if added else ""
+            if invalid:
+                # Ungültige Eingaben im Feld stehen lassen, damit man sie korrigieren kann
+                sym_input.setText(" ".join(invalid))
+                sym_input.selectAll()
+                msg = (msg + "<br>" if msg else "") + TR(
+                    "msg_watchlist_symbols_invalid", syms=", ".join(invalid))
+                # Vorschläge bei Tippfehlern als anklickbare Links (NVAD → NVDA)
+                sugg = []
+                for bad in invalid:
+                    for cand in _suggest_symbols(bad, extra=self._watchlist_symbols):
+                        if cand not in sugg and cand not in self._watchlist_symbols:
+                            sugg.append(cand)
+                if sugg:
+                    links = ", ".join(
+                        f"<a href='{c}' style='color:#1565c0; font-weight:bold;'>{c}</a>"
+                        for c in sugg[:5])
+                    msg += "<br>" + TR("msg_watchlist_did_you_mean", links=links)
+            else:
+                sym_input.clear()
+            try:
+                status_label.setText(msg)
+            except RuntimeError:
+                pass
+
+        def _accept_suggestion(sym):
+            """Klick auf einen Vorschlag: ungültiges Symbol im Feld ersetzen und hinzufügen."""
+            sym_input.setText(sym)
+            _add_symbol()
+
+        status_label.linkActivated.connect(_accept_suggestion)
 
         def _open_name_search():
             # Wenn bereits ein Symbol im Feld steht → direkt hinzufügen, kein Dialog
