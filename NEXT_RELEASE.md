@@ -70,17 +70,18 @@
 
 ## Status
 - v5.9.0 released am 08.11.2026
+- v5.10.0 released am 16.11.2026 (Tag `v5.10.0` = Commit 8f7db408; Assets: stock_monitor.zip, StockMonitor-5.10.0.dmg, StockMonitor-5.10.0.flatpak)
 - Nächste Version: v5.10.0 (kein separates 5.9.1 – Builds zu aufwendig, keine kritischen Fixes)
 - `APP_VERSION` in stock_monitor.py steht bereits auf 5.10.0 (15.11.2026)
 
 ## Release-Checkliste v5.10.0 (am Release-Tag)
-- [ ] Commit aller Änderungen, Tag `v5.10.0` auf GitHub
-- [ ] `io.github.StockMonitorCH.stock-monitor.metainfo.xml`: neuer `<release version="5.10.0" date="JJJJ-MM-TT">` mit Kurzbeschreibung (oben einfügen)
-- [ ] `fp/io.github.StockMonitorCH.stock-monitor.metainfo.xml`: gleich anpassen
-- [ ] `fp/io.github.StockMonitorCH.stock-monitor.yml`: `tag: v5.9.0` → `tag: v5.10.0` (erst nachdem der Tag existiert)
-- [ ] Windows-EXE bauen (`build_exe.bat`, neue Dateien: realized_gains*.py) + Flatpak bauen
+- [x] Commit aller Änderungen, Tag `v5.10.0` auf GitHub
+- [x] `io.github.StockMonitorCH.stock-monitor.metainfo.xml`: neuer `<release version="5.10.0" date="JJJJ-MM-TT">` mit Kurzbeschreibung (oben einfügen)
+- [x] `fp/io.github.StockMonitorCH.stock-monitor.metainfo.xml`: gleich anpassen
+- [x] `fp/io.github.StockMonitorCH.stock-monitor.yml`: `tag: v5.9.0` → `tag: v5.10.0` (erst nachdem der Tag existiert)
+- [x] Windows-EXE bauen (`build_exe.bat`, neue Dateien: realized_gains*.py) + Flatpak bauen
 - [ ] Update-Pfad testen (5.9.0 → 5.10.0), siehe Checkliste „Updates müssen immer funktionieren“
-- [ ] GitHub-Release-Text: neue Features zuerst, Verbesserungen, Bug-Fixes zuletzt
+- [x] GitHub-Release-Text: neue Features zuerst, Verbesserungen, Bug-Fixes zuletzt
 
 ## Ideen / Backlog
 
