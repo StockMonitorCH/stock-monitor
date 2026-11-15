@@ -328,7 +328,6 @@ _HTML_DE = """
         <div class="tip"><b>Tipp:</b> Candlestick-Charts eignen sich besonders gut für kurzfristige technische Analyse (z.B. Zeitraum 1T &ndash; 1M).</div>
 
         <a name="log-skala"></a><h3>&#128200; Logarithmische Darstellung (Zoom-Modus)</h3>
-        <div class="new">Neu in v5.9.0</div>
         <p>Im <b>gezoomten Chart</b> schaltet die Checkbox <b>Log</b> die Preisachse auf eine logarithmische Skala um.</p>
         <ul>
             <li><b>Gleiche Prozente = gleiche Höhe:</b> Ein Anstieg von 10 auf 20 ist genauso hoch wie einer von 100 auf 200 (beides +100&nbsp;%).</li>
@@ -954,10 +953,10 @@ _HTML_DE = """
         verdienen als hier angezeigt.</div>
 
         <a name="dividendenkonto"><h2>&#128176; Dividendenkonto</h2></a>
-        <div class="new">Neu in v5.9.0</div>
         <p>Ein <b>Mehrwährungskonto</b> wie bei einer Bank (z.&nbsp;B. Swissquote): Gutgeschriebene Dividenden landen
         auf dem Konto ihrer Währung – USD-Dividenden auf dem USD-Konto, CHF-Dividenden auf dem CHF-Konto usw.
-        Öffnen über: <b>Dividenden &rarr; &#128176; Dividendenkonto</b>.</p>
+        Öffnen über: <b>Dividenden &rarr; &#128176; Dividendenkonto</b>.
+        Auch mit Käufen, Verkäufen und allen Bankbewegungen: siehe <a href="#konto">Konto</a>.</p>
         <h3>Erster Start</h3>
         <p>Beim ersten Öffnen wird nach dem <b>Steuerwohnsitz</b> (CH, DE, AT, UK, USA, anderes Land) und dem
         Formular <b>W-8BEN</b> gefragt. Davon hängt die Quellensteuer ab (z.&nbsp;B. US-Dividenden 15&nbsp;% mit,
@@ -984,6 +983,71 @@ _HTML_DE = """
         </ul>
         <div class="tip"><b>Speicherung:</b> Das Konto gehört zum Portfolio und wird mit ihm gespeichert – in der .smpf-Datei verschlüsselt.</div>
         <div class="warning"><b>Hinweis:</b> Die Quellensteuer wird nach dem Sitzland der Firma geschätzt. Bei ETFs/ADRs kann sie abweichen – in diesem Fall die Buchung bearbeiten.</div>
+
+        <a name="konto"><h2>&#128176; Konto (alle Bewegungen)</h2></a>
+        <p>Das Dividendenkonto kann zum vollständigen <b>Geldkonto</b> werden – es bleibt aber <i>ein</i> Konto.
+        Oben im Fenster wählst du die Ansicht:</p>
+        <table>
+            <tr><th>Ansicht</th><th>Inhalt</th></tr>
+            <tr><td><b>Nur Dividenden</b></td><td>Genau das bisherige Dividendenkonto: Dividenden und deren Ein-/Auszahlungen. Ändert sich durch „Alles“ nicht.</td></tr>
+            <tr><td><b>Alles</b></td><td>Zusätzlich Käufe (Belastung), Verkäufe (Gutschrift), alle Ein-/Auszahlungen, Devisenwechsel, Zinsen und Gebühren – plus der Reiter <a href="#realisierte_gewinne">&#128200; Realisierte Gewinne</a>.</td></tr>
+        </table>
+        <p><b>Öffnen:</b> Button <b>&#128176; Konto</b> in der Portfolio-Übersicht (öffnet „Alles“) oder wie bisher
+        <b>Dividenden &rarr; &#128176; Dividendenkonto</b> (öffnet „Nur Dividenden“).</p>
+        <h3>Einrichtung (beim ersten Wechsel auf „Alles“)</h3>
+        <ul>
+            <li><b>Käufe und Verkäufe buchen</b> ab einem <b>Startdatum</b>. Käufe davor werden nicht belastet.
+            „Erster Kauf“ übernimmt das ganze Portfolio, „Heute“ beginnt neu.</li>
+            <li><b>Anfangssaldo je Währung</b> am Startdatum – damit das Konto deinem Bankkonto entspricht:
+            Datum eines Kontoauszugs wählen und den Saldo laut Bank eintragen.</li>
+            <li><b>Bisherige Auszahlungen</b> aus dem Dividendenkonto: „Aufs Bankkonto“ oder „In Aktien investiert“.
+            Investiertes Geld ist durch den Kauf schon belastet und wird in „Alles“ nicht doppelt abgezogen.</li>
+            <li>Ändern jederzeit über <b>&#9881; Einrichtung</b>.</li>
+        </ul>
+        <h3>Spalten in „Alles“</h3>
+        <ul>
+            <li><b>Käufe/Verkäufe:</b> automatisch aus dem Portfolio – Änderungen an einer Position wirken sofort.
+            Diese Buchungen lassen sich nicht direkt bearbeiten (Position im Portfolio ändern).</li>
+            <li><b>Devisen:</b> Devisenwechsel laut Bank (z.&nbsp;B. CHF &rarr; USD).</li>
+            <li><b>Zinsen/Gebühren:</b> z.&nbsp;B. Zinsen auf einen Lombardkredit, Depotgebühren.</li>
+            <li><b>Ein-/Auszahlungen:</b> von Hand erfasst oder aus der Bank-CSV.</li>
+        </ul>
+        <p>Eine Ein-/Auszahlung gehört zur Ansicht, in der sie erfasst wurde: in „Nur Dividenden“ erfasst &rarr; in beiden
+        Ansichten, in „Alles“ erfasst &rarr; nur dort. Die Währung bestimmt das Währungskonto – umgerechnet wird nicht.
+        Ein Devisenwechsel von Hand = Auszahlung in der einen und Einzahlung in der anderen Währung.</p>
+        <h3>Abgleich mit der Bank (Swissquote)</h3>
+        <p>Mit der Import-Option <b>„Kontobewegungen übernehmen“</b> (siehe <a href="#swissquote_import">Swissquote Import</a>)
+        kommen alle Bewegungen der Bank ins Konto. Für den Zeitraum der CSV gelten in „Alles“ die <b>Dividenden laut Bank</b>
+        (exakte Beträge, inkl. Stornos) statt der Yahoo-Berechnung. Unten im Fenster steht dann
+        <b>„&#10004; Stimmt mit Swissquote überein“</b> oder die Differenz je Währung.</p>
+        <div class="tip"><b>Negativer Saldo?</b> Bei einem Lombardkredit ist das korrekt – der Saldo zeigt, wie viel Kredit beansprucht wird.
+        Ohne Kredit deutet ein Minus auf fehlende Einzahlungen hin (Anfangssaldo oder Kontobewegungen importieren).</div>
+
+        <a name="realisierte_gewinne"><h2>&#128200; Realisierte Gewinne</h2></a>
+        <p>Reiter im <a href="#konto">Konto</a> (Ansicht „Alles“). Zeigt Gewinne und Verluste aus verkauften Aktien.</p>
+        <ul>
+            <li>Je verkauftem Lot: Verkaufs- und Kaufdatum, Stück, Kauf- und Verkaufskurs, <b>Haltedauer</b>,
+            Gewinn in Handelswährung und in der Portfoliowährung, Prozent.</li>
+            <li><b>Quelle „Bank“:</b> Beträge aus der Bank-CSV – mit Gebühren und echtem Wechselkurs.
+            <b>„Kurs“:</b> Kurs &times; Stück, Wechselkurs von Yahoo am Kauf- bzw. Verkaufstag.</li>
+            <li>Wird ein Kauf in mehreren Schritten verkauft (FIFO), erscheint jeder Teil als eigene Zeile.</li>
+            <li><b>&#8776; Verkaufskurs:</b> Für ältere Verkäufe ohne erfassten Kurs wird der Yahoo-Schlusskurs am Verkaufstag verwendet.
+            <b>Doppelklick</b> auf die Zeile, um den echten Verkaufskurs einzutragen.</li>
+            <li><b>Jahr:</b> Filter mit Jahressummen (Gewinne, Verluste, Anzahl Verkäufe); bei „Alle Jahre“ zusätzlich die Summe je Jahr.</li>
+        </ul>
+        <h3>Gesamtertrag</h3>
+        <p><b>Kursgewinne + Dividenden (netto) &minus; Zinsen und Gebühren</b>. Zinsen und Gebühren erscheinen, sobald
+        Kontobewegungen aus der Bank-CSV importiert wurden – so sieht man, was z.&nbsp;B. nach den Lombardzinsen übrig bleibt.</p>
+        <h3>Gesamtertrag nach Steuern (geschätzt)</h3>
+        <p>Darunter steht der Gesamtertrag nach Steuern, je nach <b>Steuerwohnsitz</b> (Dividendenkonto, &#9881;):
+        <b>DE</b> Abgeltungssteuer + Soli nach Sparerpauschbetrag, <b>AT</b> KESt 27,5&nbsp;% (Altbestand steuerfrei),
+        jeweils auf Kursgewinne und die Dividenden abzüglich der bereits einbehaltenen Quellensteuer;
+        <b>UK</b> CGT 18&nbsp;% nach Freibetrag; <b>US</b> short-term 24&nbsp;%, long-term 15&nbsp;% (angenommene Sätze).
+        <b>CH:</b> keine Schätzung – Kursgewinne sind steuerfrei, die Einkommenssteuer auf Dividenden hängt von Kanton und Einkommen ab.
+        Der Kontosaldo bleibt unverändert (echtes Geld wie bei der Bank).</p>
+        <div class="tip">Export als PDF / Excel / ODS über <b>&#128228; Exportieren</b> (gewähltes Jahr).</div>
+        <div class="warning"><b>Hinweis:</b> In der Schweiz sind Kursgewinne im Privatvermögen steuerfrei; in DE/AT/UK/US sind sie steuerpflichtig.
+        Die steuerliche Auswertung je Land steht im <a href="#steuermodul">Steuerauszug</a>. Massgebend ist der Steuerauszug der Bank.</div>
 
         <a name="pf-bewertung"><h2>&#128203; Portfolio-Bewertung</h2></a>
         <div class="new">Feature: Regelbasierte Portfolio-Analyse – kein API-Key erforderlich</div>
@@ -1288,6 +1352,21 @@ _HTML_DE = """
 
         <a name="administration"><h2>&#9881; Administration</h2></a>
         <p>Zentrale Schaltstelle für alle Portfolio-Verwaltungsaufgaben.</p>
+        <h3>Die Buttons</h3>
+        <table>
+            <tr><th>Button</th><th>Funktion</th></tr>
+            <tr><td>&#128260; Kurse aktualisieren</td><td>Aktuelle Kurse aller Positionen neu laden</td></tr>
+            <tr><td>&#128229; Swissquote Import / &#128196; Generic CSV</td><td>Transaktionen aus einer Bank-CSV übernehmen &ndash; siehe <a href="#swissquote_import">Swissquote Import</a> und <a href="#generic_csv_import">Generic CSV Import</a>. Danach erscheint sofort <b>Speichern als</b> (bzw. die Frage, ob in das geöffnete Portfolio gespeichert werden soll)</td></tr>
+            <tr><td>&#128190; Speichern als</td><td>Portfolio unter einem Namen mit Passwort verschlüsselt speichern; ab dann wird jede Änderung automatisch gespeichert</td></tr>
+            <tr><td>&#128194; Laden</td><td>Gespeichertes Portfolio öffnen (Passwort), ersetzen oder zusammenführen</td></tr>
+            <tr><td>&#128344; Sicherungen</td><td>Frühere Stände des Portfolios ansehen und wiederherstellen</td></tr>
+            <tr><td>&#128465; Übersicht leeren</td><td>Alle Positionen aus der Übersicht entfernen &ndash; das gespeicherte Portfolio bleibt erhalten</td></tr>
+            <tr><td>&#129529; Bereinigen</td><td>Vollständig verkaufte Positionen (Menge 0) entfernen</td></tr>
+            <tr><td>&#128272; Datenbank</td><td>Portfolios exportieren, von einem anderen PC importieren, Passwort ändern</td></tr>
+            <tr><td>&#129534; Steuern</td><td>Steuerauszug CH / DE / AT / UK / US &ndash; siehe <a href="#steuermodul">Steuermodul</a></td></tr>
+        </table>
+        <div class="tip">Wie das automatische Speichern, das Entsperren nach einem Neustart und die Sicherungen funktionieren:
+        <a href="#speichern__laden">Speichern &amp; Laden</a>.</div>
         <h3>Position hinzufügen</h3>
         <p>1. Symbol eingeben &rarr; 2. Kaufdatum &rarr; 3. Stückzahl &rarr; <b>Hinzufügen</b><br>
         Der Kaufkurs wird automatisch von Yahoo Finance geladen (Schlusskurs des Kauftags) und in einem
@@ -1303,12 +1382,27 @@ _HTML_DE = """
         <div class="tip"><b>Tipp:</b> Den genauen Kaufkurs findest du in der Kaufabrechnung deiner Bank. Beim Import (z.B. Swissquote-CSV) wird der Kurs automatisch aus der Datei übernommen.</div>
 
         <a name="swissquote_import"><h2>&#128229; Swissquote Import</h2></a>
-        <p>In Swissquote: <b>Depot &rarr; Transaktionen &rarr; Export als CSV</b></p>
+        <p>In Swissquote: <b>Depot &rarr; Transaktionen &rarr; Export als CSV</b> – am besten den <b>ganzen Zeitraum</b>
+        seit Kontoeröffnung exportieren.</p>
         <ul>
-            <li>Automatische Erkennung von Käufen und Verkäufen</li>
-            <li>Verkäufe per <b>FIFO</b> von den ältesten Positionen abgezogen</li>
-            <li>Duplikate werden automatisch übersprungen</li>
+            <li>Automatische Erkennung von Käufen, Verkäufen, Splits und Krypto-Staking</li>
+            <li>Verkäufe werden chronologisch per <b>FIFO</b> verrechnet – nur gegen Käufe bis zum Verkaufstag</li>
+            <li>Duplikate (schon im Portfolio vorhanden) werden übersprungen – auch beim Zusammenführen überlappender Dateien</li>
         </ul>
+        <h3>Import-Optionen</h3>
+        <ul>
+            <li><b>Gebühren und Nettobeträge übernehmen:</b> speichert je Kauf/Verkauf Gebühren und den Betrag in Kontowährung –
+            Grundlage für exakte <a href="#realisierte_gewinne">realisierte Gewinne</a>.</li>
+            <li><b>Kontobewegungen übernehmen:</b> Ein-/Auszahlungen, Devisenwechsel, Zinsen, Gebühren und Dividenden laut Bank
+            kommen ins <a href="#konto">Konto</a> (Ansicht „Alles“), inkl. Abgleich mit dem Swissquote-Saldo.</li>
+        </ul>
+        <h3>Ersetzen oder Zusammenführen?</h3>
+        <ul>
+            <li><b>Ersetzen:</b> das bisherige Portfolio wird durch den Inhalt der Datei ersetzt – nur mit einer CSV über den ganzen Zeitraum.</li>
+            <li><b>Zusammenführen:</b> für eine kurze CSV mit den neuesten Transaktionen. Schon importierte Käufe und Verkäufe werden übersprungen.</li>
+        </ul>
+        <div class="warning">Enthält die Datei Verkäufe ohne den zugehörigen Kauf, warnt Stock Monitor: Die Datei umfasst vermutlich nur
+        einen Teilzeitraum, „Ersetzen“ würde Positionen löschen.</div>
 
         <a name="generic_csv_import"><h2>&#128196; Generic CSV Import</h2></a>
         <p>Import von Depotauszügen <i>beliebiger Banken und Broker</i>.</p>
@@ -1320,10 +1414,38 @@ _HTML_DE = """
             <tr><td><b>Trading 212</b></td><td>Direkte Ticker-Symbole</td></tr>
             <tr><td><b>Jede andere Bank</b></td><td>Manuelles Spalten-Mapping</td></tr>
         </table>
+        <p>Optionale Spalten <b>Gebühren</b> und <b>Nettobetrag</b>: werden sie zugeordnet, erscheint die Option
+        „Gebühren und Nettobeträge übernehmen“ (für <a href="#realisierte_gewinne">realisierte Gewinne</a>).
+        Kontobewegungen (Einzahlungen, Zinsen) übernimmt bisher nur der Swissquote-Import.</p>
 
         <a name="speichern__laden"><h2>&#128190; Speichern &amp; Laden</h2></a>
-        <p><b>Auto-Speichern:</b> Beim Schließen automatisch &bull;
-        <b>Manuell:</b> Speichern als &bull; <b>Laden:</b> Laden</p>
+        <p>Die <b>Übersicht</b> ist die Arbeitskopie: Sie wird bei jeder Änderung automatisch gespeichert und beim
+        Start ohne Passwort geladen. Dauerhaft und verschlüsselt gespeichert wird ein Portfolio über
+        <b>Speichern als</b> (Name + Passwort); <b>Laden</b> öffnet es wieder.</p>
+        <h3>Automatisch ins Portfolio speichern</h3>
+        <ul>
+            <li>Nach <b>Speichern als</b> oder <b>Laden</b> (Passwort eingegeben) wird jede Änderung – Käufe, Verkäufe,
+            Importe, Konto, Notizen, Stop-Loss/Zielkurse, AI-Balance-Ziele – nach etwa einer Sekunde automatisch
+            verschlüsselt im Portfolio gespeichert. Anzeige: <b>&#128272; wird automatisch gespeichert</b>.</li>
+            <li>Nach einem Neustart ist das Portfolio <b>&#128274; gesperrt</b>: Änderungen stehen in der Übersicht, aber
+            noch nicht im Portfolio. Ein Klick auf <b>Entsperren</b> (neben dem Portfolio-Namen) und das Passwort genügen –
+            danach wird der aktuelle Stand gespeichert. Das Passwort selbst wird nicht gespeichert.</li>
+            <li><b>Nach einem CSV-Import</b> erscheint sofort <b>Speichern als</b> bzw. – wenn ein Portfolio geöffnet
+            ist – die Frage, ob der Import dort gespeichert werden soll.</li>
+        </ul>
+        <h3>Übersicht leeren</h3>
+        <p><b>Alle entfernen</b> leert nur die Übersicht. Das gespeicherte Portfolio bleibt unverändert und kann jederzeit
+        über <b>Laden</b> wieder geöffnet werden. Ist die Übersicht noch nicht gespeichert, warnt Stock Monitor und
+        bietet <b>Zuerst speichern…</b> an. Ein Portfolio endgültig löschen: <b>Laden &rarr; Löschen</b>.</p>
+        <h3>Sicherungen</h3>
+        <p>Stock Monitor sichert jedes Portfolio automatisch – verschlüsselt wie das Portfolio selbst: beim ersten
+        Speichern einer Sitzung, vor jedem Import, vor dem Überschreiben und sonst höchstens stündlich.
+        Aufbewahrt werden die <b>letzten 10</b>, dazu <b>je eine pro Tag</b> (30 Tage) und <b>je eine pro Monat</b> (12 Monate).</p>
+        <p>Wiederherstellen: <b>Administration &rarr; &#128344; Sicherungen</b> (auch im Dialog <b>Laden</b>). Die Liste zeigt
+        Datum, Grund (Sitzungsbeginn, vor Import, stündlich …) und – nach einmaliger Passworteingabe über
+        <b>&#128269; Inhalt anzeigen…</b> – die Anzahl Symbole und Positionen. Der aktuelle Stand wird vor dem
+        Wiederherstellen seinerseits gesichert. Die Dateien tragen den Portfolio-Namen, z.&nbsp;B.
+        <code>Timm_2026-11-15_194200_import.smpf</code>.</p>
 
         <a name="verschlüsselung"><h2>&#128272; Verschlüsselung (AES-256-GCM)</h2></a>
         <p>Portfolio-Dateien werden mit <b>AES-256-GCM</b> verschlüsselt.</p>
@@ -1374,6 +1496,8 @@ _HTML_DE = """
         <p>Alle Beträge werden in die Währung des Auszugs umgerechnet (CH: CHF, DE/AT: EUR, UK: GBP, US: USD):
         Dividenden zum Kurs am <b>Ex-Tag</b>, Kurse und Marktwerte zum <b>aktuellen</b> Kurs. Dividenden Londoner
         Aktien (Pence) werden korrekt in Pfund umgerechnet.</p>
+        <p>Dividenden und Wechselkurse werden pro Tag einmal von Yahoo geladen; danach öffnet der Auszug sofort.
+        <b>&#128260; Neu laden</b> holt die Daten bei Bedarf frisch.</p>
         <h3>Sitzland &amp; Quellensteuer</h3>
         <p>Die Quellensteuer hängt vom <b>Sitzland</b> des Wertpapiers ab. Stock Monitor ermittelt es aus den
         Firmendaten (Apple bleibt US, auch an der Börse Frankfurt), bei ETFs aus dem Fondsnamen
@@ -1386,6 +1510,35 @@ _HTML_DE = """
         Steuermeldung der OeKB (<b>my.oekb.at</b>, Suche nach ISIN) eingetragen: AGE je Anteil, anrechenbare
         ausländische Quellensteuer je Anteil, Fondswährung und Zuflussdatum. Massgebend ist der Bestand am Zuflusstag.
         Angezeigt werden nur Fonds/ETFs – <b>für Aktien ist nichts einzutragen</b>.</p>
+        <h3>Kontosaldo und realisierte Gewinne</h3>
+        <p>Der Steuerauszug hat zwei Reiter: <b>Positionen und Dividenden</b> und <b>Realisierte Gewinne</b>
+        (alle Verkäufe der Steuerperiode mit Kauf- und Verkaufsdatum, Haltedauer, Kosten, Erlös und Gewinn in der
+        Auszugswährung, Wechselkurs am Kauf- bzw. Verkaufstag). Rechts in der Zusammenfassung stehen Kontosaldo
+        und Gewinne, je nach Land:</p>
+        <table>
+            <tr><th>Land</th><th>Kontosaldo</th><th>Realisierte Gewinne</th></tr>
+            <tr><td>&#127464;&#127469; CH</td><td>Guthaben per 31.12. (je Währung zum Jahresendkurs) wird zum Steuerwert addiert (Vermögenssteuer)</td>
+                <td>Nur Information: im Privatvermögen steuerfrei, Verluste nicht abziehbar</td></tr>
+            <tr><td>&#127465;&#127466; DE</td><td>Information</td>
+                <td>Aktiengewinne nach Rest-Sparerpauschbetrag, Abgeltungssteuer + Soli, Verlustvortrag; Krypto separat
+                (bis 1 Jahr steuerpflichtig, Freigrenze 1'000 €, danach steuerfrei)</td></tr>
+            <tr><td>&#127462;&#127481; AT</td><td>Information</td>
+                <td>KESt 27,5 % auf realisierte Gewinne (Neuvermögen); Altbestand (Aktien vor 2011, Krypto vor 1.3.2021)
+                steuerfrei; Verluste mindern die KESt auf Dividenden (Verlustausgleich)</td></tr>
+            <tr><td>&#127468;&#127463; UK</td><td>Information</td>
+                <td>CGT im UK-Steuerjahr (6. April – 5. April), Freibetrag £3'000, 18 % / 24 %</td></tr>
+            <tr><td>&#127482;&#127480; US</td><td>Information</td>
+                <td>Short-term / long-term (mehr als 1 Jahr), Verlust bis $3'000 abziehbar, Verlustvortrag;
+                mögliche <b>Wash Sales</b> (Rückkauf innert 30 Tagen nach einem Verlust) werden markiert</td></tr>
+        </table>
+        <p>Der Kontosaldo erscheint, sobald im <a href="#konto">Konto</a> die Ansicht <b>„Alles“</b> eingerichtet ist
+        (nur dort ist er ein echter Geldsaldo). Solange das Steuerjahr läuft, gilt der Stand von heute.
+        Verkäufe mit &#8776;-Kurs (Yahoo-Schlusskurs statt echtem Verkaufskurs) lassen sich unter
+        <a href="#realisierte_gewinne">Realisierte Gewinne</a> per Doppelklick korrigieren.
+        Beides erscheint auch im Export und im Steuerformular-PDF (mit Formularfeld, z.&nbsp;B. Anlage KAP Zeile 20,
+        Schedule D Zeile 7/15).</p>
+        <div class="tip">Banken rechnen teils anders (UK: Same-Day- und 30-Tage-Regel, Section-104-Pool; US: Wash Sales
+        im 1099-B). Stock Monitor rechnet je Kauf-Lot (FIFO).</div>
         <div class="warning">&#9888; Das Steuermodul ist eine <b>Orientierungshilfe</b> – keine rechtsgültige Steuererklärung.
         Für die offizielle Abgabe immer den originalen Bankauszug und das Online-Portal des jeweiligen Landes verwenden.</div>
 
@@ -1598,7 +1751,6 @@ _HTML_EN = """
         <div class="tip"><b>Tip:</b> Candlestick charts are best suited for short-term technical analysis (e.g. period 1D – 1M).</div>
 
         <a name="log-skala"></a><h3>&#128200; Logarithmic Scale (Zoom Mode)</h3>
-        <div class="new">New in v5.9.0</div>
         <p>In the <b>zoomed chart</b>, the <b>Log</b> checkbox switches the price axis to a logarithmic scale.</p>
         <ul>
             <li><b>Equal percentages = equal height:</b> a rise from 10 to 20 looks as tall as one from 100 to 200 (both +100%).</li>
@@ -2218,10 +2370,10 @@ _HTML_EN = """
         reliably identify them as such. A stock may therefore deserve a higher title than shown here.</div>
 
         <a name="dividendenkonto"><h2>&#128176; Dividend Account</h2></a>
-        <div class="new">New in v5.9.0</div>
         <p>A <b>multi-currency account</b> like at a bank (e.g. Swissquote): credited dividends go to the account of
         their currency – USD dividends to the USD account, CHF dividends to the CHF account, etc.
-        Open via: <b>Dividends &rarr; &#128176; Dividend account</b>.</p>
+        Open via: <b>Dividends &rarr; &#128176; Dividend account</b>.
+        Also with buys, sells and all bank movements: see <a href="#konto">Account</a>.</p>
         <h3>First start</h3>
         <p>On first opening you are asked for your <b>tax residence</b> (CH, DE, AT, UK, USA, other) and whether
         form <b>W-8BEN</b> was filed. Withholding tax depends on this (e.g. US dividends 15% with, 30% without
@@ -2248,6 +2400,71 @@ _HTML_EN = """
         </ul>
         <div class="tip"><b>Storage:</b> The account belongs to the portfolio and is saved with it – encrypted in the .smpf file.</div>
         <div class="warning"><b>Note:</b> Withholding tax is estimated from the company's country of domicile. It may differ for ETFs/ADRs – edit the transaction in that case.</div>
+
+        <a name="konto"><h2>&#128176; Account (all movements)</h2></a>
+        <p>The dividend account can become a complete <b>cash account</b> – but it stays <i>one</i> account.
+        Choose the view at the top of the window:</p>
+        <table>
+            <tr><th>View</th><th>Content</th></tr>
+            <tr><td><b>Dividends only</b></td><td>Exactly the previous dividend account: dividends and their deposits/withdrawals. Not affected by "Everything".</td></tr>
+            <tr><td><b>Everything</b></td><td>Additionally buys (debit), sells (credit), all deposits/withdrawals, currency exchanges, interest and fees – plus the tab <a href="#realisierte_gewinne">&#128200; Realized gains</a>.</td></tr>
+        </table>
+        <p><b>Open:</b> button <b>&#128176; Account</b> in the portfolio overview (opens "Everything") or as before
+        <b>Dividends &rarr; &#128176; Dividend account</b> (opens "Dividends only").</p>
+        <h3>Setup (when switching to "Everything" for the first time)</h3>
+        <ul>
+            <li><b>Book buys and sells</b> from a <b>start date</b>. Buys before it are not debited.
+            "First buy" takes the whole portfolio, "Today" starts fresh.</li>
+            <li><b>Opening balance per currency</b> on the start date – to match your bank account:
+            choose the date of a statement and enter the bank balance.</li>
+            <li><b>Earlier withdrawals</b> from the dividend account: "To bank account" or "Invested in shares".
+            Invested money is already debited by the buy and is not deducted twice in "Everything".</li>
+            <li>Change at any time via <b>&#9881; Setup</b>.</li>
+        </ul>
+        <h3>Columns in "Everything"</h3>
+        <ul>
+            <li><b>Buys/Sells:</b> automatically from the portfolio – changes to a position apply immediately.
+            These entries cannot be edited directly (change the position in the portfolio).</li>
+            <li><b>FX:</b> currency exchanges as booked by the bank (e.g. CHF &rarr; USD).</li>
+            <li><b>Interest/Fees:</b> e.g. interest on a margin loan, custody fees.</li>
+            <li><b>Deposits/Withdrawals:</b> entered by hand or from the bank CSV.</li>
+        </ul>
+        <p>A deposit/withdrawal belongs to the view in which it was recorded: recorded in "Dividends only" &rarr; in both
+        views, recorded in "Everything" &rarr; only there. The currency selects the currency account – nothing is converted.
+        A manual currency exchange = withdrawal in one currency and deposit in the other.</p>
+        <h3>Reconciliation with the bank (Swissquote)</h3>
+        <p>With the import option <b>"Import account movements"</b> (see <a href="#swissquote_import">Swissquote Import</a>)
+        all bank movements are added to the account. Within the period of the CSV, "Everything" uses the
+        <b>dividends as booked by the bank</b> (exact amounts, incl. reversals) instead of the Yahoo calculation. The bottom of the window
+        then shows <b>"&#10004; Matches Swissquote"</b> or the difference per currency.</p>
+        <div class="tip"><b>Negative balance?</b> With a margin (Lombard) loan this is correct – the balance shows how much credit is used.
+        Without a loan, a minus points to missing deposits (enter an opening balance or import account movements).</div>
+
+        <a name="realisierte_gewinne"><h2>&#128200; Realized Gains</h2></a>
+        <p>Tab in the <a href="#konto">Account</a> ("Everything" view). Shows gains and losses from sold shares.</p>
+        <ul>
+            <li>For every sold lot: sell and buy date, quantity, buy and sell price, <b>holding period</b>,
+            gain in trading currency and in the portfolio currency, percentage.</li>
+            <li><b>Source "Bank":</b> amounts from the bank CSV – with fees and the actual exchange rate.
+            <b>"Price":</b> price &times; quantity, Yahoo exchange rate on the buy and sell date.</li>
+            <li>If a purchase is sold in several steps (FIFO), each part appears as its own row.</li>
+            <li><b>&#8776; Sell price:</b> for older sales without a recorded price, the Yahoo closing price on the sale date is used.
+            <b>Double-click</b> the row to enter the actual sell price.</li>
+            <li><b>Year:</b> filter with yearly totals (gains, losses, number of sales); "All years" also shows the total per year.</li>
+        </ul>
+        <h3>Total return</h3>
+        <p><b>Capital gains + dividends (net) &minus; interest and fees</b>. Interest and fees appear once account movements
+        from the bank CSV have been imported – so you see what is left after e.g. margin loan interest.</p>
+        <h3>Total return after taxes (estimate)</h3>
+        <p>Below it, the total return after taxes is shown depending on the <b>tax residence</b> (dividend account, &#9881;):
+        <b>DE</b> withholding tax + Soli after saver's allowance, <b>AT</b> KESt 27.5% (old holdings tax-free),
+        each on capital gains and on dividends minus the withholding tax already deducted;
+        <b>UK</b> CGT 18% after the allowance; <b>US</b> short-term 24%, long-term 15% (assumed rates).
+        <b>CH:</b> no estimate – capital gains are tax-free, income tax on dividends depends on canton and income.
+        The account balance stays unchanged (real money as at the bank).</p>
+        <div class="tip">Export to PDF / Excel / ODS via <b>&#128228; Export</b> (selected year).</div>
+        <div class="warning"><b>Note:</b> In Switzerland, capital gains on private assets are tax-free; in DE/AT/UK/US they are taxable.
+        The tax evaluation per country is in the <a href="#steuermodul">tax statement</a>. The bank's tax statement is authoritative.</div>
 
         <a name="pf-bewertung"><h2>&#128203; Portfolio Assessment</h2></a>
         <div class="new">Feature: Rule-based portfolio analysis – no API key required</div>
@@ -2549,6 +2766,21 @@ _HTML_EN = """
 
         <a name="administration"><h2>&#9881; Administration</h2></a>
         <p>Central hub for all portfolio management tasks.</p>
+        <h3>The buttons</h3>
+        <table>
+            <tr><th>Button</th><th>Function</th></tr>
+            <tr><td>&#128260; Refresh prices</td><td>Reload current prices of all positions</td></tr>
+            <tr><td>&#128229; Swissquote Import / &#128196; Generic CSV</td><td>Take over transactions from a bank CSV &ndash; see <a href="#swissquote_import">Swissquote Import</a> and <a href="#generic_csv_import">Generic CSV Import</a>. Afterwards <b>Save as</b> appears right away (or the question whether to save into the open portfolio)</td></tr>
+            <tr><td>&#128190; Save as</td><td>Save the portfolio under a name, encrypted with a password; from then on every change is saved automatically</td></tr>
+            <tr><td>&#128194; Load</td><td>Open a saved portfolio (password), replace or merge</td></tr>
+            <tr><td>&#128344; Backups</td><td>View and restore earlier states of the portfolio</td></tr>
+            <tr><td>&#128465; Clear overview</td><td>Remove all positions from the overview &ndash; the saved portfolio is kept</td></tr>
+            <tr><td>&#129529; Clean up</td><td>Remove fully sold positions (quantity 0)</td></tr>
+            <tr><td>&#128272; Database</td><td>Export portfolios, import from another PC, change password</td></tr>
+            <tr><td>&#129534; Taxes</td><td>Tax statement CH / DE / AT / UK / US &ndash; see <a href="#steuermodul">Tax module</a></td></tr>
+        </table>
+        <div class="tip">How automatic saving, unlocking after a restart and backups work:
+        <a href="#speichern__laden">Save &amp; Load</a>.</div>
         <h3>Add a position</h3>
         <p>1. Enter symbol &rarr; 2. Purchase date &rarr; 3. Quantity &rarr; <b>Add</b><br>
         The purchase price is loaded automatically from Yahoo Finance (closing price on the purchase day)
@@ -2564,12 +2796,27 @@ _HTML_EN = """
         <div class="tip"><b>Tip:</b> You'll find the exact purchase price in your bank's trade confirmation. When importing (e.g. Swissquote CSV), the price is taken from the file automatically.</div>
 
         <a name="swissquote_import"><h2>&#128229; Swissquote Import</h2></a>
-        <p>In Swissquote: <b>Depot &rarr; Transactions &rarr; Export as CSV</b></p>
+        <p>In Swissquote: <b>Depot &rarr; Transactions &rarr; Export as CSV</b> – ideally export the <b>whole period</b>
+        since the account was opened.</p>
         <ul>
-            <li>Automatic detection of buys and sells</li>
-            <li>Sells deducted from oldest positions via <b>FIFO</b></li>
-            <li>Duplicates are skipped automatically</li>
+            <li>Automatic detection of buys, sells, splits and crypto staking</li>
+            <li>Sells are matched chronologically via <b>FIFO</b> – only against buys up to the sale date</li>
+            <li>Duplicates (already in the portfolio) are skipped – also when merging overlapping files</li>
         </ul>
+        <h3>Import options</h3>
+        <ul>
+            <li><b>Import fees and net amounts:</b> stores the fees and the amount in account currency for every buy/sell –
+            the basis for exact <a href="#realisierte_gewinne">realized gains</a>.</li>
+            <li><b>Import account movements:</b> deposits/withdrawals, currency exchanges, interest, fees and dividends as booked
+            by the bank go to the <a href="#konto">Account</a> ("Everything" view), incl. reconciliation with the Swissquote balance.</li>
+        </ul>
+        <h3>Replace or merge?</h3>
+        <ul>
+            <li><b>Replace:</b> the existing portfolio is replaced by the content of the file – only with a CSV covering the whole period.</li>
+            <li><b>Merge:</b> for a short CSV with the latest transactions. Buys and sells already imported are skipped.</li>
+        </ul>
+        <div class="warning">If the file contains sells without the matching buy, Stock Monitor warns: the file probably covers only
+        part of the period, "Replace" would delete positions.</div>
 
         <a name="generic_csv_import"><h2>&#128196; Generic CSV Import</h2></a>
         <p>Import from <i>any bank or broker</i> depot export.</p>
@@ -2581,10 +2828,37 @@ _HTML_EN = """
             <tr><td><b>Trading 212</b></td><td>Direct ticker symbols</td></tr>
             <tr><td><b>Any other bank</b></td><td>Manual column mapping</td></tr>
         </table>
+        <p>Optional columns <b>Fees</b> and <b>Net amount</b>: if they are mapped, the option
+        "Import fees and net amounts" appears (for <a href="#realisierte_gewinne">realized gains</a>).
+        Account movements (deposits, interest) are currently only imported by the Swissquote import.</p>
 
         <a name="speichern__laden"><h2>&#128190; Save &amp; Load</h2></a>
-        <p><b>Auto-save:</b> Automatically on close &bull;
-        <b>Manual:</b> Save as &bull; <b>Load:</b> Load</p>
+        <p>The <b>overview</b> is the working copy: it is saved automatically on every change and loaded at startup
+        without a password. A portfolio is stored permanently and encrypted via <b>Save as</b> (name + password);
+        <b>Load</b> opens it again.</p>
+        <h3>Saving to the portfolio automatically</h3>
+        <ul>
+            <li>After <b>Save as</b> or <b>Load</b> (password entered), every change – buys, sells, imports, account,
+            notes, stop-loss/target prices, AI balance targets – is saved automatically and encrypted in the portfolio
+            after about one second. Shown as <b>&#128272; saved automatically</b>.</li>
+            <li>After a restart the portfolio is <b>&#128274; locked</b>: changes are in the overview but not yet in the
+            portfolio. Click <b>Unlock</b> (next to the portfolio name) and enter the password – the current state is
+            then saved. The password itself is never stored.</li>
+            <li><b>After a CSV import</b>, <b>Save as</b> appears right away or – if a portfolio is open – a question
+            whether the import should be saved there.</li>
+        </ul>
+        <h3>Clearing the overview</h3>
+        <p><b>Remove all</b> only clears the overview. The saved portfolio stays unchanged and can be opened again via
+        <b>Load</b> at any time. If the overview has not been saved yet, Stock Monitor warns and offers
+        <b>Save first…</b>. To delete a portfolio permanently: <b>Load &rarr; Delete</b>.</p>
+        <h3>Backups</h3>
+        <p>Stock Monitor backs up every portfolio automatically – encrypted like the portfolio itself: on the first save
+        of a session, before every import, before overwriting and otherwise at most hourly. Kept are the
+        <b>last 10</b>, plus <b>one per day</b> (30 days) and <b>one per month</b> (12 months).</p>
+        <p>Restore via <b>Administration &rarr; &#128344; Backups</b> (also in the <b>Load</b> dialog). The list shows date,
+        reason (session start, before import, hourly …) and – after entering the password once via
+        <b>&#128269; Show content…</b> – the number of symbols and positions. The current state is backed up before
+        restoring. The files carry the portfolio name, e.g. <code>Timm_2026-11-15_194200_import.smpf</code>.</p>
 
         <a name="verschlüsselung"><h2>&#128272; Encryption (AES-256-GCM)</h2></a>
         <p>Portfolio files are encrypted with <b>AES-256-GCM</b>.</p>
@@ -2635,6 +2909,8 @@ _HTML_EN = """
         <p>All amounts are converted to the statement currency (CH: CHF, DE/AT: EUR, UK: GBP, US: USD):
         dividends at the <b>ex-date</b> rate, prices and market values at the <b>current</b> rate. Dividends of
         London-listed shares (pence) are correctly converted to pounds.</p>
+        <p>Dividends and exchange rates are loaded from Yahoo once per day; after that the statement opens immediately.
+        <b>&#128260; Reload</b> fetches fresh data on demand.</p>
         <h3>Domicile &amp; withholding tax</h3>
         <p>Withholding tax depends on the security's <b>country of domicile</b>. Stock Monitor determines it from the
         company data (Apple stays US, even on the Frankfurt exchange), for ETFs from the fund name
@@ -2647,6 +2923,35 @@ _HTML_EN = """
         OeKB tax report (<b>my.oekb.at</b>, search by ISIN): AGE per unit, creditable foreign withholding tax per unit,
         fund currency and inflow date. The holding on the inflow date counts.
         Only funds/ETFs are listed – <b>nothing to enter for shares</b>.</p>
+        <h3>Account balance and realized gains</h3>
+        <p>The tax statement has two tabs: <b>Positions and dividends</b> and <b>Realized gains</b>
+        (all sales in the tax period with purchase and sale date, holding period, cost, proceeds and gain in the
+        statement currency, exchange rate on the purchase/sale date). The right side of the summary shows the
+        account balance and gains, depending on the country:</p>
+        <table>
+            <tr><th>Country</th><th>Account balance</th><th>Realized gains</th></tr>
+            <tr><td>&#127464;&#127469; CH</td><td>Balance as of Dec 31 (per currency at the year-end rate) is added to the tax value (wealth tax)</td>
+                <td>Information only: tax-free on private assets, losses not deductible</td></tr>
+            <tr><td>&#127465;&#127466; DE</td><td>Information</td>
+                <td>Stock gains after remaining saver's allowance, withholding tax + Soli, loss carryforward; crypto separately
+                (taxable up to 1 year, exemption limit €1,000, tax-free afterwards)</td></tr>
+            <tr><td>&#127462;&#127481; AT</td><td>Information</td>
+                <td>KESt 27.5% on realized gains (new assets); old holdings (stocks before 2011, crypto before Mar 1, 2021)
+                tax-free; losses reduce the KESt on dividends (loss offset)</td></tr>
+            <tr><td>&#127468;&#127463; UK</td><td>Information</td>
+                <td>CGT in the UK tax year (April 6 – April 5), annual exempt amount £3,000, 18% / 24%</td></tr>
+            <tr><td>&#127482;&#127480; US</td><td>Information</td>
+                <td>Short-term / long-term (more than 1 year), losses deductible up to $3,000, carryover;
+                possible <b>wash sales</b> (repurchase within 30 days of a loss) are flagged</td></tr>
+        </table>
+        <p>The account balance appears once the view <b>“Everything”</b> is set up in the <a href="#konto">account</a>
+        (only there is it a real cash balance). While the tax year is running, today's balance is used.
+        Sales with an &#8776; price (Yahoo closing price instead of the actual sell price) can be corrected by
+        double-click under <a href="#realisierte_gewinne">Realized gains</a>.
+        Both also appear in the export and in the tax form PDF (with form field, e.g. Anlage KAP line 20,
+        Schedule D line 7/15).</p>
+        <div class="tip">Banks may calculate differently (UK: same-day and 30-day rules, Section 104 pool; US: wash sales
+        in the 1099-B). Stock Monitor calculates per purchase lot (FIFO).</div>
         <div class="warning">&#9888; The tax module is a <b>guidance tool</b> – not a legally binding tax return.
         Always use your official bank statement and your country's online portal for the official submission.</div>
 
@@ -2748,6 +3053,8 @@ _TOC_DE = [
     "Dividenden",
     "Dividenden Details",
     "Dividendenkonto",
+    "Konto",
+    "Realisierte Gewinne",
     "Portfolio-Bewertung",
     "Rohstoffe",
     "Branchen-Verteilung",
@@ -2841,6 +3148,8 @@ _TOC_EN = [
     "Dividends",
     "Dividend Details",
     "Dividend Account",
+    "Account",
+    "Realized Gains",
     "Portfolio Assessment",
     "Commodities",
     "Sector Distribution",
@@ -2944,6 +3253,8 @@ _ANCHOR_DE = {
     "dividenden":                 "dividenden",
     "dividenden details":         "dividenden-details",
     "dividendenkonto":            "dividendenkonto",
+    "konto":                      "konto",
+    "realisierte gewinne":        "realisierte_gewinne",
     "nachrichten":                "nachrichten",
     "portfolio-bewertung":        "pf-bewertung",
     "rohstoffe":                  "rohstoffe",
@@ -3045,6 +3356,8 @@ _ANCHOR_EN = {
     "dividends":                  "dividenden",
     "dividend details":           "dividenden-details",
     "dividend account":           "dividendenkonto",
+    "account":                    "konto",
+    "realized gains":             "realisierte_gewinne",
     "news":                       "nachrichten",
     "portfolio assessment":       "pf-bewertung",
     "commodities":                "rohstoffe",

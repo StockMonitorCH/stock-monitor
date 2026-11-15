@@ -78,6 +78,8 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_btn_form":                 "📋  Steuerformular",
         "tax_btn_close":                "✖  Schliessen",
         "tax_btn_help":                 "❓  Hilfe",
+        "tax_btn_reload":               "🔄  Neu laden",
+        "tax_tip_reload":               "Dividenden, Wechselkurse und realisierte Gewinne neu von Yahoo laden.\nSonst werden die Daten pro Tag nur einmal geladen (Stand: {time}).",
 
         # ── Tooltips (Haupt-Dialog) ───────────────────────────────────────────
         "tax_tip_update":               (
@@ -143,6 +145,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_col_rate":                 "Satz",
         "tax_col_unrealised_short":     "Nicht real. Gewinn",
         "tax_lbl_summary":              "Zusammenfassung",
+        "tax_lbl_note":                 "Hinweis:",
         "tax_lbl_tax_statement":        "Steuerauszug",
 
         # ── Zusammenfassung – Labels ──────────────────────────────────────────
@@ -161,6 +164,73 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_sum_total_tax_ch":         "Gesamtsteuer:",
         "tax_sum_net_div_ch":           "Netto-Dividenden (nach Steuer, geschätzt):",
         "tax_sum_wealth_tax":           "⚠  Vermögenssteuer:",
+
+        # ── v5.10.0: Kontosaldo + realisierte Gewinne ──
+        "tax_loading_gains":            "Realisierte Gewinne und Kontosaldo werden geladen …",
+        "tax_loading_fx_cash":          "Wechselkurs {cur} für den Kontosaldo …",
+        "tax_tab_positions":            "Positionen und Dividenden",
+        "tax_tab_gains":                "Realisierte Gewinne ({n})",
+        "tax_cash_head_final":          "Kontosaldo per {date}",
+        "tax_cash_head_today":          "Kontosaldo per {date} (Stand heute – das Steuerjahr ist noch nicht abgeschlossen)",
+        "tax_cash_line":                "{cur} {amt} × {rate}:",
+        "tax_cash_line_same":           "{cur}:",
+        "tax_cash_total":               "Kontoguthaben total:",
+        "tax_cash_fx_missing":          "Kein Wechselkurs für {items} – nicht im Total enthalten.",
+        "tax_cash_not_setup":           "Kontosaldo: Im Konto (💰) die Ansicht „Alles“ einrichten, dann erscheint hier das Guthaben per 31.12. für die Vermögenssteuer.",
+        "tax_ch_wealth_total":          "Steuerwert Wertschriften + Konto:",
+        "tax_ch_wealth_note":           "Vermögenssteuer: Freibetrag und Steuersatz sind kantonal, besteuert wird das gesamte Reinvermögen (inkl. übrige Konten, abzüglich Schulden).",
+        "tax_g_none":                   "Keine Verkäufe vom {lo} bis {hi}.",
+        "tax_g_head":                   "Realisierte Gewinne {lo} – {hi} ({n} Verkäufe)",
+        "tax_g_gains":                  "Kursgewinne:",
+        "tax_g_losses":                 "Kursverluste:",
+        "tax_g_net":                    "Realisierter Gewinn netto:",
+        "tax_g_ch_free":                "Kapitalgewinne im Privatvermögen sind steuerfrei (Ausnahme: gewerbsmässiger Wertschriftenhandel). Verluste sind nicht abziehbar. Nur zur Information.",
+        "tax_g_de_stock_net":           "Gewinne/Verluste Wertpapiere (ohne Krypto):",
+        "tax_g_de_frei_left":           "davon durch Rest-Sparerpauschbetrag gedeckt:",
+        "tax_g_de_taxable":             "Steuerpflichtige Kursgewinne:",
+        "tax_g_de_tax":                 "Abgeltungssteuer + Soli auf Kursgewinne:",
+        "tax_g_de_total_all":           "Steuer gesamt (Dividenden + Kursgewinne):",
+        "tax_g_de_loss_carry":          "Verlustvortrag (ins Folgejahr):",
+        "tax_g_de_crypto":              "Krypto (privates Veräusserungsgeschäft, § 23 EStG): {short} {cur} mit Haltedauer bis 1 Jahr – steuerpflichtig zum persönlichen Steuersatz, Freigrenze {frei} {cur}; {long} {cur} nach mehr als 1 Jahr – steuerfrei.",
+        "tax_g_de_note":                "Anlage KAP. Aktienverluste sind nur mit Aktiengewinnen verrechenbar; die Depotbank führt die Verlustverrechnungstöpfe. Kirchensteuer nicht berücksichtigt.",
+        "tax_g_at_net_new":             "Gewinne/Verluste Neuvermögen:",
+        "tax_g_at_old_free":            "Altbestand (steuerfrei):",
+        "tax_g_at_kest":                "KESt 27,5 % auf realisierte Kursgewinne:",
+        "tax_g_at_loss_credit":         "Verlustausgleich (Gutschrift KESt auf Dividenden):",
+        "tax_g_at_note":                "Altbestand: Aktien/Fonds gekauft vor 1.1.2011, Krypto vor 1.3.2021. Bei österreichischem Depot führt die Bank KESt und Verlustausgleich automatisch durch.",
+        "tax_g_uk_allowance":           "CGT Annual Exempt Amount:",
+        "tax_g_uk_taxable":             "Steuerpflichtiger Gewinn (CGT):",
+        "tax_g_uk_basic":               "CGT bei Basic Rate (18 %):",
+        "tax_g_uk_higher":              "CGT bei Higher Rate (24 %):",
+        "tax_g_uk_loss":                "Verluste können gemeldet und in Folgejahre vorgetragen werden.",
+        "tax_g_uk_note":                "UK-Steuerjahr 6. April – 5. April. HMRC verlangt Same-Day-, 30-Tage- und Section-104-Pool-Regeln; hier wird je Kauf-Lot (FIFO) gerechnet – Ergebnis kann abweichen.",
+        "tax_g_us_short":               "Short-term (bis 1 Jahr):",
+        "tax_g_us_long":                "Long-term (mehr als 1 Jahr):",
+        "tax_g_us_st_taxable":          "Short-term steuerpflichtig (ordentlicher Satz):",
+        "tax_g_us_lt_tax":              "Long-term Steuer (Schätzung 15 %):",
+        "tax_g_us_loss_deduct":         "Verlust abziehbar vom Einkommen (max. $3'000):",
+        "tax_g_us_loss_carry":          "Verlustvortrag (Capital Loss Carryover):",
+        "tax_g_us_wash":                "Mögliche Wash Sales ({n}, Rückkauf innert 30 Tagen) – Verlust evtl. nicht abziehbar:",
+        "tax_g_us_note":                "Form 8949 / Schedule D. Massgebend ist das 1099-B des Brokers (inkl. Wash-Sale-Korrekturen).",
+        "tax_g_missing":                "{n} Verkäufe ohne Verkaufskurs oder Wechselkurs – nicht in den Summen enthalten.",
+        "tax_g_est":                    "{n} Verkäufe mit Yahoo-Schlusskurs (≈) statt echtem Verkaufskurs – im Konto unter „Realisierte Gewinne“ per Doppelklick korrigieren.",
+        "tax_g_errors":                 "Daten fehlen für: {items}",
+        "tax_g_col_buy":                "Kauf",
+        "tax_g_col_sell":               "Verkauf",
+        "tax_g_col_days":               "Tage",
+        "tax_g_col_cost":               "Kosten ({cur})",
+        "tax_g_col_proceeds":           "Erlös ({cur})",
+        "tax_g_col_gain":               "Gewinn ({cur})",
+        "tax_g_note_est":               "≈ Schlusskurs",
+        "tax_g_note_staking":           "Staking",
+        "tax_g_note_long":              "long-term",
+        "tax_g_note_short":             "short-term",
+        "tax_g_note_wash":              "Wash Sale? (Kauf {date})",
+        "tax_g_note_old":               "Altbestand – steuerfrei",
+        "tax_g_note_crypto_free":       "Krypto > 1 Jahr – steuerfrei",
+        "tax_g_note_crypto_tax":        "Krypto ≤ 1 Jahr – § 23 EStG",
+        "tax_g_note_crypto":            "Krypto",
+        "tax_g_note_missing":           "Kurs fehlt",
         # DE
         "tax_sum_freistellung":         "Freistellungsauftrag:",
         "tax_sum_taxable_div":          "Steuerpflichtige Dividenden:",
@@ -181,8 +251,8 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_wash_sale_text": (
             "<b>Wash Sale Rule (IRC § 1091):</b> Verluste sind steuerlich NICHT "
             "abzugsfähig, wenn dieselbe Aktie innerhalb von 30 Tagen vor oder nach "
-            "dem Verkauf zurückgekauft wurde. Diese Regel wird hier nicht automatisch "
-            "berechnet. Bitte prüfen Sie Ihren Broker-Auszug (1099-B) auf "
+            "dem Verkauf zurückgekauft wurde. Mögliche Wash Sales werden im Reiter "
+            "„Realisierte Gewinne“ markiert, aber nicht herausgerechnet. Bitte prüfen Sie Ihren Broker-Auszug (1099-B) auf "
             "'Wash Sale Loss Disallowed'-Einträge."
         ),
 
@@ -415,6 +485,8 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_btn_form":                 "📋  Tax Form",
         "tax_btn_close":                "✖  Close",
         "tax_btn_help":                 "❓  Help",
+        "tax_btn_reload":               "🔄  Reload",
+        "tax_tip_reload":               "Reload dividends, exchange rates and realized gains from Yahoo.\nOtherwise the data is loaded only once per day (as of {time}).",
 
         # ── Tooltips (Haupt-Dialog) ───────────────────────────────────────────
         "tax_tip_update": (
@@ -479,6 +551,7 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_col_rate":                 "Rate",
         "tax_col_unrealised_short":     "Unrealized Gain",
         "tax_lbl_summary":              "Summary",
+        "tax_lbl_note":                 "Note:",
         "tax_lbl_tax_statement":        "Tax Statement",
 
         # ── Zusammenfassung – Labels ──────────────────────────────────────────
@@ -497,6 +570,73 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_sum_total_tax_ch":         "Total tax:",
         "tax_sum_net_div_ch":           "Net dividends (after tax, est.):",
         "tax_sum_wealth_tax":           "⚠  Wealth tax:",
+
+        # ── v5.10.0: account balance + realized gains ──
+        "tax_loading_gains":            "Loading realized gains and account balance …",
+        "tax_loading_fx_cash":          "Exchange rate {cur} for the account balance …",
+        "tax_tab_positions":            "Positions and dividends",
+        "tax_tab_gains":                "Realized gains ({n})",
+        "tax_cash_head_final":          "Account balance as of {date}",
+        "tax_cash_head_today":          "Account balance as of {date} (today – the tax year is not over yet)",
+        "tax_cash_line":                "{cur} {amt} × {rate}:",
+        "tax_cash_line_same":           "{cur}:",
+        "tax_cash_total":               "Total cash balance:",
+        "tax_cash_fx_missing":          "No exchange rate for {items} – not included in the total.",
+        "tax_cash_not_setup":           "Account balance: set up the view “All” in the account (💰) to show the balance as of Dec 31 for wealth tax here.",
+        "tax_ch_wealth_total":          "Tax value securities + account:",
+        "tax_ch_wealth_note":           "Wealth tax: allowance and rate depend on the canton; tax is levied on total net assets (incl. other accounts, minus debts).",
+        "tax_g_none":                   "No sales from {lo} to {hi}.",
+        "tax_g_head":                   "Realized gains {lo} – {hi} ({n} sales)",
+        "tax_g_gains":                  "Capital gains:",
+        "tax_g_losses":                 "Capital losses:",
+        "tax_g_net":                    "Net realized gain:",
+        "tax_g_ch_free":                "Capital gains on private assets are tax-free (exception: professional securities trading). Losses are not deductible. For information only.",
+        "tax_g_de_stock_net":           "Gains/losses securities (excl. crypto):",
+        "tax_g_de_frei_left":           "of which covered by remaining saver's allowance:",
+        "tax_g_de_taxable":             "Taxable capital gains:",
+        "tax_g_de_tax":                 "Withholding tax + Soli on capital gains:",
+        "tax_g_de_total_all":           "Total tax (dividends + capital gains):",
+        "tax_g_de_loss_carry":          "Loss carryforward (to next year):",
+        "tax_g_de_crypto":              "Crypto (private sale, § 23 EStG): {short} {cur} held up to 1 year – taxable at personal rate, exemption limit {frei} {cur}; {long} {cur} held more than 1 year – tax-free.",
+        "tax_g_de_note":                "Anlage KAP. Stock losses can only be offset against stock gains; the custodian bank keeps the loss pots. Church tax not included.",
+        "tax_g_at_net_new":             "Gains/losses new assets:",
+        "tax_g_at_old_free":            "Old holdings (tax-free):",
+        "tax_g_at_kest":                "KESt 27.5% on realized capital gains:",
+        "tax_g_at_loss_credit":         "Loss offset (KESt credit on dividends):",
+        "tax_g_at_note":                "Old holdings: stocks/funds bought before Jan 1, 2011, crypto before Mar 1, 2021. With an Austrian custodian, the bank handles KESt and loss offset automatically.",
+        "tax_g_uk_allowance":           "CGT Annual Exempt Amount:",
+        "tax_g_uk_taxable":             "Taxable gain (CGT):",
+        "tax_g_uk_basic":               "CGT at basic rate (18%):",
+        "tax_g_uk_higher":              "CGT at higher rate (24%):",
+        "tax_g_uk_loss":                "Losses can be reported and carried forward to later years.",
+        "tax_g_uk_note":                "UK tax year April 6 – April 5. HMRC requires same-day, 30-day and Section 104 pool matching; this calculation uses purchase lots (FIFO) – results may differ.",
+        "tax_g_us_short":               "Short-term (up to 1 year):",
+        "tax_g_us_long":                "Long-term (more than 1 year):",
+        "tax_g_us_st_taxable":          "Short-term taxable (ordinary rate):",
+        "tax_g_us_lt_tax":              "Long-term tax (estimate 15%):",
+        "tax_g_us_loss_deduct":         "Loss deductible from income (max. $3,000):",
+        "tax_g_us_loss_carry":          "Capital loss carryover:",
+        "tax_g_us_wash":                "Possible wash sales ({n}, repurchase within 30 days) – loss may be disallowed:",
+        "tax_g_us_note":                "Form 8949 / Schedule D. The broker's 1099-B (incl. wash sale adjustments) is authoritative.",
+        "tax_g_missing":                "{n} sales without sell price or exchange rate – not included in the totals.",
+        "tax_g_est":                    "{n} sales use the Yahoo closing price (≈) instead of the actual sell price – correct them by double-click in Account → Realized gains.",
+        "tax_g_errors":                 "Data missing for: {items}",
+        "tax_g_col_buy":                "Bought",
+        "tax_g_col_sell":               "Sold",
+        "tax_g_col_days":               "Days",
+        "tax_g_col_cost":               "Cost ({cur})",
+        "tax_g_col_proceeds":           "Proceeds ({cur})",
+        "tax_g_col_gain":               "Gain ({cur})",
+        "tax_g_note_est":               "≈ closing price",
+        "tax_g_note_staking":           "Staking",
+        "tax_g_note_long":              "long-term",
+        "tax_g_note_short":             "short-term",
+        "tax_g_note_wash":              "Wash sale? (bought {date})",
+        "tax_g_note_old":               "Old holding – tax-free",
+        "tax_g_note_crypto_free":       "Crypto > 1 year – tax-free",
+        "tax_g_note_crypto_tax":        "Crypto ≤ 1 year – § 23 EStG",
+        "tax_g_note_crypto":            "Crypto",
+        "tax_g_note_missing":           "Price missing",
         # DE
         "tax_sum_freistellung":         "Exemption order (Freistellungsauftrag):",
         "tax_sum_taxable_div":          "Taxable dividends:",
@@ -517,7 +657,8 @@ TAX_STRINGS: dict[str, dict[str, str]] = {
         "tax_wash_sale_text": (
             "<b>Wash Sale Rule (IRC § 1091):</b> Losses are NOT tax-deductible "
             "if the same security is repurchased within 30 days before or after "
-            "the sale. This rule is not calculated automatically here. "
+            "the sale. Possible wash sales are flagged in the “Realized gains” tab "
+            "but not deducted. "
             "Please check your broker statement (1099-B) for "
             "'Wash Sale Loss Disallowed' entries."
         ),

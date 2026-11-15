@@ -7,6 +7,63 @@ Sprache folgt der App-Einstellung (translations.get_language()).
 STRINGS = {
     "DE": {
         "title":            "💰 Dividendenkonto",
+        "title_all":        "💰 Konto",
+        "info_all":         "Konto mit allen Bewegungen: Dividenden, Käufe (Belastung), Verkäufe "
+                            "(Gutschrift) sowie Ein- und Auszahlungen – je Währung. Käufe und Verkäufe "
+                            "kommen automatisch aus dem Portfolio; ändern lassen sie sich dort. "
+                            "Doppelklick auf eine Währung zeigt alle Buchungen.",
+        "view_div":         "Nur Dividenden",
+        "view_all":         "Alles",
+        "tip_view":         "Nur Dividenden: wie bisher, nur Dividenden und deren Ein-/Auszahlungen.\n"
+                            "Alles: zusätzlich Käufe, Verkäufe und alle Ein-/Auszahlungen.",
+        "btn_setup":        "⚙ Einrichtung",
+        "tip_setup":        "Startdatum, Anfangssaldo und frühere Auszahlungen",
+        "tab_entries":      "Buchungen",
+        "tab_gains":        "📈 Realisierte Gewinne",
+        "col_trades":       "Käufe/Verkäufe",
+        "col_fx":           "Devisen",
+        "col_costs":        "Zinsen/Gebühren",
+        "type_bank":        "Bank",
+        "bank_deposit":     "Einzahlung",
+        "bank_withdrawal":  "Auszahlung",
+        "bank_payment":     "Zahlung",
+        "bank_fx":          "Devisenwechsel",
+        "bank_interest":    "Zinsen",
+        "bank_fee":         "Gebühr",
+        "bank_dividend":    "Dividende (Bank)",
+        "bank_other":       "Bankbuchung",
+        "tip_bank":         "Aus der Bank-CSV importiert – erneuter Import ersetzt/ergänzt sie",
+        "lbl_reconcile_ok": "✔ Stimmt mit {source} überein (Saldo per {date}).",
+        "lbl_reconcile_diff": "Abgleich mit {source}: {items}",
+        "lbl_reconcile_item": "{cur} Differenz {diff} (Bank {bank} per {date})",
+        "type_buy":         "Kauf",
+        "type_sell":        "Verkauf",
+        "type_opening":     "Anfangssaldo",
+        "tip_trade":        "Aus dem Portfolio – Änderungen bitte bei der Position vornehmen",
+        "msg_trade_edit":   "Käufe und Verkäufe stammen aus dem Portfolio.\n"
+                            "Bitte die Position im Portfolio ändern – das Konto passt sich automatisch an.",
+        "lbl_trades_missing": "{n} Käufe/Verkäufe ohne Kurs oder Währung – nicht gebucht.",
+        "lbl_trades_off":   "Käufe und Verkäufe werden nicht gebucht (⚙ Einrichtung).",
+        "lbl_trades_since": "Käufe und Verkäufe ab {date}.",
+        "title_setup":      "Konto einrichten",
+        "lbl_setup_intro":  "In der Ansicht „Alles“ wird das Konto zum Geldkonto: Käufe belasten es, "
+                            "Verkäufe und Dividenden schreiben gut. Die Ansicht „Nur Dividenden“ bleibt "
+                            "unverändert.",
+        "chk_trades":       "Käufe und Verkäufe buchen",
+        "lbl_start":        "Ab Datum:",
+        "lbl_start_hint":   "Käufe vor diesem Datum werden nicht belastet. Damit das Konto deinem "
+                            "Bankkonto entspricht: Datum eines Kontoauszugs wählen und unten den "
+                            "Saldo laut Bank an diesem Tag eintragen.",
+        "btn_start_first":  "Erster Kauf",
+        "btn_start_today":  "Heute",
+        "lbl_opening":      "<b>Anfangssaldo je Währung</b> (am Startdatum):",
+        "lbl_withdrawals":  "<b>Bisherige Auszahlungen aus dem Dividendenkonto</b><br>"
+                            "Wurde das Geld aufs Bankkonto überwiesen oder in Aktien investiert? "
+                            "Investiertes Geld ist im Konto schon durch den Kauf belastet und darf "
+                            "nicht doppelt abgezogen werden.",
+        "wd_bank":          "Aufs Bankkonto",
+        "wd_reinvested":    "In Aktien investiert",
+        "msg_setup_needed": "Bitte zuerst das Konto einrichten.",
         "title_entries":    "💰 Dividendenkonto {cur} – Buchungen",
         "info":             "Gutgeschriebene Dividenden werden – wie bei einem Mehrwährungskonto – "
                             "dem Konto der jeweiligen Währung gutgeschrieben. Buchungsdatum ist der "
@@ -54,6 +111,7 @@ STRINGS = {
         "status_fx":        "Lade Wechselkurse …",
         "overlay_title":    "Dividendenkonto wird aktualisiert …",
         "status_done":      "Aktualisiert: {new} neue, {upd} geänderte Buchungen.",
+        "status_cached":    "Stand heute {time} – Dividenden und Wechselkurse aus dem letzten Abruf. 🔄 Aktualisieren lädt neu.",
         "status_failed":    "Aktualisierung fehlgeschlagen: {e}",
         "status_errors":    "Keine Daten für: {syms}",
         "title_settings":   "Steuerwohnsitz",
@@ -95,6 +153,60 @@ STRINGS = {
     },
     "EN": {
         "title":            "💰 Dividend Account",
+        "title_all":        "💰 Account",
+        "info_all":         "Account with all movements: dividends, buys (debit), sells (credit) "
+                            "and deposits/withdrawals – per currency. Buys and sells come "
+                            "automatically from the portfolio; change them there. "
+                            "Double-click a currency to see all transactions.",
+        "view_div":         "Dividends only",
+        "view_all":         "Everything",
+        "tip_view":         "Dividends only: as before, dividends and their deposits/withdrawals.\n"
+                            "Everything: also buys, sells and all deposits/withdrawals.",
+        "btn_setup":        "⚙ Setup",
+        "tip_setup":        "Start date, opening balance and earlier withdrawals",
+        "tab_entries":      "Transactions",
+        "tab_gains":        "📈 Realized gains",
+        "col_trades":       "Buys/Sells",
+        "col_fx":           "FX",
+        "col_costs":        "Interest/Fees",
+        "type_bank":        "Bank",
+        "bank_deposit":     "Deposit",
+        "bank_withdrawal":  "Withdrawal",
+        "bank_payment":     "Payment",
+        "bank_fx":          "Currency exchange",
+        "bank_interest":    "Interest",
+        "bank_fee":         "Fee",
+        "bank_dividend":    "Dividend (bank)",
+        "bank_other":       "Bank entry",
+        "tip_bank":         "Imported from the bank CSV – a new import replaces/extends it",
+        "lbl_reconcile_ok": "✔ Matches {source} (balance as of {date}).",
+        "lbl_reconcile_diff": "Reconciliation with {source}: {items}",
+        "lbl_reconcile_item": "{cur} difference {diff} (bank {bank} as of {date})",
+        "type_buy":         "Buy",
+        "type_sell":        "Sell",
+        "type_opening":     "Opening balance",
+        "tip_trade":        "From the portfolio – please change the position instead",
+        "msg_trade_edit":   "Buys and sells come from the portfolio.\n"
+                            "Please change the position in the portfolio – the account follows automatically.",
+        "lbl_trades_missing": "{n} buys/sells without price or currency – not booked.",
+        "lbl_trades_off":   "Buys and sells are not booked (⚙ Setup).",
+        "lbl_trades_since": "Buys and sells from {date}.",
+        "title_setup":      "Set up account",
+        "lbl_setup_intro":  "In the “Everything” view the account becomes a cash account: buys debit it, "
+                            "sells and dividends credit it. The “Dividends only” view stays unchanged.",
+        "chk_trades":       "Book buys and sells",
+        "lbl_start":        "From date:",
+        "lbl_start_hint":   "Buys before this date are not debited. To match your bank account: "
+                            "choose the date of a statement and enter the bank balance on that day below.",
+        "btn_start_first":  "First buy",
+        "btn_start_today":  "Today",
+        "lbl_opening":      "<b>Opening balance per currency</b> (on the start date):",
+        "lbl_withdrawals":  "<b>Earlier withdrawals from the dividend account</b><br>"
+                            "Was the money transferred to your bank or invested in shares? "
+                            "Invested money is already debited by the buy and must not be deducted twice.",
+        "wd_bank":          "To bank account",
+        "wd_reinvested":    "Invested in shares",
+        "msg_setup_needed": "Please set up the account first.",
         "title_entries":    "💰 Dividend Account {cur} – Transactions",
         "info":             "Dividends are credited – like a multi-currency account – to the account "
                             "of their currency. The booking date is the ex-date (Yahoo provides no "
@@ -141,6 +253,7 @@ STRINGS = {
         "status_fx":        "Loading exchange rates …",
         "overlay_title":    "Updating dividend account …",
         "status_done":      "Updated: {new} new, {upd} changed transactions.",
+        "status_cached":    "As of today {time} – dividends and exchange rates from the last update. 🔄 Refresh reloads.",
         "status_failed":    "Update failed: {e}",
         "status_errors":    "No data for: {syms}",
         "title_settings":   "Tax residence",

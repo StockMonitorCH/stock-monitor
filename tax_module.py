@@ -165,6 +165,88 @@ _FX_SERIES  = {}        # (von, nach, jahr) → pandas.Series Tageskurse
 _FX_NOW     = {}        # (von, nach) → aktueller Kurs
 
 
+# ── Tages-Cache für Yahoo-Daten (Dividenden je Aktie, Wechselkurse) ─────────
+# Gilt bis Mitternacht, auch über einen Neustart hinweg. Gespeichert werden nur
+# Rohdaten von Yahoo; Bestand am Ex-Tag und Steuern werden immer neu gerechnet.
+_DAY_CACHE = None
+_DAY_CACHE_DIRTY = False
+
+
+def _day_cache_path():
+    try:
+        from config import _get_data_home
+        home = _get_data_home()
+    except Exception:
+        home = os.path.expanduser("~")
+    return os.path.join(home, ".stock_monitor_tax_cache.json")
+
+
+def _day_cache():
+    """{"day", "divs": {"SYM|JAHR": {"cur", "rows": [[iso, betrag]]}},
+        "fx_series": {"SRC|DST|JAHR": [[iso, kurs]]}, "fx_now": {"SRC|DST": kurs}}"""
+    global _DAY_CACHE
+    from datetime import date as _d
+    today = _d.today().isoformat()
+    if _DAY_CACHE is None or _DAY_CACHE.get("day") != today:
+        data = None
+        try:
+            import json as _j
+            with open(_day_cache_path(), encoding="utf-8") as f:
+                data = _j.load(f)
+        except Exception:
+            data = None
+        if not isinstance(data, dict) or data.get("day") != today:
+            from datetime import datetime as _dtn
+            data = {"day": today, "time": _dtn.now().strftime("%H:%M")}
+        for k in ("divs", "fx_series", "fx_now"):
+            if not isinstance(data.get(k), dict):
+                data[k] = {}
+        _DAY_CACHE = data
+        # Sitzungs-Caches gehören zum alten Tag → verwerfen
+        _FX_NOW.clear(); _FX_SERIES.clear()
+    return _DAY_CACHE
+
+
+def _day_cache_set(section, key, value):
+    global _DAY_CACHE_DIRTY
+    _day_cache()[section][key] = value
+    _DAY_CACHE_DIRTY = True
+
+
+def clear_day_cache():
+    """🔄 Neu laden: Tages-Cache und Sitzungs-Caches verwerfen (Sitzland bleibt)."""
+    global _DAY_CACHE, _DAY_CACHE_DIRTY
+    from datetime import date as _d
+    from datetime import datetime as _dtn
+    _DAY_CACHE = {"day": _d.today().isoformat(), "time": _dtn.now().strftime("%H:%M"),
+                  "divs": {}, "fx_series": {}, "fx_now": {}}
+    _DAY_CACHE_DIRTY = True
+    _FX_NOW.clear(); _FX_SERIES.clear()
+    try:
+        import realized_gains as _rg
+        _rg._FX_CACHE.clear(); _rg._PRICE_CACHE.clear(); _rg._CUR_CACHE.clear()
+    except Exception:
+        pass
+    save_day_cache()
+
+
+def save_day_cache():
+    """Schreibt den Tages-Cache (einmal nach dem Laden des Steuerauszugs)."""
+    global _DAY_CACHE_DIRTY
+    if not _DAY_CACHE_DIRTY or _DAY_CACHE is None:
+        return
+    try:
+        import json as _j
+        path = _day_cache_path()
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            _j.dump(_DAY_CACHE, f, separators=(",", ":"))
+        os.replace(tmp, path)
+        _DAY_CACHE_DIRTY = False
+    except Exception:
+        pass
+
+
 def split_currency(cur):
     """'GBp' → ('GBP', 0.01), 'usd' → ('USD', 1.0), '' → ('', 1.0)."""
     cur = (cur or "").strip()
@@ -191,11 +273,18 @@ def fx_now(src, dst):
         return 1.0
     key = (src, dst)
     if key not in _FX_NOW:
-        def _get():
-            import yfinance as yf
-            r = float(yf.Ticker(f"{src}{dst}=X").fast_info.last_price)
-            return r if r > 0 else None
-        _FX_NOW[key] = _run_timeout(_get, 10)
+        ck = f"{src}|{dst}"
+        cached = _day_cache()["fx_now"].get(ck)
+        if cached:
+            _FX_NOW[key] = cached
+        else:
+            def _get():
+                import yfinance as yf
+                r = float(yf.Ticker(f"{src}{dst}=X").fast_info.last_price)
+                return r if r > 0 else None
+            _FX_NOW[key] = _run_timeout(_get, 10)
+            if _FX_NOW[key]:
+                _day_cache_set("fx_now", ck, _FX_NOW[key])
     return _FX_NOW[key]
 
 
@@ -205,6 +294,16 @@ def fx_on(src, dst, day, year=None):
         return 1.0
     year = year or day.year
     key = (src, dst, year)
+    _ck = f"{src}|{dst}|{year}"
+    if key not in _FX_SERIES and _day_cache()["fx_series"].get(_ck):
+        try:
+            import pandas as _pd
+            from datetime import date as _dd
+            _rows = _day_cache()["fx_series"][_ck]
+            _FX_SERIES[key] = _pd.Series([r for _, r in _rows],
+                                         index=[_dd.fromisoformat(d) for d, _ in _rows])
+        except Exception:
+            pass
     if key not in _FX_SERIES:
         def _get():
             import yfinance as yf
@@ -216,6 +315,13 @@ def fx_on(src, dst, day, year=None):
             c.index = [ts.date() for ts in c.index]
             return c
         _FX_SERIES[key] = _run_timeout(_get, 15)
+        _ser = _FX_SERIES[key]
+        if _ser is not None and len(_ser):
+            try:
+                _day_cache_set("fx_series", _ck,
+                               [[d.isoformat(), float(v)] for d, v in _ser.items()])
+            except Exception:
+                pass
     ser = _FX_SERIES.get(key)
     if ser is not None and len(ser):
         try:
@@ -248,6 +354,9 @@ def _fetch_real_dividends(ticker_sym, year, positions_for_sym=None, target_curre
     # wie die Chart-Worker (curl_cffi-sicher auf dem Qt-Haupt-Thread)
     _hist_result = [None]
     _factor = [1.0]
+    _ok = [False]                     # Abruf ohne Fehler (auch: keine Dividenden)
+    _ck = f"{ticker_sym.upper()}|{year}"
+    _cached = _day_cache()["divs"].get(_ck)
     def _fetch_in_thread():
         try:
             t = yf.Ticker(ticker_sym)
@@ -255,6 +364,7 @@ def _fetch_real_dividends(ticker_sym, year, positions_for_sym=None, target_curre
                              interval="1d", actions=True)
             if data is not None and not data.empty and 'Dividends' in data.columns:
                 _hist_result[0] = data['Dividends'][data['Dividends'] > 0]
+                _ok[0] = True
             else:
                 _hist_result[0] = None
             # Unterwährung: London (GBp/GBX), Johannesburg (ZAc), Tel Aviv (ILA)
@@ -268,19 +378,37 @@ def _fetch_real_dividends(ticker_sym, year, positions_for_sym=None, target_curre
                 pass
         except Exception:
             _hist_result[0] = None
-    _th = _threading.Thread(target=_fetch_in_thread, daemon=True)
-    _th.start()
-    _th.join(timeout=15)
+    if isinstance(_cached, dict):
+        _cur_c = _cached.get("cur", "") or ""
+        if _cur_c:
+            _TICKER_CUR[ticker_sym.upper()] = _cur_c
+        _factor[0] = _SUB_CURRENCY_FACTOR.get(_cur_c, 1.0)
+        year_items = [(d, float(a)) for d, a in _cached.get("rows", [])]
+    else:
+        _th = _threading.Thread(target=_fetch_in_thread, daemon=True)
+        _th.start()
+        _th.join(timeout=15)
+        _yd = _hist_result[0]
+        year_items = []
+        if _yd is not None and not (hasattr(_yd, 'empty') and _yd.empty):
+            for _ts, _amt in _yd.items():
+                try:
+                    _iso = (_ts.date() if hasattr(_ts, 'date') else _ts).isoformat()[:10]
+                except Exception:
+                    _iso = str(_ts)[:10]
+                year_items.append((_iso, float(_amt)))
+        if _ok[0] and not _th.is_alive():
+            _day_cache_set("divs", _ck, {"cur": _TICKER_CUR.get(ticker_sym.upper(), ""),
+                                         "rows": [[d, a] for d, a in year_items]})
 
     try:
-        year_divs = _hist_result[0]
-        if year_divs is None or (hasattr(year_divs, 'empty') and year_divs.empty):
+        if not year_items:
             return 0.0, []
 
         total = 0.0
         detail = []
 
-        for ex_timestamp, div_per_share in year_divs.items():
+        for ex_timestamp, div_per_share in year_items:
             # Ex-Dividend-Datum normalisieren
             try:
                 ex_day = ex_timestamp.date() if hasattr(ex_timestamp, 'date') else \
@@ -1152,12 +1280,535 @@ CALC_FUNCS = {
 }
 
 
+# ── Realisierte Gewinne + Kontosaldo (v5.10.0) ───────────────────────────────
+# Quelle: realized_gains.py (Verkaufshistorie) und dividend_account.py
+# (Konto, Ansicht „Alles“). Länderregeln – NUR HIER ÄNDERN:
+GAIN_RULES = {
+    # AT: Altbestand (Kauf vor diesen Daten) ist steuerfrei
+    "AT_new_assets_from":        "2011-01-01",   # Aktien, Fonds (Budgetbegleitgesetz 2011)
+    "AT_crypto_new_from":        "2021-03-01",   # Kryptowährungen (Ökosoziale Steuerreform)
+    # DE: private Veräusserungsgeschäfte (Krypto), § 23 EStG
+    "DE_crypto_holding_days":    365,            # länger gehalten → steuerfrei
+    "DE_crypto_freigrenze":      1000,           # EUR, Freigrenze (seit 2024)
+    # US: long-term ab mehr als einem Jahr Haltedauer
+    "US_longterm_days":          365,
+    "US_lt_rate_est":            0.15,           # mittlere Stufe (0/15/20 %)
+    "US_loss_deduction":         3000,           # USD/Jahr gegen ordentliches Einkommen
+    # Schätzsätze für „Gesamtertrag nach Steuern“ (Konto → Realisierte Gewinne)
+    "UK_cgt_rate_est":           0.18,           # Basic Rate
+    "US_st_rate_est":            0.24,           # typische Stufe ordentliches Einkommen
+}
+
+_CRYPTO_SUFFIXES = ("-USD", "-EUR", "-CHF", "-GBP", "-BTC")
+
+
+def is_crypto(sym):
+    return str(sym or "").upper().endswith(_CRYPTO_SUFFIXES)
+
+
+def gains_period(country_code, year):
+    """Steuerperiode für realisierte Gewinne: Kalenderjahr; UK 6.4.–5.4."""
+    if country_code == "UK":
+        return f"{year}-04-06", f"{year + 1}-04-05"
+    return f"{year}-01-01", f"{year}-12-31"
+
+
+def compact_gain_rows(rows):
+    """Zeilen aus realized_gains.compute_rows → kompakt + JSON-tauglich."""
+    out = []
+    for r in rows or []:
+        out.append({
+            "sym": r["sym"], "buy_date": r["buy_date"], "sell_date": r["sell_date"],
+            "qty": r["qty"], "days": r["days"],
+            "cost": r["cost_base"], "proceeds": r["proceeds_base"],
+            "gain": r["gain_base"], "est": bool(r["est"]),
+            "crypto": is_crypto(r["sym"]), "staking": bool(r.get("staking")),
+        })
+    out.sort(key=lambda r: (r["sell_date"], r["sym"]))
+    return out
+
+
+def mark_wash_sales(gain_rows, closed, open_positions=None, window=30):
+    """US Wash Sale Rule (IRC § 1091): Verlust-Verkauf, wenn dieselbe Aktie
+    innerhalb von 30 Tagen vor oder nach dem Verkauf (wieder) gekauft wurde.
+    Der Kauf des verkauften Lots selbst zählt nicht. Setzt r["wash"] = Kaufdatum."""
+    from datetime import date as _d, timedelta as _td
+    buys = {}
+    for src in (closed or {}, open_positions or {}):
+        for sym, lots in src.items():
+            for p in lots or []:
+                bd = str((p or {}).get("buy_date", ""))[:10]
+                if bd:
+                    sd = str((p or {}).get("sell_date", "") or "")[:10]
+                    buys.setdefault(sym, set()).add((bd, sd))
+    for r in gain_rows:
+        r["wash"] = ""
+        if r["gain"] is None or r["gain"] >= 0 or r["crypto"]:
+            continue
+        try:
+            sd = _d.fromisoformat(r["sell_date"])
+        except ValueError:
+            continue
+        lo, hi = (sd - _td(days=window)).isoformat(), (sd + _td(days=window)).isoformat()
+        own = r["buy_date"]
+        # Ersatzkauf: im Fenster gekauft und nach dem Verkauf noch gehalten
+        # (ein Lot, das bis zum selben Verkauf wieder weg ist, zählt nicht)
+        hits = sorted(b for b, s in buys.get(r["sym"], ())
+                      if lo <= b <= hi and b != own and not (s and s <= r["sell_date"]))
+        if hits:
+            r["wash"] = hits[0]
+    return gain_rows
+
+
+def _gsum(rows, pick=lambda r: True):
+    return sum(r["gain"] for r in rows if r["gain"] is not None and pick(r))
+
+
+def apply_gains_and_cash(country_code, summary, gains, cash):
+    """Ergänzt die Zusammenfassung um realisierte Gewinne und Kontosaldo.
+
+    gains: {"lo", "hi", "rows": compact_gain_rows(...), "errors": [...]} oder None
+    cash:  {"status": "ok"|"not_setup"|"none", "date", "final",
+            "detail": [[cur, betrag, kurs, wert]], "total"} oder None
+    Verändert ``summary`` in-place; Schlüssel mit Präfix ``g_`` / ``cash``."""
+    summary["gains"] = gains
+    summary["cash"] = cash
+    rows = (gains or {}).get("rows") or []
+    ok = [r for r in rows if r["gain"] is not None]
+    summary["g_n"] = len(rows)
+    summary["g_missing"] = len(rows) - len(ok)
+    summary["g_est"] = sum(1 for r in rows if r["est"])
+    summary["g_gains"] = sum(r["gain"] for r in ok if r["gain"] > 0)
+    summary["g_losses"] = sum(r["gain"] for r in ok if r["gain"] < 0)
+    summary["g_net"] = summary["g_gains"] + summary["g_losses"]
+    cash_total = (cash or {}).get("total", 0.0) if (cash or {}).get("status") == "ok" else 0.0
+    summary["cash_total"] = cash_total
+
+    if country_code == "CH":
+        # Kapitalgewinne im Privatvermögen steuerfrei; Kontoguthaben = Vermögen
+        summary["wealth_total"] = summary.get("total_market_value", 0.0) + cash_total
+
+    elif country_code == "DE":
+        rules = TAX_RULES["DE"]
+        stock_net = _gsum(ok, lambda r: not r["crypto"])
+        frei_left = max(0.0, rules["freistellungsauftrag"] - summary.get("total_dividends", 0.0))
+        taxable = max(0.0, stock_net - frei_left)
+        abg = taxable * rules["withholding_rate"]
+        soli = abg * rules["soli_rate"]
+        days = GAIN_RULES["DE_crypto_holding_days"]
+        summary.update({
+            "g_stock_net": stock_net,
+            "g_frei_left": min(frei_left, max(0.0, stock_net)),
+            "g_taxable": taxable,
+            "g_abgeltung": abg, "g_soli": soli, "g_tax": abg + soli,
+            "g_loss_carry": min(0.0, stock_net),
+            "g_crypto_short": _gsum(ok, lambda r: r["crypto"] and (r["days"] or 0) <= days),
+            "g_crypto_long": _gsum(ok, lambda r: r["crypto"] and (r["days"] or 0) > days),
+            "total_tax_all": summary.get("total_tax", 0.0) + abg + soli,
+        })
+
+    elif country_code == "AT":
+        rate = TAX_RULES["AT"]["kest_rate"]
+
+        def _new(r):
+            lim = GAIN_RULES["AT_crypto_new_from" if r["crypto"] else "AT_new_assets_from"]
+            return (r["buy_date"] or "9999") >= lim
+        net_new = _gsum(ok, _new)
+        kest_gain = max(0.0, net_new) * rate
+        # Verlustausgleich: Verluste mindern die KESt auf Dividenden (nicht die
+        # ausländische Quellensteuer)
+        credit = min(max(0.0, -net_new) * rate, summary.get("total_kest_div", 0.0))
+        summary.update({
+            "g_net_new": net_new,
+            "g_old_free": _gsum(ok, lambda r: not _new(r)),
+            "g_loss_credit": credit,
+            "total_kest_gain": kest_gain,
+        })
+        summary["total_tax"] = (summary.get("total_kest_div", 0.0) + kest_gain
+                                + summary.get("total_foreign_tax", 0.0)
+                                + summary.get("total_kest_age", 0.0) - credit)
+
+    elif country_code == "UK":
+        rules = TAX_RULES["UK"]
+        net = summary["g_net"]
+        taxable = max(0.0, net - rules["cgt_allowance"])
+        summary.update({
+            "g_cgt_allowance": rules["cgt_allowance"],
+            "g_taxable": taxable,
+            "g_cgt_basic": taxable * rules["cgt_basic_rate"],
+            "g_cgt_higher": taxable * rules["cgt_higher_rate"],
+        })
+
+    elif country_code == "US":
+        lt_days = GAIN_RULES["US_longterm_days"]
+        short = _gsum(ok, lambda r: (r["days"] or 0) <= lt_days)
+        long_ = _gsum(ok, lambda r: (r["days"] or 0) > lt_days)
+        # Netting: Verluste der einen Art mindern Gewinne der anderen
+        lt_taxable = max(0.0, long_ + min(0.0, short))
+        st_taxable = max(0.0, short + min(0.0, long_))
+        net = short + long_
+        summary.update({
+            "g_short": short, "g_long": long_,
+            "g_lt_taxable": lt_taxable, "g_st_taxable": st_taxable,
+            "g_lt_tax_est": lt_taxable * GAIN_RULES["US_lt_rate_est"],
+            "g_loss_deduct": min(GAIN_RULES["US_loss_deduction"], max(0.0, -net)),
+            "g_loss_carry": min(0.0, net + GAIN_RULES["US_loss_deduction"]),
+            "g_wash_n": sum(1 for r in ok if r.get("wash")),
+            "g_wash_sum": sum(r["gain"] for r in ok if r.get("wash")),
+        })
+    return summary
+
+
+def extra_summary_lines(country_code, summary):
+    """Zusätzliche Zeilen (Kontosaldo, realisierte Gewinne) für Dialog und Exporte.
+    Liste von (text, betrag|None, stil); stil: head, bold, tax, net, info, warn."""
+    lines = []
+    cash = summary.get("cash") or {}
+    gains = summary.get("gains")
+    st = cash.get("status")
+    # ── Kontosaldo ──────────────────────────────────────────────────────────
+    if st == "ok":
+        dkey = "tax_cash_head_final" if cash.get("final") else "tax_cash_head_today"
+        lines.append((TRT(dkey, date=_fmt_iso(cash.get("date", ""))), None, "head"))
+        for cur, amt, rate, val in cash.get("detail") or []:
+            if cur == summary.get("currency"):
+                lines.append((TRT("tax_cash_line_same", cur=cur), val, "info"))
+            else:
+                lines.append((TRT("tax_cash_line", cur=cur, amt=_fmt(amt),
+                                  rate=_fmt(rate, 4)), val, "info"))
+        lines.append((TRT("tax_cash_total"), cash.get("total", 0.0), "bold"))
+        if cash.get("fx_missing"):
+            lines.append((TRT("tax_cash_fx_missing", items=", ".join(cash["fx_missing"])),
+                          None, "warn"))
+        if country_code == "CH":
+            lines.append((TRT("tax_ch_wealth_total"), summary.get("wealth_total", 0.0), "bold"))
+            lines.append((TRT("tax_ch_wealth_note"), None, "info"))
+    elif st == "not_setup" and country_code == "CH":
+        lines.append((TRT("tax_cash_not_setup"), None, "info"))
+
+    # ── Realisierte Gewinne ──────────────────────────────────────────────────
+    if not gains or not summary.get("g_n"):
+        if gains is not None:
+            lines.append((TRT("tax_g_none", lo=_fmt_iso(gains.get("lo", "")),
+                              hi=_fmt_iso(gains.get("hi", ""))), None, "info"))
+        return lines
+    lines.append((TRT("tax_g_head", lo=_fmt_iso(gains["lo"]), hi=_fmt_iso(gains["hi"]),
+                      n=summary["g_n"]), None, "head"))
+    lines.append((TRT("tax_g_gains"), summary["g_gains"], "info"))
+    lines.append((TRT("tax_g_losses"), summary["g_losses"], "info"))
+    lines.append((TRT("tax_g_net"), summary["g_net"], "bold"))
+
+    if country_code == "CH":
+        lines.append((TRT("tax_g_ch_free"), None, "info"))
+    elif country_code == "DE":
+        lines.append((TRT("tax_g_de_stock_net"), summary["g_stock_net"], "info"))
+        if summary["g_frei_left"] > 0:
+            lines.append((TRT("tax_g_de_frei_left"), summary["g_frei_left"], "info"))
+        lines.append((TRT("tax_g_de_taxable"), summary["g_taxable"], "info"))
+        lines.append((TRT("tax_g_de_tax"), summary["g_tax"], "tax"))
+        lines.append((TRT("tax_g_de_total_all"), summary["total_tax_all"], "tax"))
+        if summary["g_loss_carry"] < 0:
+            lines.append((TRT("tax_g_de_loss_carry"), summary["g_loss_carry"], "info"))
+        if summary["g_crypto_short"] or summary["g_crypto_long"]:
+            lines.append((TRT("tax_g_de_crypto",
+                              short=_fmt(summary["g_crypto_short"]),
+                              long=_fmt(summary["g_crypto_long"]),
+                              frei=_fmt(GAIN_RULES["DE_crypto_freigrenze"], 0),
+                              cur=summary.get("currency", "")), None, "info"))
+        lines.append((TRT("tax_g_de_note"), None, "info"))
+    elif country_code == "AT":
+        lines.append((TRT("tax_g_at_net_new"), summary["g_net_new"], "info"))
+        if summary["g_old_free"]:
+            lines.append((TRT("tax_g_at_old_free"), summary["g_old_free"], "info"))
+        lines.append((TRT("tax_g_at_kest"), summary["total_kest_gain"], "tax"))
+        if summary["g_loss_credit"]:
+            lines.append((TRT("tax_g_at_loss_credit"), -summary["g_loss_credit"], "net"))
+        lines.append((TRT("tax_g_at_note"), None, "info"))
+    elif country_code == "UK":
+        lines.append((TRT("tax_g_uk_allowance"), summary["g_cgt_allowance"], "info"))
+        lines.append((TRT("tax_g_uk_taxable"), summary["g_taxable"], "info"))
+        lines.append((TRT("tax_g_uk_basic"), summary["g_cgt_basic"], "tax"))
+        lines.append((TRT("tax_g_uk_higher"), summary["g_cgt_higher"], "tax"))
+        if summary["g_net"] < 0:
+            lines.append((TRT("tax_g_uk_loss"), None, "info"))
+        lines.append((TRT("tax_g_uk_note"), None, "info"))
+    elif country_code == "US":
+        lines.append((TRT("tax_g_us_short"), summary["g_short"], "info"))
+        lines.append((TRT("tax_g_us_long"), summary["g_long"], "info"))
+        lines.append((TRT("tax_g_us_st_taxable"), summary["g_st_taxable"], "info"))
+        lines.append((TRT("tax_g_us_lt_tax"), summary["g_lt_tax_est"], "tax"))
+        if summary["g_loss_deduct"]:
+            lines.append((TRT("tax_g_us_loss_deduct"), summary["g_loss_deduct"], "info"))
+        if summary["g_loss_carry"] < 0:
+            lines.append((TRT("tax_g_us_loss_carry"), summary["g_loss_carry"], "info"))
+        if summary.get("g_wash_n"):
+            lines.append((TRT("tax_g_us_wash", n=summary["g_wash_n"]),
+                          summary["g_wash_sum"], "warn"))
+        lines.append((TRT("tax_g_us_note"), None, "info"))
+
+    if summary["g_missing"]:
+        lines.append((TRT("tax_g_missing", n=summary["g_missing"]), None, "warn"))
+    if summary["g_est"]:
+        lines.append((TRT("tax_g_est", n=summary["g_est"]), None, "warn"))
+    if (gains or {}).get("errors"):
+        lines.append((TRT("tax_g_errors", items=", ".join(sorted(set(gains["errors"])))),
+                      None, "warn"))
+    return lines
+
+
+def gain_row_note(country_code, r):
+    """Hinweistext je Verkauf (Tabelle + Exporte)."""
+    notes = []
+    if r.get("est"):
+        notes.append(TRT("tax_g_note_est"))
+    if r.get("staking"):
+        notes.append(TRT("tax_g_note_staking"))
+    days = r.get("days") or 0
+    if country_code == "US":
+        notes.append(TRT("tax_g_note_long") if days > GAIN_RULES["US_longterm_days"]
+                     else TRT("tax_g_note_short"))
+        if r.get("wash"):
+            notes.append(TRT("tax_g_note_wash", date=_fmt_iso(r["wash"])))
+    elif country_code == "AT":
+        lim = GAIN_RULES["AT_crypto_new_from" if r.get("crypto") else "AT_new_assets_from"]
+        if (r.get("buy_date") or "9999") < lim:
+            notes.append(TRT("tax_g_note_old"))
+    elif country_code == "DE" and r.get("crypto"):
+        notes.append(TRT("tax_g_note_crypto_free") if days > GAIN_RULES["DE_crypto_holding_days"]
+                     else TRT("tax_g_note_crypto_tax"))
+    elif r.get("crypto"):
+        notes.append(TRT("tax_g_note_crypto"))
+    if r.get("gain") is None:
+        notes.append(TRT("tax_g_note_missing"))
+    return ", ".join(notes)
+
+
+def gain_table_headers(cur):
+    return [TRT("tax_col_ticker"), TRT("tax_g_col_buy"), TRT("tax_g_col_sell"),
+            TRT("tax_col_qty"), TRT("tax_g_col_days"), TRT("tax_g_col_cost", cur=cur),
+            TRT("tax_g_col_proceeds", cur=cur), TRT("tax_g_col_gain", cur=cur),
+            TRT("tax_col_note")]
+
+
+def gain_table_values(country_code, r):
+    """Werte einer Verkaufszeile (Zahlen roh, None = fehlt)."""
+    return [r["sym"], _fmt_iso(r["buy_date"]), _fmt_iso(r["sell_date"]), r["qty"],
+            r.get("days"), r.get("cost"), r.get("proceeds"), r.get("gain"),
+            gain_row_note(country_code, r)]
+
+
+def _make_gains_table(country_code, summary, num_fn):
+    from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtGui import QColor
+    rows = (summary.get("gains") or {}).get("rows") or []
+    cur = summary.get("currency", "")
+    headers = gain_table_headers(cur)
+    t = QTableWidget(len(rows), len(headers))
+    t.setHorizontalHeaderLabels(headers)
+    t.setAlternatingRowColors(True)
+    t.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+    t.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+    t.verticalHeader().setVisible(False)
+    t.horizontalHeader().setStretchLastSection(True)
+    right = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+    left = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+    for i, r in enumerate(rows):
+        vals = gain_table_values(country_code, r)
+        for c, v in enumerate(vals):
+            if c in (0, 1, 2, 8):
+                txt, al = str(v or ""), left
+            elif c == 3:
+                txt, al = f"{v:g}", right
+            elif c == 4:
+                txt, al = ("–" if v is None else str(v)), right
+            else:
+                txt = "–" if v is None else num_fn(v)
+                if c == 6 and r.get("est") and v is not None:
+                    txt = "≈ " + txt
+                al = right
+            it = QTableWidgetItem(txt)
+            it.setTextAlignment(al)
+            if c == 7 and v is not None and abs(v) >= 0.005:
+                it.setForeground(QColor("#27ae60" if v > 0 else "#c0392b"))
+            if c == 8 and r.get("wash"):
+                it.setForeground(QColor("#e67e22"))
+            t.setItem(i, c, it)
+    t.resizeColumnsToContents()
+    if not rows:
+        t.setRowCount(1)
+        it = QTableWidgetItem(TRT("tax_g_none", lo=_fmt_iso(summary["gains"].get("lo")),
+                                  hi=_fmt_iso(summary["gains"].get("hi"))))
+        t.setItem(0, 0, it)
+        t.setSpan(0, 0, 1, len(headers))
+    return t
+
+
+def after_tax_estimate(residence, gain_rows, dividends, base, fx_to_base=None):
+    """Geschätzte Steuern eines Jahres für „Gesamtertrag nach Steuern“.
+
+    residence:  Steuerwohnsitz aus dem Konto (CH, DE, AT, UK, US, OTHER)
+    gain_rows:  compact_gain_rows(...) eines Jahres (Beträge in ``base``)
+    dividends:  [(brutto, einbehaltene Quellensteuer)] des Jahres in ``base``
+    fx_to_base: Funktion cur → Kurs nach base (für Freibeträge in EUR/GBP), optional
+    Gibt None zurück (CH/OTHER: nicht schätzbar) oder
+    {"tax", "gain_tax", "div_tax", "allow_ignored", "kind"}.
+    Dividenden sind im Konto schon um die Quellensteuer gekürzt; hier kommt nur
+    die zusätzliche Steuer im Wohnsitzland dazu (DE/AT: Pauschalsatz minus
+    einbehaltene Quellensteuer). UK/US: Dividenden je nach Einkommen → nicht geschätzt."""
+    ok = [r for r in gain_rows or [] if r.get("gain") is not None]
+    base = (base or "").upper()
+    allow_ignored = False
+
+    def allowance(amount, cur):
+        nonlocal allow_ignored
+        if cur == base:
+            return amount
+        rate = fx_to_base(cur) if fx_to_base else None
+        if rate:
+            return amount * rate
+        allow_ignored = True
+        return 0.0
+
+    if residence in ("DE", "AT"):
+        if residence == "DE":
+            flat = TAX_RULES["DE"]["effective_rate"]
+            gains = max(0.0, _gsum(ok, lambda r: not r["crypto"]))
+            crypto = _gsum(ok, lambda r: r["crypto"]
+                           and (r["days"] or 0) <= GAIN_RULES["DE_crypto_holding_days"])
+            # Freigrenze (nicht Freibetrag): darunter steuerfrei, darüber alles
+            if crypto < allowance(GAIN_RULES["DE_crypto_freigrenze"], "EUR"):
+                crypto = 0.0
+            allow = allowance(TAX_RULES["DE"]["freistellungsauftrag"], "EUR")
+        else:
+            flat = TAX_RULES["AT"]["kest_rate"]
+
+            def _new(r):
+                lim = GAIN_RULES["AT_crypto_new_from" if r["crypto"] else "AT_new_assets_from"]
+                return (r["buy_date"] or "9999") >= lim
+            gains = _gsum(ok, _new)          # Verluste mindern auch Dividenden
+            crypto, allow = 0.0, 0.0
+        gross = sum(g for g, _t in dividends)
+        credit = sum(min(t, flat * g) for g, t in dividends if g > 0)
+        taxable = max(0.0, gross + gains - allow)
+        total = max(0.0, flat * taxable - credit) + max(0.0, crypto) * flat
+        div_part = max(0.0, flat * max(0.0, gross - allow) - credit)
+        div_part = min(div_part, total)
+        return {"tax": total, "gain_tax": total - div_part, "div_tax": div_part,
+                "allow_ignored": allow_ignored, "kind": residence}
+    if residence == "UK":
+        net = _gsum(ok)
+        taxable = max(0.0, net - allowance(TAX_RULES["UK"]["cgt_allowance"], "GBP"))
+        tax = taxable * GAIN_RULES["UK_cgt_rate_est"]
+        return {"tax": tax, "gain_tax": tax, "div_tax": 0.0,
+                "allow_ignored": allow_ignored, "kind": "UK"}
+    if residence == "US":
+        lt_days = GAIN_RULES["US_longterm_days"]
+        short = _gsum(ok, lambda r: (r["days"] or 0) <= lt_days)
+        long_ = _gsum(ok, lambda r: (r["days"] or 0) > lt_days)
+        tax = (max(0.0, long_ + min(0.0, short)) * GAIN_RULES["US_lt_rate_est"]
+               + max(0.0, short + min(0.0, long_)) * GAIN_RULES["US_st_rate_est"])
+        return {"tax": tax, "gain_tax": tax, "div_tax": 0.0,
+                "allow_ignored": False, "kind": "US"}
+    return None
+
+
+def _fmt_iso(iso):
+    """'2026-12-31' → '31.12.2026' (EN: 2026-12-31)."""
+    s = str(iso or "")[:10]
+    if len(s) == 10 and get_tax_language() != "EN":
+        return f"{s[8:10]}.{s[5:7]}.{s[0:4]}"
+    return s
+
+
+def _rg_cache_load(rg):
+    """Tages-Cache → Sitzungs-Caches von realized_gains (Währungen, Kurse, FX)."""
+    c = _day_cache()
+    for k, v in (c.get("rg_cur") or {}).items():
+        rg._CUR_CACHE.setdefault(k, v)
+    for k, v in (c.get("rg_price") or {}).items():
+        sym, _, d = k.rpartition("|")
+        rg._PRICE_CACHE.setdefault((sym, d), v)
+    for k, v in (c.get("rg_fx") or {}).items():
+        cur, _, base = k.partition("|")
+        ser = rg._FX_CACHE.get((cur, base))
+        if not ser or len(ser) < len(v):
+            rg._FX_CACHE[(cur, base)] = [tuple(x) for x in v]
+
+
+def _rg_cache_store(rg):
+    global _DAY_CACHE_DIRTY
+    c = _day_cache()
+    c["rg_cur"] = dict(rg._CUR_CACHE)
+    c["rg_price"] = {f"{s}|{d}": p for (s, d), p in rg._PRICE_CACHE.items()}
+    c["rg_fx"] = {f"{a}|{b}": [list(x) for x in ser] for (a, b), ser in rg._FX_CACHE.items()}
+    _DAY_CACHE_DIRTY = True
+
+
+def load_gains_and_cash(country_code, year, stmt_cur, closed=None, account=None,
+                        positions_by_sym=None, known_cur=None, progress=None):
+    """Lädt realisierte Gewinne der Steuerperiode und den Kontosaldo (synchron,
+    Netzwerk-Abrufe nacheinander). Gibt (gains, cash) zurück."""
+    from datetime import date as _d
+    gains = cash = None
+    if closed is not None:
+        lo, hi = gains_period(country_code, year)
+        try:
+            import realized_gains as _rg
+            _rg_cache_load(_rg)
+            rows, errors = _rg.rows_for_period(closed, stmt_cur, known_cur, account,
+                                               lo, hi, progress=progress)
+            _rg_cache_store(_rg)
+            g_rows = compact_gain_rows(rows)
+            if country_code == "US":
+                mark_wash_sales(g_rows, closed, positions_by_sym)
+            gains = {"lo": lo, "hi": hi, "rows": g_rows, "errors": errors}
+        except Exception as e:
+            import logging
+            logging.getLogger("StockMonitor").warning(
+                "Steuerauszug: realisierte Gewinne fehlgeschlagen: %s", e, exc_info=True)
+            gains = {"lo": lo, "hi": hi, "rows": [], "errors": [str(e)]}
+    if account is not None:
+        today = _d.today()
+        final = today > _d(year, 12, 31)
+        day = _d(year, 12, 31) if final else today
+        try:
+            import dividend_account as _da
+            bal = _da.balance_at(account, positions_by_sym or {}, day.isoformat(), known_cur)
+        except Exception:
+            bal = None
+        if bal is None:
+            cash = {"status": "not_setup"}
+        elif not bal:
+            cash = {"status": "none"}
+        else:
+            detail, total, fx_missing = [], 0.0, []
+            for cur in sorted(bal):
+                if progress:
+                    progress(TRT("tax_loading_fx_cash", cur=cur))
+                rate = (fx_on(cur, stmt_cur, day, year) if final else fx_now(cur, stmt_cur))
+                if not rate:
+                    fx_missing.append(cur)
+                    rate = 0.0
+                val = bal[cur] * rate
+                total += val
+                detail.append([cur, bal[cur], rate, val])
+            cash = {"status": "ok", "date": day.isoformat(), "final": final,
+                    "detail": detail, "total": total, "fx_missing": fx_missing}
+    return gains, cash
+
+
 # ── PyQt6 Dialog-Klasse ──────────────────────────────────────────────────────
 
-def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="CH"):
+def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="CH",
+                      account=None, closed=None, positions_by_sym=None, known_cur=None):
     """
     Erstellt und gibt einen TaxDialog zurück.
     Wird von PortfolioDialog via show_tax_dialog() aufgerufen.
+    account:          Dividendenkonto (Kontosaldo per 31.12., Ansicht „Alles“)
+    closed:           Verkaufshistorie {sym: [lots]} (realisierte Gewinne)
+    positions_by_sym: offene + verkaufte Lots (Käufe/Verkäufe im Konto)
+    known_cur:        {sym: Yahoo-Währung} aus dem Kurs-Cache
     """
     global _TAX_NUMBER_FORMAT
     _TAX_NUMBER_FORMAT = number_format
@@ -1301,6 +1952,32 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
 
     rows, summary = _calc_with_progress(positions)
 
+    # Realisierte Gewinne der Steuerperiode + Kontosaldo (eigener Thread, damit
+    # der Ladescreen weiterläuft; Abrufe darin nacheinander)
+    _extras = {"gains": None, "cash": None}
+    if closed is not None or account is not None:
+        import threading as _thr_x
+        _msg = [""]
+        def _work_x():
+            try:
+                _extras["gains"], _extras["cash"] = load_gains_and_cash(
+                    country_code, rules["year"], _stmt_cur, closed, account,
+                    positions_by_sym, known_cur,
+                    progress=lambda m: _msg.__setitem__(0, m))
+            except Exception:
+                import logging
+                logging.getLogger("StockMonitor").warning(
+                    "Steuerauszug: Gewinne/Konto fehlgeschlagen", exc_info=True)
+        _th_x = _thr_x.Thread(target=_work_x, daemon=True)
+        _th_x.start()
+        _status_lbl.setText(TRT("tax_loading_gains"))
+        while _th_x.is_alive():
+            _sym_lbl.setText(_msg[0])
+            _QApp.processEvents()
+            _th_x.join(0.05)
+        apply_gains_and_cash(country_code, summary, _extras["gains"], _extras["cash"])
+    save_day_cache()
+
     _anim_timer.stop()
     load_dlg.close()
 
@@ -1364,7 +2041,12 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
     help_btn = QPushButton(TRT("tax_btn_help"))
     help_btn.setToolTip(TRT("tax_tip_help"))
 
-    _hdr_btns = [save_btn, load_btn, export_btn, form_btn, help_btn, close_btn]
+    reload_btn = QPushButton(TRT("tax_btn_reload"))
+    reload_btn.setToolTip(TRT("tax_btn_reload").strip() + "\n" +
+                          TRT("tax_tip_reload", time=_day_cache().get("time", "–")))
+    reload_btn.setProperty("compact_text", "🔄")   # schmaler Bildschirm: nur Symbol
+
+    _hdr_btns = [reload_btn, save_btn, load_btn, export_btn, form_btn, help_btn, close_btn]
     if country_code == "AT":
         age_btn = QPushButton(TRT("tax_btn_age"))
         age_btn.setToolTip(TRT("tax_tip_age"))
@@ -1485,36 +2167,101 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
         tbl.resizeColumnsToContents()
 
     _fill_table()
-    main_layout.addWidget(tbl)
+    if summary.get("gains") is not None:
+        from PyQt6.QtWidgets import QTabWidget
+        _tabs = QTabWidget()
+        _tabs.addTab(tbl, TRT("tax_tab_positions"))
+        _g_tbl = _make_gains_table(country_code, summary, _num)
+        _tabs.addTab(_g_tbl, TRT("tax_tab_gains", n=summary.get("g_n", 0)))
+        main_layout.addWidget(_tabs, stretch=1)
+    else:
+        main_layout.addWidget(tbl, stretch=1)
 
     # ── Zusammenfassung ───────────────────────────────────────────────────────
     sumframe = QFrame()
+    sumframe.setObjectName("taxSumFrame")
     sumframe.setFrameShape(QFrame.Shape.StyledPanel)
     if _dm:
         sumframe.setStyleSheet(
-            "QFrame{background:#1e2535; border:1px solid #2a3a4a; border-radius:5px;}"
+            "QFrame#taxSumFrame{background:#1e2535; border:1px solid #2a3a4a; border-radius:5px;}"
             "QLabel{font-size:12px;}"
         )
     else:
         sumframe.setStyleSheet(
-            "QFrame{background:#f8f9fa; border:1px solid #dde; border-radius:5px;}"
+            "QFrame#taxSumFrame{background:#f8f9fa; border:1px solid #dde; border-radius:5px;}"
             "QLabel{font-size:12px;}"
         )
-    sum_layout = QVBoxLayout(sumframe)
-    sum_layout.setContentsMargins(12, 8, 12, 8)
+    _sum_outer = QHBoxLayout(sumframe)
+    _sum_outer.setContentsMargins(12, 8, 12, 8)
+    _sum_outer.setSpacing(24)
+    _sum_left_w = QWidget()
+    _sum_left_w.setStyleSheet("background:transparent;")
+    sum_layout = QVBoxLayout(_sum_left_w)
+    sum_layout.setContentsMargins(0, 0, 6, 0)
     sum_layout.setSpacing(3)
+    _sum_left_scroll = QScrollArea()
+    _sum_left_scroll.setWidgetResizable(True)
+    _sum_left_scroll.setFrameShape(QFrame.Shape.NoFrame)
+    _sum_left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    _sum_left_scroll.setStyleSheet("QScrollArea{background:transparent;}")
+    _sum_left_scroll.viewport().setAutoFillBackground(False)
+    _sum_left_scroll.setWidget(_sum_left_w)
+    _sum_left_scroll.setMinimumHeight(170)
+    _sum_right_w = QWidget()
+    _sum_right_w.setStyleSheet("background:transparent;")
+    _sum_right = QVBoxLayout(_sum_right_w)
+    _sum_right.setContentsMargins(0, 0, 6, 0)
+    _sum_right.setSpacing(3)
+    _sum_scroll = QScrollArea()
+    _sum_scroll.setWidgetResizable(True)
+    _sum_scroll.setFrameShape(QFrame.Shape.NoFrame)
+    _sum_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    _sum_scroll.setStyleSheet("QScrollArea{background:transparent;}")
+    _sum_scroll.viewport().setAutoFillBackground(False)
+    _sum_scroll.setWidget(_sum_right_w)
+    _sum_scroll.setMinimumHeight(170)
+    _sum_outer.addWidget(_sum_left_scroll, 1)
+    _sum_outer.addWidget(_sum_scroll, 1)
+    _sum_target = [sum_layout]
 
     def _sum_row(label, value, bold=False, color=None):
         lbl = QLabel(f"<b>{label}</b>  {value}" if bold else f"{label}  {value}")
+        lbl.setWordWrap(True)
         if color:
             lbl.setStyleSheet(f"color:{color};")
-        sum_layout.addWidget(lbl)
+        _sum_target[0].addWidget(lbl)
+
+    _muted = "#999" if _dm else "#666"
+    _STYLE_COLOR = {"tax": "#c0392b", "net": "#27ae60", "warn": "#e67e22", "info": None}
+
+    def _fill_extra():
+        _lines = extra_summary_lines(country_code, summary)
+        _sum_scroll.setVisible(bool(_lines))
+        _sum_target[0] = _sum_right if _lines else sum_layout
+        for _txt, _val, _st in _lines:
+            if _st == "head":
+                _l = QLabel(f"<b>{_txt}</b>")
+                _l.setStyleSheet("margin-top:4px;")
+                _l.setWordWrap(True)
+                _sum_right.addWidget(_l)
+            elif _val is None:
+                _l = QLabel(_txt)
+                _l.setWordWrap(True)
+                _l.setStyleSheet("font-size:11px; color:%s;" % (
+                    _STYLE_COLOR["warn"] if _st == "warn" else _muted))
+                _sum_right.addWidget(_l)
+            else:
+                _sum_row(_txt, _num(_val) + f"  {cur}", bold=(_st == "bold"),
+                         color=_STYLE_COLOR.get(_st))
+        _sum_right.addStretch()
+        _sum_target[0] = sum_layout
 
     def _fill_summary():
-        while sum_layout.count():
-            _it = sum_layout.takeAt(0)
-            if _it.widget():
-                _it.widget().deleteLater()
+        for _lay in (sum_layout, _sum_right):
+            while _lay.count():
+                _it = _lay.takeAt(0)
+                if _it.widget():
+                    _it.widget().deleteLater()
         _sum_row(TRT("tax_sum_market_val"),
                  _num(summary["total_market_value"]) + f"  {cur}", bold=True)
         _sum_row(TRT("tax_sum_gross_div"),
@@ -1525,8 +2272,9 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
                      _num(summary["total_kest_div"]) + f"  {cur}", color="#c0392b")
             _sum_row(TRT("tax_sum_foreign_tax"),
                      _num(summary["total_foreign_tax"]) + f"  {cur}", color="#c0392b")
-            _sum_row(TRT("tax_sum_kest_gain"),
-                     _num(summary["total_kest_gain"]) + f"  {cur}", color="#e67e22")
+            if summary.get("gains") is None:
+                _sum_row(TRT("tax_sum_kest_gain"),
+                         _num(summary["total_kest_gain"]) + f"  {cur}", color="#e67e22")
             _sum_row(TRT("tax_sum_age"),
                      _num(summary.get("total_age", 0)) + f"  {cur}")
             _sum_row(TRT("tax_sum_kest_age"),
@@ -1575,6 +2323,8 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
                      _num(summary["total_tax"]) + f"  {cur}", bold=True, color="#c0392b")
             _sum_row(TRT("tax_sum_net_div_us"),
                      _num(summary["net_dividends"]) + f"  {cur}", bold=True, color="#27ae60")
+        sum_layout.addStretch()
+        _fill_extra()
 
 
     _fill_summary()
@@ -1645,6 +2395,9 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
                 _new_rows, _new_sum = calc_fn(positions)
                 rows[:] = _new_rows
                 summary.clear(); summary.update(_new_sum)
+                if _extras["gains"] is not None or _extras["cash"] is not None:
+                    apply_gains_and_cash(country_code, summary,
+                                         _extras["gains"], _extras["cash"])
                 _fill_table()
                 _fill_summary()
         age_btn.clicked.connect(_on_age)
@@ -1735,6 +2488,14 @@ def _build_tax_dialog(country_code, portfolio_data, parent=None, number_format="
 
     load_btn.clicked.connect(_on_load)
     close_btn.clicked.connect(dlg.close)
+
+    # ── Neu laden: Cache leeren, Aufrufer baut den Dialog neu auf ─────────────
+    dlg.reload_requested = False
+    def _on_reload():
+        clear_day_cache()
+        dlg.reload_requested = True
+        dlg.accept()
+    reload_btn.clicked.connect(_on_reload)
 
     # ── Hilfe-Button ──────────────────────────────────────────────────────────
     _CSS = """<style>
@@ -2319,6 +3080,10 @@ def _fit_tax_dialog(dlg, scr, update_btn, hdr_btns, tbl):
         update_btn.hide()                       # Platzhalter, noch ohne Funktion
         for b in hdr_btns:
             b.setStyleSheet(b.styleSheet().replace("padding:4px 14px;", "padding:4px 6px;"))
+            if b.property("compact_text"):
+                b.setText(b.property("compact_text"))
+        if dlg.layout() is not None:
+            dlg.layout().activate()
         need_w = dlg.sizeHint().width() + 10
     if dlg.minimumSizeHint().height() > max_h:
         tbl.setMinimumHeight(120)
@@ -3082,6 +3847,93 @@ def _export_tax_form(parent_widget, tax_data, country_code):
     dlg.exec()
 
 
+def _form_gains_section(story, tax_data, country):
+    """Steuerformular-PDF: Kontosaldo + realisierte Gewinne mit Formularfeldern
+    (Orientierungshilfe). CH/DE/AT deutsch, UK/US englisch wie die Formulare."""
+    from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from xml.sax.saxutils import escape as _esc
+    sm = tax_data.get("summary") or {}
+    cash = sm.get("cash") or {}
+    if sm.get("gains") is None and cash.get("status") != "ok":
+        return
+    en = country in ("UK", "US")
+    cur = sm.get("currency", "")
+    styles = getSampleStyleSheet()
+    small = ParagraphStyle("fg", parent=styles["Normal"], fontSize=8)
+
+    def amt(v):
+        return f"{cur} {_fmt(v)}"
+    rows = []
+    if cash.get("status") == "ok" and country == "CH":
+        rows.append(["5", "Bankguthaben (Konto) per " + _fmt_iso(cash.get("date")),
+                     amt(cash.get("total", 0)), "Wertschriftenverzeichnis: Konten/Guthaben"
+                     " (Vermögenssteuer)"])
+        rows.append(["", "Steuerwert Wertschriften + Konto", amt(sm.get("wealth_total", 0)),
+                     "Vermögenssteuer (kantonal)"])
+    if sm.get("g_n"):
+        lo, hi = _fmt_iso(sm["gains"]["lo"]), _fmt_iso(sm["gains"]["hi"])
+        if country == "CH":
+            rows.append(["", f"Realisierte Kursgewinne {lo} – {hi}", amt(sm["g_net"]),
+                         "Steuerfrei (Privatvermögen) – nicht eintragen"])
+        elif country == "DE":
+            rows.append(["KAP 20", "Gewinne aus Aktienveräusserungen (netto, ohne Krypto)",
+                         amt(max(0.0, sm["g_stock_net"])),
+                         "Nur bei ausländischem Depot; inländisches Depot: Steuerbescheinigung"])
+            if sm["g_stock_net"] < 0:
+                rows.append(["KAP 23", "Verluste aus Aktienveräusserungen",
+                             amt(-sm["g_stock_net"]), "Nur bei ausländischem Depot"])
+            rows.append(["", "Abgeltungssteuer + Soli auf Kursgewinne (Schätzung)",
+                         amt(sm["g_tax"]), "Nach Rest-Sparerpauschbetrag"])
+            if sm["g_crypto_short"]:
+                rows.append(["SO", "Krypto, Haltedauer bis 1 Jahr", amt(sm["g_crypto_short"]),
+                             "Anlage SO (private Veräusserungsgeschäfte), Freigrenze beachten"])
+        elif country == "AT":
+            rows.append(["E1kv", "Realisierte Wertsteigerungen Neuvermögen (netto)",
+                         amt(sm["g_net_new"]),
+                         "Nur bei ausländischem Depot: KZ 994 (Gewinne) / KZ 892 (Verluste)"])
+            rows.append(["", "KESt 27,5 % auf Kursgewinne", amt(sm["total_kest_gain"]),
+                         "Inländisches Depot: von der Bank abgeführt"])
+            if sm["g_old_free"]:
+                rows.append(["", "Altbestand (steuerfrei)", amt(sm["g_old_free"]), "Nicht eintragen"])
+        elif country == "UK":
+            rows.append(["SA108", f"Net gains {lo} – {hi}", amt(sm["g_net"]),
+                         "Capital Gains Summary (gains and losses)"])
+            rows.append(["", "Taxable gain after annual exempt amount", amt(sm["g_taxable"]),
+                         f"CGT 18 % / 24 %: {amt(sm['g_cgt_basic'])} / {amt(sm['g_cgt_higher'])}"])
+        elif country == "US":
+            rows.append(["Sch. D 7", "Net short-term capital gain/loss", amt(sm["g_short"]),
+                         "Form 8949 Part I"])
+            rows.append(["Sch. D 15", "Net long-term capital gain/loss", amt(sm["g_long"]),
+                         "Form 8949 Part II"])
+            if sm.get("g_wash_n"):
+                rows.append(["", f"Possible wash sales ({sm['g_wash_n']})", amt(sm["g_wash_sum"]),
+                             "Check 1099-B (code W, loss disallowed)"])
+    if not rows:
+        return
+    head = (["Field", "Description", "Amount", "Where to enter"] if en
+            else ["Feld", "Beschreibung", "Betrag", "Wo eintragen"])
+    data = [head] + [[r[0], Paragraph(_esc(r[1]), small), r[2], Paragraph(_esc(r[3]), small)]
+                     for r in rows]
+    title = ("Account balance and realized gains" if en
+             else "Kontosaldo und realisierte Gewinne")
+    story.append(Spacer(1, 8))
+    story.append(Paragraph(f"<b>{title}</b>", ParagraphStyle(
+        "h2g", parent=styles["Normal"], fontSize=10, spaceAfter=4)))
+    t = Table(data, colWidths=[1.8*cm, 6.2*cm, 3.2*cm, 5.8*cm])
+    t.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0),(-1,0),  colors.HexColor("#2c3e50")),
+        ("TEXTCOLOR",     (0,0),(-1,0),  colors.white),
+        ("FONTSIZE",      (0,0),(-1,-1), 8),
+        ("GRID",          (0,0),(-1,-1), 0.3, colors.HexColor("#cccccc")),
+        ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
+        ("ALIGN",         (2,1),(2,-1),  "RIGHT"),
+    ]))
+    story.append(t)
+
+
 def _export_ch_form_pdf(path, tax_data, canton_code, canton_name, year):
     """Wertschriftenverzeichnis CH (Formular DA-1) – Orientierungshilfe."""
     from reportlab.lib.pagesizes import A4
@@ -3327,11 +4179,12 @@ def _export_ch_form_pdf(path, tax_data, canton_code, canton_name, year):
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, YELL]),
     ]))
     story.append(st)
+    _form_gains_section(story, tax_data, "CH")
     story.append(Spacer(1, 8))
     story.append(HRFlowable(width="100%", thickness=0.4, color=colors.grey))
     story.append(Spacer(1, 3))
     story.append(Paragraph(
-        f"⚠️  <b>Orientierungshilfe – kein offizielles Steuerformular.</b> "
+        f"<b>Hinweis: Orientierungshilfe – kein offizielles Steuerformular.</b> "
         f"Bitte verwenden Sie den originalen Bankauszug (Depotauszug per 31.12.{year}) "
         f"und das Online-Steuerformular Ihres Kantons ({canton_name}). "
         f"Abweichungen von ca. 1–3 % möglich. "
@@ -3577,11 +4430,12 @@ def _export_de_form_pdf(path, tax_data, bl_code, bl_name, year):
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, YELL]),
     ]))
     story.append(kt2)
+    _form_gains_section(story, tax_data, "DE")
     story.append(Spacer(1, 8))
     story.append(HRFlowable(width="100%", thickness=0.4, color=colors.grey))
     story.append(Spacer(1, 3))
     story.append(Paragraph(
-        f"⚠️  <b>Orientierungshilfe – kein offizielles ELSTER-Formular.</b> "
+        f"<b>Hinweis: Orientierungshilfe – kein offizielles ELSTER-Formular.</b> "
         f"Bitte verwenden Sie die Jahressteuerbescheinigung Ihrer Depotbank "
         f"sowie ELSTER (elster.de). Kirchensteuer ({bl_name}) nicht berücksichtigt. "
         f"Abweichungen von ca. 1–3 % möglich. Erstellt mit Stock Monitor v5.0.",
@@ -3825,11 +4679,12 @@ def _export_at_form_pdf(path, tax_data, fa_code, fa_name, year):
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, YELL]),
     ]))
     story.append(e1t)
+    _form_gains_section(story, tax_data, "AT")
     story.append(Spacer(1, 8))
     story.append(HRFlowable(width="100%", thickness=0.4, color=colors.grey))
     story.append(Spacer(1, 3))
     story.append(Paragraph(
-        f"⚠️  <b>Orientierungshilfe – kein offizielles FinanzOnline-Formular.</b> "
+        f"<b>Hinweis: Orientierungshilfe – kein offizielles FinanzOnline-Formular.</b> "
         f"KESt wird bei österreichischem Depot automatisch durch die Depotbank abgeführt. "
         f"Bitte verwenden Sie den originalen Depotauszug per 31.12.{year}. "
         f"Verlustausgleich erfolgt automatisch (§ 93 EStG). "
@@ -4110,15 +4965,16 @@ def _export_uk_form_pdf(path, tax_data, nation_code, nation_name, year):
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, YELL]),
     ]))
     story.append(sat)
+    _form_gains_section(story, tax_data, "UK")
     story.append(Spacer(1, 8))
     story.append(HRFlowable(width="100%", thickness=0.4, color=colors.grey))
     story.append(Spacer(1, 3))
     story.append(Paragraph(
-        f"⚠️  <b>Orientation aid – not an official HMRC form.</b> "
+        f"<b>Note: Orientation aid – not an official HMRC form.</b> "
         f"Tax rates depend on total income. Basic Rate band: up to £50,270 total income. "
         f"Scotland has different dividend tax rates. "
         f"Please compare with your broker's Consolidated Tax Certificate and file via HMRC Self Assessment. "
-        f"Capital Gains are only taxable on realisation (disposal), not on unrealised gains shown here. "
+        f"Capital Gains are only taxable on realisation (disposal); unrealised gains shown above are not taxable. "
         f"Created with Stock Monitor.",
         ParagraphStyle("w", parent=styles["Normal"], fontSize=8, textColor=RED)
     ))
@@ -4263,7 +5119,7 @@ def _export_us_form_pdf(path, tax_data, inv_code, inv_name, year,
     # Wash Sale warning box
     story.append(Table([[
         Paragraph(
-            "<b>⚠️  Wash Sale Rule (IRC § 1091) – NOT calculated automatically</b><br/>"
+            "<b>Note: Wash Sale Rule (IRC § 1091) – possible wash sales are flagged, not deducted</b><br/>"
             "If you sold a security at a loss and repurchased the same or substantially "
             "identical security within 30 days before or after the sale, the loss is "
             "<b>disallowed</b> for tax purposes. The disallowed loss is added to the "
@@ -4498,14 +5354,15 @@ def _export_us_form_pdf(path, tax_data, inv_code, inv_name, year,
         ("ROWBACKGROUNDS",(0,1),(-1,-1), [colors.white, YELL]),
     ]))
     story.append(f1t)
+    _form_gains_section(story, tax_data, "US")
     story.append(Spacer(1, 8))
     story.append(HRFlowable(width="100%", thickness=0.4, color=colors.grey))
     story.append(Spacer(1, 3))
     story.append(Paragraph(
-        f"⚠️  <b>Orientation aid – not an official IRS form.</b> "
+        f"<b>Note: Orientation aid – not an official IRS form.</b> "
         f"Non-US persons: compare with broker 1042-S statement. "
         f"US residents: compare with 1099-DIV and file Schedule B with Form 1040. "
-        f"Wash Sale Rule (IRC § 1091, 30-day window) is NOT calculated – check your 1099-B. "
+        f"Wash Sale Rule (IRC § 1091, 30-day window): possible wash sales are flagged, not deducted – check your 1099-B. "
         f"FBAR filing required if foreign accounts exceed $10,000 at any point in {year}. "
         f"Rates shown are estimates; actual liability depends on total income, filing status, and state taxes. "
         f"Created with Stock Monitor.",
@@ -4638,13 +5495,50 @@ def _export_pdf(path, tax_data):
             (TRT("tax_sum_total_tax").rstrip(":"),     "total_tax"),
             (TRT("tax_sum_net_div_kest").rstrip(":"),  "net_dividends"),
         ]
+    if summary.get("gains") is not None:
+        sum_keys = [k for k in sum_keys if k[1] != "total_kest_gain"]
     for label, key in sum_keys:
         val = summary.get(key, 0)
         story.append(Paragraph(
             f"{label}: <b>{_f(val)}  {cur}</b>", sum_style))
 
+    from xml.sax.saxutils import escape as _esc
+    for _txt, _val, _st in extra_summary_lines(country, summary):
+        _t = _esc(_txt).rstrip(":")
+        if _st == "head":
+            story.append(Spacer(1, 4))
+            story.append(Paragraph(f"<b>{_t}</b>", sum_style))
+        elif _val is None:
+            story.append(Paragraph(_esc(_txt), note_style))
+        else:
+            story.append(Paragraph(f"{_t}: <b>{_f(_val)}  {cur}</b>", sum_style))
+    _g_rows = (summary.get("gains") or {}).get("rows") or []
+    if _g_rows:
+        story.append(Spacer(1, 8))
+        story.append(Paragraph(f"<b>{_esc(TRT('tax_tab_gains', n=len(_g_rows)))}</b>", sum_style))
+        _gd = [gain_table_headers(cur)]
+        for _r in _g_rows:
+            _v = gain_table_values(country, _r)
+            _gd.append([_v[0], _v[1], _v[2], f"{_v[3]:g}",
+                        "–" if _v[4] is None else str(_v[4])]
+                       + ["–" if x is None else _f(x) for x in _v[5:8]]
+                       + [Paragraph(_esc(_v[8]), note_style)])
+        _gt = Table(_gd, colWidths=[2.2*cm, 2.0*cm, 2.0*cm, 1.4*cm, 1.4*cm,
+                                    2.6*cm, 2.6*cm, 2.6*cm, 7.5*cm], repeatRows=1)
+        _gt.setStyle(TableStyle([
+            ("BACKGROUND",  (0,0), (-1,0), colors.HexColor("#2c3e50")),
+            ("TEXTCOLOR",   (0,0), (-1,0), colors.white),
+            ("FONTSIZE",    (0,0), (-1,-1), 7),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.HexColor("#f0f4ff"), colors.white]),
+            ("GRID",        (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
+            ("ALIGN",       (3,1), (7,-1), "RIGHT"),
+            ("VALIGN",      (0,0), (-1,-1), "MIDDLE"),
+        ]))
+        story.append(_gt)
+
     story.append(Spacer(1, 8))
-    story.append(Paragraph(_disclaimer_global(), note_style))
+    story.append(Paragraph(f"<b>{TRT('tax_lbl_note')}</b> " + TRT("tax_disclaimer_global"),
+                           note_style))
     doc.build(story)
 
 
@@ -4750,11 +5644,39 @@ def _export_xlsx(path, tax_data):
             (f"{TRT('tax_sum_total_tax').rstrip(':')} ({cur})",   "total_tax"),
             (f"{TRT('tax_sum_net_div_kest').rstrip(':')} ({cur})", "net_dividends"),
         ]
+    if summary.get("gains") is not None:
+        sum_rows = [k for k in sum_rows if k[1] != "total_kest_gain"]
     for label, key in sum_rows:
         ws.append([label, summary.get(key, 0)])
         r = ws.max_row
         ws[f"A{r}"].font = Font(bold=True)
         ws[f"B{r}"].number_format = "#,##0.00"
+
+    for _txt, _val, _st in extra_summary_lines(country, summary):
+        if _st == "head":
+            ws.append([])
+        ws.append([_txt] if _val is None else [_txt, _val])
+        r = ws.max_row
+        if _st in ("head", "bold"):
+            ws[f"A{r}"].font = Font(bold=True)
+        elif _val is None:
+            ws[f"A{r}"].font = Font(italic=True, size=9, color="777777")
+        if _val is not None:
+            ws[f"B{r}"].number_format = "#,##0.00"
+    _g_rows = (summary.get("gains") or {}).get("rows") or []
+    if _g_rows:
+        ws.append([])
+        ws.append([TRT("tax_tab_gains", n=len(_g_rows))])
+        ws[f"A{ws.max_row}"].font = Font(bold=True, size=11)
+        ws.append(gain_table_headers(cur))
+        for cell in ws[ws.max_row]:
+            cell.fill = hdr_fill; cell.font = hdr_font; cell.border = border
+        for _r in _g_rows:
+            ws.append(gain_table_values(country, _r))
+            for cell in ws[ws.max_row]:
+                cell.border = border
+                if isinstance(cell.value, float):
+                    cell.number_format = "#,##0.00"
 
     ws.append([])
     ws.append([_disclaimer_global()])
@@ -4855,8 +5777,22 @@ def _export_ods(path, tax_data):
             (f"{TRT('tax_sum_total_tax').rstrip(':')} ({cur})",   "total_tax"),
             (f"{TRT('tax_sum_net_div_kest').rstrip(':')} ({cur})", "net_dividends"),
         ]
+    if summary.get("gains") is not None:
+        ods_sum_rows = [k for k in ods_sum_rows if k[1] != "total_kest_gain"]
     for label, key in ods_sum_rows:
         _row(label, round(summary.get(key, 0), 2))
+    for _txt, _val, _st in extra_summary_lines(country, summary):
+        if _st == "head":
+            _row()
+        _row(_txt, "" if _val is None else round(_val, 2))
+    _g_rows = (summary.get("gains") or {}).get("rows") or []
+    if _g_rows:
+        _row()
+        _row(TRT("tax_tab_gains", n=len(_g_rows)))
+        _row(*gain_table_headers(cur))
+        for _r in _g_rows:
+            _row(*["" if v is None else (round(v, 2) if isinstance(v, float) else v)
+                   for v in gain_table_values(country, _r)])
     _row()
     _row(_disclaimer_global())
 

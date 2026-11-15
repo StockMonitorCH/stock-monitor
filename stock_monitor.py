@@ -51,7 +51,7 @@ def _set_demo_cutoff(active: bool) -> None:
     _DEMO_CUTOFF = "2026-03-31" if active else None
 
 # ── App-Versionierung ─────────────────────────────────────────────────────────
-APP_VERSION  = "5.9.0"                            # beim Release anpassen
+APP_VERSION  = "5.10.0"                            # beim Release anpassen
 GITHUB_REPO  = "StockMonitorCH/stock-monitor"     # GitHub-Repository
 
 # ── Portable-Modus ────────────────────────────────────────────────────────────
@@ -143,6 +143,7 @@ import pyqtgraph as pg
 from pyqtgraph import PlotWidget
 import numpy as np
 import json
+import time
 import urllib.request
 import urllib.parse
 import webbrowser
@@ -3669,7 +3670,7 @@ class NameSearchDialog(QDialog):
         """Prüft alle Treffer parallel und behält nur die mit Kursdaten."""
         from concurrent.futures import ThreadPoolExecutor
         syms = [q['symbol'] for q in quotes]
-        with ThreadPoolExecutor(max_workers=8) as ex:
+        with ThreadPoolExecutor(max_workers=6) as ex:   # max. 6 wegen Yahoo-Sperre
             ok = list(ex.map(self._has_price_data, syms))
         return [q for q, good in zip(quotes, ok) if good]
 
@@ -3778,6 +3779,94 @@ class NameSearchDialog(QDialog):
             self.status_label.setText(TR("lbl_error_search", e=e))
 
 
+from PyQt6.QtWidgets import QLayout
+from PyQt6.QtCore import QRect, QSize, QPoint
+
+
+class _FlowLayout(QLayout):
+    """Layout mit automatischem Zeilenumbruch (wie Text): Elemente nebeneinander,
+    was nicht mehr passt, kommt in die nächste Zeile. Für die Checkboxen im
+    Vergleichsfenster (Full HD: bis 16 Charts + 4 Zusatz-Aktien)."""
+
+    def __init__(self, parent=None, h_spacing=10, v_spacing=4):
+        super().__init__(parent)
+        self._items = []
+        self._hs, self._vs = h_spacing, v_spacing
+        self.setContentsMargins(0, 0, 0, 0)
+
+    def addItem(self, item):
+        self._items.append(item)
+
+    def insertWidget(self, index, widget):
+        """Wie QBoxLayout.insertWidget (für Zusatz-Aktien vor dem ➕-Button)."""
+        self.addChildWidget(widget)
+        from PyQt6.QtWidgets import QWidgetItem
+        index = len(self._items) if index < 0 else min(index, len(self._items))
+        self._items.insert(index, QWidgetItem(widget))
+        self.invalidate()
+
+    def count(self):
+        return len(self._items)
+
+    def itemAt(self, index):
+        return self._items[index] if 0 <= index < len(self._items) else None
+
+    def takeAt(self, index):
+        return self._items.pop(index) if 0 <= index < len(self._items) else None
+
+    def expandingDirections(self):
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        return self._do_layout(QRect(0, 0, width, 0), apply=False)
+
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self._do_layout(rect, apply=True)
+
+    def sizeHint(self):
+        return self.minimumSize()
+
+    def minimumSize(self):
+        size = QSize()
+        for it in self._items:
+            size = size.expandedTo(it.minimumSize())
+        m = self.contentsMargins()
+        return size + QSize(m.left() + m.right(), m.top() + m.bottom())
+
+    def _do_layout(self, rect, apply):
+        m = self.contentsMargins()
+        r = rect.adjusted(m.left(), m.top(), -m.right(), -m.bottom())
+        lines, line, x = [], [], r.x()
+        for it in self._items:
+            if it.widget() is not None and it.widget().isHidden():
+                continue
+            w = it.sizeHint().width()
+            if line and x + w > r.right() + 1:
+                lines.append(line); line, x = [], r.x()
+            line.append(it)
+            x += w + self._hs
+        if line:
+            lines.append(line)
+        y = r.y()
+        for ln in lines:
+            line_h = max(it.sizeHint().height() for it in ln)
+            if apply:
+                x = r.x()
+                for it in ln:
+                    hint = it.sizeHint()
+                    # vertikal in der Zeile zentrieren (Checkbox neben ➕-Button)
+                    it.setGeometry(QRect(QPoint(x, y + (line_h - hint.height()) // 2), hint))
+                    x += hint.width() + self._hs
+            y += line_h + self._vs
+        if lines:
+            y -= self._vs
+        return y - rect.y() + m.bottom()
+
+
 class CompareDialog(QDialog):
     """Dialog zum Vergleichen von 2-6 Charts"""
     
@@ -3799,7 +3888,9 @@ class CompareDialog(QDialog):
         layout = QVBoxLayout()
 
         from PyQt6.QtWidgets import QApplication as _QA
-        _is_fhd = _QA.primaryScreen().geometry().width() <= 1920
+        # Mehrzeilige Kopfzeile bis WQHD (2560 px, auch 4K mit 150 %): 16 Charts +
+        # 4 Zusatz-Aktien brauchen in einer Zeile ca. 2600 px
+        _is_fhd = _QA.primaryScreen().geometry().width() <= 2560
 
         from PyQt6.QtGui import QFontDatabase as _QFDB_cd
         _ef_cd = None
@@ -3951,22 +4042,33 @@ class CompareDialog(QDialog):
         close_btn.clicked.connect(self.close)
 
         if _is_fhd:
-            # === Full HD: 2 Zeilen ===
+            # === Full HD / WQHD: Kopfzeile + Charts + Zusatz-Aktien ===
             header_container = QVBoxLayout()
             header_container.setSpacing(2)
 
-            # Zeile 1: Zähler + Stretch + Buttons rechtsbündig
+            # Zeile 1: Zähler + Zeitraum + Stretch + Buttons rechtsbündig
+            # (Zeitraum hier oben, damit unten Platz für alle Checkboxen bleibt)
             row2 = QHBoxLayout()
             row2.addWidget(self.selection_label)
+            row2.addSpacing(12)
+            row2.addWidget(QLabel(TR("lbl_period")))
+            self.timeframe_combo = QComboBox()
+            self.timeframe_combo.addItems(StockChartWidget.TIMEFRAMES.keys())
+            self.timeframe_combo.setCurrentText(TR('period_1mo'))
+            self.timeframe_combo.currentTextChanged.connect(self._on_compare_tf_changed)
+            row2.addWidget(self.timeframe_combo)
             row2.addStretch()
             row2.addWidget(compare_btn)
             row2.addWidget(export_btn)
             row2.addWidget(close_btn)
             header_container.addLayout(row2)
 
-            # Zeile 2: Checkboxen + Zeitraum
-            row1 = QHBoxLayout()
-            row1.addWidget(QLabel(TR("lbl_select_stocks")))
+            # Zeile 2: Charts des Hauptfensters (Umbruch, falls 16 Charts bei
+            # 125 % Skalierung nicht in eine Zeile passen)
+            _cb_host = QWidget()
+            row1 = _FlowLayout(_cb_host, h_spacing=10, v_spacing=4)
+            _sel_lbl = QLabel(TR("lbl_select_stocks"))
+            row1.addWidget(_sel_lbl)
             self.chart_checkboxes = []
             for i, chart in enumerate(self.charts):
                 checkbox = QCheckBox(f"{chart.symbol}")
@@ -3975,22 +4077,22 @@ class CompareDialog(QDialog):
                 checkbox.stateChanged.connect(self.on_selection_changed)
                 self.chart_checkboxes.append(checkbox)
                 row1.addWidget(checkbox)
-            self._cb_row = row1
-            row1.addWidget(self._make_add_stock_btn())
+            header_container.addWidget(_cb_host)
+            # Zeile 3: Zusatz-Aktien + „➕ Weitere Aktie…“ – fester Platz, eingerückt
+            # unter die erste Checkbox
+            _ex_host = QWidget()
+            row3 = _FlowLayout(_ex_host, h_spacing=10, v_spacing=4)
+            _indent = QWidget()
+            _indent.setFixedSize(_sel_lbl.sizeHint().width(), 1)
+            row3.addWidget(_indent)
+            self._cb_row = row3
+            row3.addWidget(self._make_add_stock_btn())
             self._restore_extra_stocks()
-            row1.addWidget(QLabel("   |   "))
-            row1.addWidget(QLabel(TR("lbl_period")))
-            self.timeframe_combo = QComboBox()
-            self.timeframe_combo.addItems(StockChartWidget.TIMEFRAMES.keys())
-            self.timeframe_combo.setCurrentText(TR('period_1mo'))
-            self.timeframe_combo.currentTextChanged.connect(self._on_compare_tf_changed)
-            row1.addWidget(self.timeframe_combo)
-            row1.addStretch()
-            header_container.addLayout(row1)
+            header_container.addWidget(_ex_host)
 
             layout.addLayout(header_container)
         else:
-            # === 4K: 1 Zeile ===
+            # === 4K (> 2560 px): 1 Zeile ===
             header = QHBoxLayout()
             header.addWidget(QLabel(TR("lbl_select_stocks")))
             self.chart_checkboxes = []
@@ -5818,7 +5920,8 @@ class StockChartWidget(QFrame):
             self.target_checkbox.stateChanged.connect(self._redraw_chart)
             self.target_checkbox.hide()
         
-        # Finment Button (immer sichtbar)
+        # Finment Button (Aktien; bei ETFs/Fonds ersetzt durch „Hold.“ – Finment
+        # hat für Fonds kaum Analysen, und beide zusammen passen nicht in die Zeile)
         self.finment_btn = QPushButton("Finment")
         self.finment_btn.setMaximumWidth(80)
         self.finment_btn.setToolTip(TR("tip_finment"))
@@ -5837,13 +5940,14 @@ class StockChartWidget(QFrame):
         self.info_btn.clicked.connect(self.show_analyst_info)
         controls_row.addWidget(self.info_btn)
 
-        # Holdings-Button (nur für ETFs/Fonds sichtbar – wird in update_chart gesetzt)
+        # Holdings-Button (nur für ETFs/Fonds, an Stelle von „Finment“ –
+        # wird in update_chart gesetzt)
         self.holdings_btn = QPushButton(TR("btn_etf_holdings"))
         self.holdings_btn.setMaximumWidth(80)
         self.holdings_btn.setToolTip(TR("tip_etf_holdings"))
         self.holdings_btn.setVisible(False)
         self.holdings_btn.clicked.connect(self._show_etf_holdings)
-        controls_row.addWidget(self.holdings_btn)
+        controls_row.insertWidget(controls_row.indexOf(self.finment_btn) + 1, self.holdings_btn)
 
         # Full HD: Nachrichten-Button in unterer Zeile rechts neben Info
         if self.compact_mode:
@@ -6000,9 +6104,15 @@ class StockChartWidget(QFrame):
                 except Exception:
                     self.done.emit(False)
 
+        fin_ref = getattr(self, 'finment_btn', None)
+
         def _apply(is_fund):
             try:
+                if sym != self.symbol:
+                    return                      # inzwischen anderes Symbol geladen
                 btn_ref.setVisible(is_fund)
+                if fin_ref is not None:
+                    fin_ref.setVisible(not is_fund)
             except RuntimeError:
                 pass
 
@@ -6735,6 +6845,8 @@ class StockChartWidget(QFrame):
             # Holdings-Button: zunächst verstecken, dann ETF-Check im Hintergrund
             if hasattr(self, 'holdings_btn'):
                 self.holdings_btn.setVisible(False)
+                if hasattr(self, 'finment_btn'):
+                    self.finment_btn.setVisible(True)
                 QTimer.singleShot(700, self._update_holdings_visibility)
             
             if self.data.empty:
@@ -9159,7 +9271,7 @@ class PortfolioDialog(QMainWindow):
         except Exception:
             self._aib_filters = {}
         self.setWindowTitle(TR("title_portfolio"))
-        self.setMinimumSize(1500, 650)
+        self.setMinimumSize(min(1500, int((QApplication.primaryScreen().availableGeometry().width()) * 0.95)), 650)
         # QStackedWidget: Seite 0 = Übersicht, Seite 1 = Admin
         self._stack = QStackedWidget()
         self.setCentralWidget(self._stack)
@@ -9813,18 +9925,21 @@ class PortfolioDialog(QMainWindow):
         except Exception:
             pass
 
-    def _save_aib_filters(self):
-        """Speichert _aib_filters dict auf Disk."""
+    def _save_aib_filters(self, schedule=True):
+        """Speichert _aib_filters dict auf Disk (und im Portfolio, wenn entsperrt)."""
         try:
             import json as _json
             with open(self._aib_filters_file, 'w') as _f:
                 _json.dump(self._aib_filters, _f, indent=2)
         except Exception:
             pass
+        if schedule:
+            self._schedule_secure_save()
 
     def save_portfolio(self):
         """Auto-Speichern des aktiven Portfolios in JSON (kein Passwort nötig).
-        Für benannte Portfolios in der DB: portfolio_save_as() verwenden."""
+        Ist das benannte Portfolio entsperrt (Passwort in dieser Sitzung
+        eingegeben), wird es zusätzlich verschlüsselt mitgespeichert."""
         try:
             with open(self.PORTFOLIO_FILE, 'w') as f:
                 json.dump({"positions": self.portfolio_data, "notes": self._portfolio_notes,
@@ -9832,14 +9947,567 @@ class PortfolioDialog(QMainWindow):
                            "closed": self._closed_positions}, f, indent=2)
         except Exception as e:
             QMessageBox.warning(self, TR("msg_title_error"), TR("msg_save_failed", e=e))
+        self._schedule_secure_save()
+
+    # ── Automatisches Speichern ins verschlüsselte Portfolio (.smpf) ─────────
+    # Sitzung = Name + aus dem Passwort abgeleiteter Schlüssel (nur im Speicher).
+    # Entsteht beim Öffnen (Passwort), „Speichern unter“ oder „Entsperren“.
+    # Jede Änderung wird nach kurzer Verzögerung gesammelt verschlüsselt
+    # gespeichert; Sicherungen (letzte 10 Versionen) beim ersten Speichern der
+    # Sitzung, vor Importen und höchstens stündlich.
+    _SECURE_BACKUP_INTERVAL = 3600
+
+    def _portfolio_settings(self) -> dict:
+        """Portfoliobezogene Einstellungen, die mit dem Portfolio gespeichert werden."""
+        name = self._get_active_portfolio_name()
+        aib = getattr(self, '_aib_filters', {}) or {}
+        return {"limits": getattr(self, '_limits', {}) or {},
+                "aib_filters": aib.get(name, {}) if name else {}}
+
+    def _apply_portfolio_settings(self, settings, name):
+        """Einstellungen aus einem geladenen Portfolio übernehmen (fehlt der
+        Eintrag, bleiben die lokalen Werte – ältere Portfolios ohne Einstellungen)."""
+        if not isinstance(settings, dict):
+            return
+        if isinstance(settings.get("limits"), dict) and settings["limits"]:
+            self._limits = settings["limits"]
+            self._save_limits(schedule=False)
+        if isinstance(settings.get("aib_filters"), dict) and settings["aib_filters"] and name:
+            if not isinstance(getattr(self, '_aib_filters', None), dict):
+                self._aib_filters = {}
+            self._aib_filters[name] = settings["aib_filters"]
+            self._save_aib_filters(schedule=False)
+
+    def _secure_payload(self) -> dict:
+        return dict(price_cache=self._sector_cache, sector_cache=self._sector_cache,
+                    notes=self._portfolio_notes, div_account=self._div_account,
+                    closed=self._closed_positions, settings=self._portfolio_settings())
+
+    def _start_secure_session(self, session, save_now=True):
+        """Sitzung setzen (None = beenden) und Anzeige aktualisieren."""
+        self._pf_session = session
+        self._pf_session_backed_up = False
+        self._pf_last_backup = 0.0
+        self._pf_save_error_shown = False
+        if session is None:
+            t = getattr(self, '_secure_timer', None)
+            if t is not None:
+                t.stop()
+        elif save_now:
+            self._schedule_secure_save(delay=0)
+        self._update_portfolio_name_label(self._get_active_portfolio_name())
+
+    def _schedule_secure_save(self, delay=1500):
+        if not getattr(self, '_pf_session', None):
+            return
+        t = getattr(self, '_secure_timer', None)
+        if t is None:
+            t = QTimer(self)
+            t.setSingleShot(True)
+            t.timeout.connect(self._secure_save_now)
+            self._secure_timer = t
+            try:
+                QApplication.instance().aboutToQuit.connect(self._secure_save_now)
+            except Exception:
+                pass
+        t.start(delay)
+
+    def _secure_backup(self, force=False, reason=None):
+        """Sicherung der aktuellen .smpf (vor Importen, erstes Speichern, stündlich).
+        reason: session | import | hourly (Standard: session beim ersten Mal, sonst hourly)"""
+        sess = getattr(self, '_pf_session', None)
+        if not sess or not _DB_IMPORT_OK:
+            return
+        now = time.time()
+        if not force and getattr(self, '_pf_session_backed_up', False) and \
+                now - getattr(self, '_pf_last_backup', 0.0) < self._SECURE_BACKUP_INTERVAL:
+            return
+        if reason is None:
+            reason = "hourly" if getattr(self, '_pf_session_backed_up', False) else "session"
+        try:
+            _pdb.backup_portfolio(sess["name"], reason)
+            self._pf_session_backed_up = True
+            self._pf_last_backup = now
+        except Exception as e:
+            _log.warning(f"Portfolio-Sicherung fehlgeschlagen: {e}")
+
+    def _secure_save_now(self):
+        sess = getattr(self, '_pf_session', None)
+        if not sess or not _DB_IMPORT_OK:
+            return
+        t = getattr(self, '_secure_timer', None)
+        if t is not None:
+            t.stop()
+        try:
+            self._secure_backup()
+            _pdb.save_with_session(sess, self.portfolio_data, **self._secure_payload())
+        except Exception as e:
+            _log.error(f"Automatisches Speichern von '{sess.get('name')}' fehlgeschlagen: {e}")
+            if not getattr(self, '_pf_save_error_shown', False):
+                self._pf_save_error_shown = True
+                QMessageBox.warning(self, TR("msg_title_error"),
+                                    TR("msg_autosave_failed", name=sess.get("name", ""), e=e))
+
+    def _unlock_portfolio(self, *_):
+        """Gesperrtes Portfolio (nach Neustart) mit Passwort entsperren → ab jetzt
+        werden Änderungen wieder automatisch ins Portfolio gespeichert."""
+        name = self._get_active_portfolio_name()
+        if not name or name == "Demo" or not _DB_IMPORT_OK or not CRYPTO_AVAILABLE:
+            return False
+        if not _pdb.portfolio_exists(name):
+            QMessageBox.information(self, TR("msg_title_info"),
+                                    TR("msg_unlock_missing", name=name))
+            return False
+        for attempt in range(3):
+            pw_dlg = PortfolioPasswordDialog("load", name, self)
+            if attempt > 0:
+                pw_dlg._status.setText(TR("lbl_wrong_pw_attempt", attempt=attempt + 1))
+            if pw_dlg.exec() != QDialog.DialogCode.Accepted:
+                return False
+            try:
+                sess = _pdb.open_session(name, pw_dlg.get_password())
+            except WrongPasswordError:
+                continue
+            except Exception as e:
+                QMessageBox.warning(self, TR("msg_title_error"), str(e))
+                return False
+            self._start_secure_session(sess)
+            self._secure_backup(force=True, reason="session")
+            return True
+        QMessageBox.warning(self, TR("msg_title_locked"), TR("msg_3_wrong_passwords2"))
+        return False
+
+    def _after_import_save(self):
+        """Nach einem CSV-Import: ins geöffnete Portfolio (automatisch) oder
+        „Speichern unter“ anbieten, damit der Import nicht nur in der Übersicht steht.
+        Windows: danach Fokus sofort zurück aufs Hauptfenster (wie bei den
+        übrigen Dialogen) – sonst aktiviert Windows den Explorer der CSV-Auswahl.
+        Nicht verzögern: hat Windows den Fokus schon weitergegeben, darf sich
+        das Programm nicht mehr selbst nach vorne holen."""
+        try:
+            self._after_import_save_inner()
+        finally:
+            if sys.platform == 'win32':
+                try:
+                    self.raise_()
+                    self.activateWindow()
+                except RuntimeError:
+                    pass
+
+    def _after_import_save_inner(self):
+        if getattr(self, '_pf_session', None):
+            self._secure_save_now()
+            return
+        if not _DB_IMPORT_OK or not CRYPTO_AVAILABLE:
+            return
+        name = self._get_active_portfolio_name()
+        if name and name != "Demo" and _pdb.portfolio_exists(name):
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Icon.Question)
+            box.setWindowTitle(TR("title_import_save"))
+            box.setText(TR("msg_import_save_locked", name=name))
+            b_into = box.addButton(TR("btn_import_save_into", name=name),
+                                   QMessageBox.ButtonRole.AcceptRole)
+            b_new = box.addButton(TR("btn_import_save_new"), QMessageBox.ButtonRole.ActionRole)
+            box.addButton(TR("btn_later"), QMessageBox.ButtonRole.RejectRole)
+            box.exec()
+            if box.clickedButton() is b_into:
+                self._unlock_portfolio()
+            elif box.clickedButton() is b_new:
+                self.portfolio_save_as()
+            return
+        self.portfolio_save_as()
+
+    def show_backups(self, *_):
+        """Button „🕘 Sicherungen“ (Administration): Sicherungen des aktiven
+        Portfolios, sonst Auswahl unter allen Portfolios mit Sicherungen."""
+        if not _DB_IMPORT_OK or not CRYPTO_AVAILABLE:
+            QMessageBox.warning(self, TR("msg_title_not_available"),
+                                TR("msg_crypto_missing") + TR("msg_crypto_install"))
+            return
+        names = _pdb.portfolios_with_backups()
+        active = self._get_active_portfolio_name()
+        safe_active = _pdb._safe_name(active) if active else ""
+        if safe_active in names:
+            self._show_backups_dialog(active, self)
+            return
+        if not names:
+            QMessageBox.information(self, TR("msg_title_info"), TR("msg_no_backups_any"))
+            return
+        from PyQt6.QtWidgets import QInputDialog
+        name, ok = QInputDialog.getItem(self, TR("btn_backups").replace("…", ""),
+                                        TR("lbl_backups_choose"), names, 0, False)
+        if ok and name:
+            self._show_backups_dialog(name, self)
+
+    def _show_backups_dialog(self, name, parent):
+        """Sicherungen eines Portfolios anzeigen und wiederherstellen."""
+        backups = _pdb.list_backups(name)
+        if not backups:
+            QMessageBox.information(parent, TR("msg_title_info"), TR("msg_no_backups", name=name))
+            return
+        bd = QDialog(parent)
+        bd.setWindowTitle(TR("title_backups", name=name))
+        bd.setMinimumWidth(640)
+        bl = QVBoxLayout(bd)
+        head = QLabel(f"<b>📂 {name}</b>")
+        head.setStyleSheet("font-size:14px;")
+        bl.addWidget(head)
+        info = QLabel(TR("lbl_backups_info", name=name)); info.setWordWrap(True)
+        bl.addWidget(info)
+        lst = QListWidget()
+        lst.setAlternatingRowColors(True)
+        bl.addWidget(lst)
+        from datetime import datetime as _dtb
+        summ = {}
+        _s = getattr(self, '_pf_session', None)
+        if _s and _s.get("name") == name:
+            summ = _pdb.summarize_backups([b["path"] for b in backups], session=_s)
+
+        def _fill():
+            cur = lst.currentRow()
+            lst.clear()
+            for b in backups:
+                d = _app_config.fmt_date(_dtb.fromtimestamp(b["mtime"]), include_time=True)
+                why = TR("backup_reason_" + b["reason"]) if b["reason"] else ""
+                sm = summ.get(b["path"])
+                cnt = TR("lbl_backup_positions", **sm) if sm else "–"
+                it = QListWidgetItem(f"🕘  {d}    {why:<22}    {cnt}")
+                it.setToolTip(f"{name}\n{b['file']}  ({b['size_kb']} KB)")
+                it.setData(Qt.ItemDataRole.UserRole, (b["path"], d))
+                lst.addItem(it)
+            lst.setCurrentRow(cur if cur >= 0 else 0)
+        _fill()
+
+        row = QHBoxLayout()
+        b_show = QPushButton(TR("btn_backups_show_content"))
+        b_show.setToolTip(TR("tip_backups_show_content"))
+        b_show.setVisible(len(summ) < len(backups))
+        row.addWidget(b_show)
+        row.addStretch()
+        b_cancel = QPushButton(TR("btn_close")); b_restore = QPushButton(TR("btn_restore"))
+        b_restore.setStyleSheet("font-weight:bold;")
+        row.addWidget(b_cancel); row.addWidget(b_restore); bl.addLayout(row)
+        b_cancel.clicked.connect(bd.reject)
+        pw_cache = [None]
+
+        def _ask_pw():
+            if pw_cache[0] is not None:
+                return pw_cache[0]
+            pw_dlg = PortfolioPasswordDialog("load", name, bd)
+            if pw_dlg.exec() != QDialog.DialogCode.Accepted:
+                return None
+            pw_cache[0] = pw_dlg.get_password()
+            return pw_cache[0]
+
+        def _show_content():
+            pw = _ask_pw()
+            if pw is None:
+                return
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            try:
+                summ.update(_pdb.summarize_backups([b["path"] for b in backups], password=pw))
+            finally:
+                QApplication.restoreOverrideCursor()
+            if not summ:
+                pw_cache[0] = None
+                QMessageBox.warning(bd, TR("msg_title_wrong_password"), TR("msg_password_current_wrong"))
+                return
+            _fill()
+            b_show.setVisible(len(summ) < len(backups))
+        b_show.clicked.connect(_show_content)
+
+        def _restore():
+            it = lst.currentItem()
+            if not it:
+                return
+            path, d = it.data(Qt.ItemDataRole.UserRole)
+            if path not in summ:
+                pw = _ask_pw()
+                if pw is None:
+                    return
+                summ.update(_pdb.summarize_backups([path], password=pw))
+                if path not in summ:
+                    pw_cache[0] = None
+                    QMessageBox.warning(bd, TR("msg_title_wrong_password"), TR("msg_password_current_wrong"))
+                    return
+                _fill()
+            if QMessageBox.question(
+                    bd, TR("btn_restore"),
+                    TR("msg_restore_confirm", date=d, name=name,
+                       info=TR("lbl_backup_positions", **summ[path])),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+                return
+            # Geöffnetes Portfolio: Sitzung beenden, sonst überschreibt das
+            # automatische Speichern die Wiederherstellung sofort wieder
+            _s2 = getattr(self, '_pf_session', None)
+            if _s2 and _s2.get("name") == name:
+                self._secure_save_now()
+                self._start_secure_session(None)
+            try:
+                _pdb.restore_backup(name, path)
+            except Exception as ex:
+                QMessageBox.warning(bd, TR("msg_title_error"), str(ex))
+                return
+            QMessageBox.information(bd, TR("btn_restore"), TR("msg_restore_done", name=name))
+            bd.accept()
+
+        b_restore.clicked.connect(_restore)
+        lst.itemDoubleClicked.connect(lambda _it: _restore())
+        bd.exec()
+
+    def _fit_admin_window(self):
+        """Administration: Breite nach Buttonzeile (mind. 1500 px, höchstens 95 %
+        des Bildschirms), Höhe 750 px, zentriert."""
+        scr = (self.screen() or QApplication.primaryScreen()).availableGeometry()
+        max_w = int(scr.width() * 0.95)
+        w = min(max(1500, getattr(self, '_admin_min_w', 1500)), max_w)
+        h = min(750, int(scr.height() * 0.92))
+        self.setMinimumSize(min(getattr(self, '_admin_min_w', 1500), max_w), min(650, h))
+        self.setGeometry(scr.x() + (scr.width() - w) // 2, scr.y() + (scr.height() - h) // 2, w, h)
+
+    def _clear_overview(self, parent):
+        """„Alle entfernen“: leert die Übersicht (Arbeitskopie) und trennt sie vom
+        Portfolio. Das gespeicherte Portfolio bleibt unverändert. Gibt True zurück,
+        wenn geleert wurde."""
+        n_sym = len(self.portfolio_data)
+        n_pos = sum(len(v) for v in self.portfolio_data.values())
+        name = self._get_active_portfolio_name()
+        saved = bool(name) and _DB_IMPORT_OK and _pdb.portfolio_exists(name)
+        box = QMessageBox(parent)
+        box.setWindowTitle(TR("title_clear_overview"))
+        if saved:
+            box.setIcon(QMessageBox.Icon.Question)
+            box.setText(TR("msg_clear_overview_saved", n_pos=n_pos, n_sym=n_sym, name=name))
+            b_clear = box.addButton(TR("btn_clear_overview"), QMessageBox.ButtonRole.DestructiveRole)
+            b_save = None
+        else:
+            box.setIcon(QMessageBox.Icon.Warning)
+            box.setText(TR("msg_clear_overview_unsaved", n_pos=n_pos, n_sym=n_sym))
+            b_save = box.addButton(TR("btn_save_first"), QMessageBox.ButtonRole.AcceptRole)
+            b_clear = box.addButton(TR("btn_clear_anyway"), QMessageBox.ButtonRole.DestructiveRole)
+        b_cancel = box.addButton(TR("btn_cancel"), QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(b_cancel)
+        box.exec()
+        if b_save is not None and box.clickedButton() is b_save:
+            self.portfolio_save_as()
+            return False
+        if box.clickedButton() is not b_clear:
+            return False
+        # Gespeichertes Portfolio vor dem Leeren auf den aktuellen Stand bringen
+        if getattr(self, '_pf_session', None):
+            self._secure_save_now()
+        self._start_secure_session(None)
+        self._set_active_portfolio_name("")
+        self.portfolio_data = {}
+        self._closed_positions = {}
+        self._div_account = {}
+        self._portfolio_notes = []
+        self._limits = {}
+        self.save_portfolio()
+        self._invalidate_cache()
+        self._update_portfolio_name_label("")
+        return True
 
     # ── Verkaufshistorie ────────────────────────────────────────────────────
     # Verkaufte (Teil-)Positionen verschwinden aus portfolio_data (Hauptansicht
     # ohne 0-Positionen), werden aber mit Verkaufsdatum in _closed_positions
     # aufbewahrt: Dividendenkonto und Steuern brauchen den Bestand am Ex-Tag.
-    def _record_sale(self, sym, lot, qty, sell_date, sell_price=None, dedupe=False):
+    # Beträge eines Kauf-Lots, die bei Teilverkäufen anteilig (nach Stück)
+    # aufgeteilt werden. Alle optional (nur bei Import mit Bank-CSV vorhanden):
+    #   fees        Gebühren in Handelswährung (net_cur)
+    #   net_cost    Kaufbetrag inkl. Gebühren in Handelswährung (net_cur)
+    #   acct_amount Belasteter Betrag in Kontowährung (acct_cur)
+    #   cost_chf    (alt) nur noch gesetzt, wenn das Konto in CHF geführt wird
+    _LOT_AMOUNT_KEYS = ("fees", "net_cost", "acct_amount", "cost_chf")
+
+    @classmethod
+    def _lot_amount_share(cls, lot, qty):
+        """Anteilige Lot-Beträge für qty Stück (Rest bleibt im Lot)."""
+        try:
+            lot_qty = float(lot.get("quantity", 0) or 0)
+        except (TypeError, ValueError):
+            return {}
+        if lot_qty <= 0:
+            return {}
+        f = min(float(qty) / lot_qty, 1.0)
+        out = {}
+        for k in cls._LOT_AMOUNT_KEYS:
+            v = lot.get(k)
+            if isinstance(v, (int, float)) and v:
+                out[k] = round(v * f, 6)
+        return out
+
+    @classmethod
+    def _reduce_lot(cls, lot, qty):
+        """Kopie des Lots mit qty Stück weniger; Beträge anteilig reduziert."""
+        new = dict(lot)
+        share = cls._lot_amount_share(lot, qty)
+        for k, v in share.items():
+            new[k] = round(lot[k] - v, 6)
+        new["quantity"] = lot["quantity"] - qty
+        return new
+
+    @staticmethod
+    def _fifo_order(positions, sell_date):
+        """FIFO-Reihenfolge für einen Verkauf: zuerst Lots, die am oder vor dem
+        Verkaufstag gekauft wurden (älteste zuerst). Spätere Käufe nur, falls der
+        Bestand sonst nicht reicht (z. B. Titel per Depotübertrag eingeliefert)."""
+        sd = str(sell_date)[:10]
+        ordered = sorted(positions, key=lambda p: p.get('buy_date', ''))
+        return ([p for p in ordered if str(p.get('buy_date', ''))[:10] <= sd]
+                + [p for p in ordered if str(p.get('buy_date', ''))[:10] > sd])
+
+    @staticmethod
+    def _orphan_sells(buy_rows, sell_rows):
+        """Symbole, die in der Datei verkauft, aber dort nie (bis zum Verkaufstag)
+        gekauft wurden → Hinweis, dass die CSV nur einen Teilzeitraum enthält."""
+        first_buy = {}
+        for r in buy_rows:
+            k = (r.get('symbol'), r.get('trade_cur', ''))
+            d = r.get('date', '')
+            if k not in first_buy or d < first_buy[k]:
+                first_buy[k] = d
+        out = []
+        for r in sell_rows:
+            k = (r.get('symbol'), r.get('trade_cur', ''))
+            if k not in first_buy or first_buy[k] > r.get('date', ''):
+                if r.get('symbol') not in out:
+                    out.append(r.get('symbol'))
+        return out
+
+    def _ask_replace_or_merge(self, parent, source, n_new_sym, n_new_pos, orphans):
+        """Fragt: bestehendes Portfolio ersetzen oder zusammenführen?
+        Enthält die Datei Verkäufe ohne zugehörigen Kauf (nur Teilzeitraum),
+        wird gewarnt und „Zusammenführen“ vorgeschlagen.
+        Rückgabe: 'replace', 'merge' oder None (Abbruch)."""
+        from PyQt6.QtGui import QPalette as _QP
+        dark = QApplication.palette().color(_QP.ColorRole.Window).lightness() < 128
+        n_exist_sym = len(self.portfolio_data)
+        n_exist_pos = sum(len(v) for v in self.portfolio_data.values())
+        dlg = QDialog(parent)
+        dlg.setWindowTitle(TR("title_import_mode"))
+        dlg.setMinimumWidth(480)
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(QLabel(TR("lbl_import_mode_summary", n_sym=n_exist_sym, n_pos=n_exist_pos,
+                                source=source, n_new_sym=n_new_sym, n_new_pos=n_new_pos)))
+        if orphans:
+            names = ", ".join(orphans[:6]) + (" …" if len(orphans) > 6 else "")
+            warn = QLabel(TR("lbl_import_partial_warn", n=len(orphans), syms=names))
+            warn.setWordWrap(True)
+            warn.setStyleSheet(
+                "background:#3a2a10; color:#f5d08a; border:1px solid #8a6420; border-radius:4px; padding:8px;"
+                if dark else
+                "background:#fff4e0; color:#7a4a00; border:1px solid #f0b060; border-radius:4px; padding:8px;")
+            lay.addWidget(warn)
+        lay.addWidget(QLabel(TR("lbl_import_mode_question")))
+        b_rep  = QPushButton(TR("btn_import_replace", source=source))
+        b_mrg  = QPushButton(TR("btn_import_merge") + ("  ✔" if orphans else ""))
+        b_cncl = QPushButton(TR("btn_cancel"))
+        for b in (b_rep, b_mrg):
+            b.setStyleSheet("padding:8px;text-align:left;")
+            b.setAutoDefault(False)
+        if orphans:
+            b_mrg.setDefault(True); b_mrg.setFocus()
+        lay.addWidget(b_rep); lay.addWidget(b_mrg); lay.addWidget(b_cncl)
+        res = [None]
+
+        def _rep():
+            if orphans:
+                r = QMessageBox.warning(
+                    dlg, TR("title_import_mode"),
+                    TR("msg_import_replace_confirm", n_sym=n_exist_sym),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No)
+                if r != QMessageBox.StandardButton.Yes:
+                    return
+            res[0] = 'replace'; dlg.accept()
+
+        def _mrg():
+            res[0] = 'merge'; dlg.accept()
+        b_rep.clicked.connect(_rep)
+        b_mrg.clicked.connect(_mrg)
+        b_cncl.clicked.connect(dlg.reject)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return None
+        return res[0]
+
+    def _bought_snapshot(self):
+        """Bereits erfasste Kaufmengen je (Symbol, Kaufdatum) – offene und verkaufte
+        Lots. Beim Import gilt ein Kauf nur dann als Duplikat, wenn er VOR dem
+        Import schon da war (zwei gleiche Käufe in derselben Datei sind echt)."""
+        snap = {}
+        for src in (self.portfolio_data or {}, getattr(self, '_closed_positions', None) or {}):
+            for sym, lots in src.items():
+                for l in lots or []:
+                    if l.get('staking'):
+                        continue
+                    k = (sym, str(l.get('buy_date', ''))[:10])
+                    snap[k] = snap.get(k, 0.0) + float(l.get('quantity', 0) or 0)
+        return snap
+
+    def _sold_snapshot(self):
+        """Bereits erfasste Verkaufsmengen je (Symbol, Datum) – damit beim
+        Zusammenführen ein schon importierter Verkauf nicht doppelt abgezogen wird."""
+        snap = {}
+        for sym, lots in (getattr(self, '_closed_positions', None) or {}).items():
+            for l in lots or []:
+                if l.get('sell_date'):
+                    k = (sym, str(l['sell_date'])[:10])
+                    snap[k] = snap.get(k, 0.0) + float(l.get('quantity', 0) or 0)
+        return snap
+
+    @staticmethod
+    def _import_amounts(entry, kind):
+        """Gebühren/Nettobeträge einer Import-Zeile (Swissquote/generisch).
+        kind='buy'  → Felder für das Kauf-Lot
+        kind='sell' → sale-dict für _record_sale (oder None)
+        Fehlt der Nettobetrag, wird er aus Stück × Kurs ± Gebühren gebildet
+        (nur wenn Gebühren bekannt sind)."""
+        def _num(k):
+            try:
+                v = float(entry.get(k) or 0)
+            except (TypeError, ValueError):
+                return 0.0
+            return abs(v)
+        fees, net, acct = _num('fees'), _num('net'), _num('acct_amount')
+        if not net and fees:
+            gross = _num('quantity') * _num('price')
+            if gross:
+                net = gross + fees if kind == 'buy' else max(gross - fees, 0.0)
+        net_cur  = (entry.get('trade_cur') or '').upper()
+        acct_cur = (entry.get('acct_cur') or '').upper()
+        out = {}
+        if kind == 'buy':
+            if fees: out['fees'] = fees
+            if net:  out['net_cost'] = net
+            if acct: out['acct_amount'] = acct
+            if net_cur and (fees or net):
+                out['net_cur'] = net_cur
+            if acct_cur and acct:
+                out['acct_cur'] = acct_cur
+                if acct_cur == 'CHF':
+                    out['cost_chf'] = acct
+            return out
+        if not (fees or net or acct):
+            return None
+        out = {'qty': _num('quantity')}
+        if fees: out['fees'] = fees
+        if net:  out['net'] = net
+        if acct: out['acct_amount'] = acct
+        if net_cur:  out['net_cur'] = net_cur
+        if acct_cur and acct: out['acct_cur'] = acct_cur
+        return out
+
+    def _record_sale(self, sym, lot, qty, sell_date, sell_price=None, dedupe=False,
+                     sale=None):
         """Merkt sich einen (Teil-)Verkauf eines Kauf-Lots mit Datum.
-        dedupe=True (Import): identischen Eintrag nicht doppelt anlegen."""
+        dedupe=True (Import): identischen Eintrag nicht doppelt anlegen.
+        sale (optional, Import): Beträge des ganzen Verkaufsauftrags
+          {"qty", "fees", "net", "net_cur", "acct_amount", "acct_cur"} –
+          werden anteilig auf dieses Lot verteilt (ein Verkauf kann per FIFO
+          mehrere Lots betreffen)."""
         try:
             qty = float(qty)
         except (TypeError, ValueError):
@@ -9854,11 +10522,31 @@ class PortfolioDialog(QMainWindow):
             rec["hist_fx_to_chf"] = lot["hist_fx_to_chf"]
         if lot.get("staking"):
             rec["staking"] = True
+        # Kaufseite: Gebühren/Beträge des Lots anteilig mitnehmen
+        rec.update(self._lot_amount_share(lot, qty))
+        for k in ("net_cur", "acct_cur"):
+            if lot.get(k):
+                rec[k] = lot[k]
         try:
             if sell_price and float(sell_price) > 0:
                 rec["sell_price"] = float(sell_price)
         except (TypeError, ValueError):
             pass
+        # Verkaufsseite: Erlös/Gebühren des Auftrags anteilig
+        if sale:
+            try:
+                f = min(qty / float(sale.get("qty") or qty), 1.0)
+            except (TypeError, ValueError, ZeroDivisionError):
+                f = 1.0
+            for src, dst in (("fees", "sell_fees"), ("net", "net_proceeds"),
+                             ("acct_amount", "sell_acct_amount")):
+                v = sale.get(src)
+                if isinstance(v, (int, float)) and v:
+                    rec[dst] = round(v * f, 6)
+            if sale.get("net_cur"):
+                rec["sell_net_cur"] = sale["net_cur"]
+            if sale.get("acct_cur"):
+                rec["sell_acct_cur"] = sale["acct_cur"]
         if not isinstance(getattr(self, "_closed_positions", None), dict):
             self._closed_positions = {}
         lots = self._closed_positions.setdefault(sym, [])
@@ -9897,13 +10585,16 @@ class PortfolioDialog(QMainWindow):
             pass
         return {}
 
-    def _save_limits(self):
-        """Speichert Stop-Loss / eigene Zielkurse (portfoliospezifisch)."""
+    def _save_limits(self, schedule=True):
+        """Speichert Stop-Loss / eigene Zielkurse (portfoliospezifisch; zusätzlich
+        im verschlüsselten Portfolio, wenn entsperrt)."""
         try:
             with open(self._limits_file(), 'w') as f:
                 json.dump(self._limits, f, indent=2)
         except Exception:
             pass
+        if schedule:
+            self._schedule_secure_save()
 
     # ── Portfolio-Verwaltung (Speichern / Laden / Löschen) ─────────────────
     def _ensure_portfolio_dir(self):
@@ -9942,6 +10633,10 @@ class PortfolioDialog(QMainWindow):
         if not ok or not name.strip():
             return
         name = name.strip()
+        # „Demo“ ist reserviert (Beispielportfolio ohne Passwort)
+        if _pdb._safe_name(name).lower() == "demo":
+            QMessageBox.information(self, TR("msg_title_hint"), TR("msg_demo_name_reserved"))
+            return
 
         # Überschreiben bestätigen
         if _pdb.portfolio_exists(name):
@@ -9961,17 +10656,33 @@ class PortfolioDialog(QMainWindow):
         password = pw_dlg.get_password()
 
         try:
-            path = _pdb.save_portfolio(
-                name, self.portfolio_data, password,
-                price_cache  = self._sector_cache,   # Branchen-Cache mitschreiben
-                sector_cache = self._sector_cache,
-                notes        = self._portfolio_notes,
-                div_account  = self._div_account,
-                closed       = self._closed_positions,
-            )
+            # Überschreiben: alte Version sichern
+            if _pdb.portfolio_exists(name):
+                try:
+                    _pdb.backup_portfolio(name, "overwrite")
+                except Exception:
+                    pass
+            # AI-Balance-Ziele des bisherigen Namens mitnehmen
+            _old = self._get_active_portfolio_name()
+            if _old and _old != name and isinstance(getattr(self, '_aib_filters', None), dict) \
+                    and _old in self._aib_filters and name not in self._aib_filters:
+                self._aib_filters[name] = self._aib_filters[_old]
+                self._save_aib_filters(schedule=False)
             self._set_active_portfolio_name(name)
+            sess = _pdb.new_session(name, password)
+            path = _pdb.save_with_session(sess, self.portfolio_data, **self._secure_payload())
+            self._start_secure_session(sess, save_now=False)
+            self._pf_session_backed_up = True       # gerade frisch gespeichert
+            self._pf_last_backup = time.time()
+            # Aus dem Demo gespeichert → ab sofort normales Portfolio
+            # (kein Demo-Banner/Wasserzeichen „Musterdepot“)
+            _was_demo = bool(_DEMO_CUTOFF)
+            _set_demo_cutoff(False)
             self.save_portfolio()
             self._update_portfolio_name_label(name)
+            if _was_demo:
+                self._invalidate_cache()
+                self._refresh_overview_if_open()
             n_sym = len(self.portfolio_data)
             n_pos = sum(len(v) for v in self.portfolio_data.values())
             QMessageBox.information(self, TR("msg_title_saved"),
@@ -10058,6 +10769,9 @@ class PortfolioDialog(QMainWindow):
 
         pw_btn = QPushButton(TR("btn_change_password"))
 
+        bak_btn = QPushButton(TR("btn_backups"))
+        bak_btn.setToolTip(TR("tip_backups"))
+
         load_btn = QPushButton(TR("btn_load"))
         load_btn.setDefault(True)
         load_btn.setStyleSheet(
@@ -10067,6 +10781,7 @@ class PortfolioDialog(QMainWindow):
 
         btn_row.addWidget(del_btn)
         btn_row.addWidget(pw_btn)
+        btn_row.addWidget(bak_btn)
         btn_row.addStretch()
         btn_row.addWidget(cancel_btn)
         btn_row.addWidget(load_btn)
@@ -10090,6 +10805,10 @@ class PortfolioDialog(QMainWindow):
             if reply != QMessageBox.StandardButton.Yes: return
             try:
                 if e["type"] == "smpf":
+                    _s = getattr(self, '_pf_session', None)
+                    if _s and _s.get("name") == e["name"]:
+                        self._start_secure_session(None)   # sonst würde Auto-Speichern
+                        self._set_active_portfolio_name("")  # die Datei neu anlegen
                     _pdb.delete_portfolio(e["name"])
                 else:
                     if os.path.exists(e["path"]): os.remove(e["path"])
@@ -10114,6 +10833,12 @@ class PortfolioDialog(QMainWindow):
             new_pw = pw_dlg.get_password()
             try:
                 _pdb.change_password(e["name"], old_pw, new_pw)
+                # Geöffnetes Portfolio: Sitzungsschlüssel erneuern, sonst würde
+                # das automatische Speichern mit dem alten Passwort verschlüsseln
+                _s = getattr(self, '_pf_session', None)
+                if _s and _s.get("name") == e["name"]:
+                    self._start_secure_session(_pdb.open_session(e["name"], new_pw),
+                                               save_now=False)
                 QMessageBox.information(dlg, TR("msg_title_password_changed"),
                     TR("lbl_pw_changed_ok", name=e["name"]))
             except WrongPasswordError:
@@ -10124,10 +10849,20 @@ class PortfolioDialog(QMainWindow):
 
         pw_btn.clicked.connect(do_change_pw)
 
+        def do_backups():
+            e = current_entry()
+            if not e or e["type"] != "smpf":
+                QMessageBox.information(dlg, TR("msg_title_hint"), TR("msg_password_only_smpf"))
+                return
+            self._show_backups_dialog(e["name"], dlg)
+
+        bak_btn.clicked.connect(do_backups)
+
         def do_load():
             e = current_entry()
             if not e: return
             try:
+                password = None
                 if e["type"] == "smpf":
                     if e["name"] == "Demo":
                         # Demo-Portfolio hat kein Passwort
@@ -10195,6 +10930,7 @@ class PortfolioDialog(QMainWindow):
                 else:
                     action = 'replace'
 
+                _session_for = None        # Name, in den ab jetzt automatisch gespeichert wird
                 if action == 'merge':
                     # Zusammenführen: neue Positionen zu bestehenden hinzufügen
                     for sym, positions in new_positions.items():
@@ -10244,11 +10980,13 @@ class PortfolioDialog(QMainWindow):
                         pw_dlg.setWindowTitle(TR("lbl_pw_for_portfolio", name=new_name).replace("<b>","").replace("</b>",""))
                         if pw_dlg.exec() == QDialog.DialogCode.Accepted:
                             try:
-                                _pdb.save_portfolio(new_name, self.portfolio_data,
-                                                    pw_dlg.get_password(),
-                                                    notes=self._portfolio_notes,
-                                                    div_account=self._div_account,
-                                                    closed=self._closed_positions)
+                                if _pdb.portfolio_exists(new_name):
+                                    _pdb.backup_portfolio(new_name, "overwrite")
+                                _sess_new = _pdb.new_session(new_name, pw_dlg.get_password())
+                                self._set_active_portfolio_name(new_name)
+                                _pdb.save_with_session(_sess_new, self.portfolio_data,
+                                                       **self._secure_payload())
+                                _session_for = (new_name, _sess_new)
                                 info_txt = TR("lbl_merged_saved_as", name=new_name, n=n_total)
                             except Exception as ex:
                                 QMessageBox.warning(dlg, TR("msg_title_error"), TR("msg_save_failed2", e=ex))
@@ -10264,16 +11002,35 @@ class PortfolioDialog(QMainWindow):
                     self._div_account = data.get("div_account", {}) or {}
                     self._closed_positions = data.get("closed", {}) or {}
                     info_txt = TR("lbl_portfolio_loaded_n", name=e['name'], n=len(self.portfolio_data))
+                    if e["type"] == "smpf" and password is not None and e["name"] != "Demo":
+                        try:
+                            _session_for = (e["name"], _pdb.open_session(e["name"], password))
+                        except Exception:
+                            _session_for = None
 
                 # Branchen-Cache übernehmen
                 if new_sectors:
                     self._sector_cache.update(new_sectors)
-                self._set_active_portfolio_name(e["name"])
-                _set_demo_cutoff(e["name"] == "Demo")
+                # Aktiver Name: beim Ersetzen das geöffnete Portfolio; beim
+                # Zusammenführen nur, wenn unter neuem Namen gespeichert wurde –
+                # sonst ist die Übersicht ein ungespeicherter Mix (kein
+                # automatisches Speichern ins geöffnete Portfolio!)
+                if action == 'merge':
+                    _active = _session_for[0] if _session_for else ""
+                else:
+                    _active = e["name"]
+                self._start_secure_session(None)
+                self._set_active_portfolio_name(_active)
+                _set_demo_cutoff(_active == "Demo")
                 self._limits = self._load_limits()  # Limits portfoliospezifisch neu laden
+                if action != 'merge':
+                    self._apply_portfolio_settings(data.get("settings"), _active)
+                if _session_for:
+                    self._start_secure_session(_session_for[1], save_now=False)
+                    self._secure_backup(force=True, reason="session")
                 self.save_portfolio()
                 self._invalidate_cache()
-                self._update_portfolio_name_label(e["name"])
+                self._update_portfolio_name_label(_active)
                 dlg.accept()
                 if e["name"] == "Demo":
                     QTimer.singleShot(200, self._show_demo_disclaimer)
@@ -10658,14 +11415,32 @@ class PortfolioDialog(QMainWindow):
                 ],
             }
 
-        dlg = tax_module._build_tax_dialog(
-            country_code, pos_data, parent=self,
-            number_format=globals().get('_NUMBER_FORMAT', 'CH')
-        )
+        # Realisierte Gewinne + Kontosaldo (v5.10.0)
+        _known_cur = {}
+        if isinstance(self._price_cache, dict):
+            for _s, _pc in self._price_cache.items():
+                if isinstance(_pc, dict) and _pc.get("cur"):
+                    _known_cur[_s] = _pc["cur"]
+        try:
+            _pos_hist = self._positions_with_history()
+        except Exception:
+            _pos_hist = {}
         import sys as _sys_tax
-        if _sys_tax.platform == "win32":
-            dlg.finished.connect(lambda: (self.raise_(), self.activateWindow()))
-        dlg.exec()
+        while True:
+            dlg = tax_module._build_tax_dialog(
+                country_code, pos_data, parent=self,
+                number_format=globals().get('_NUMBER_FORMAT', 'CH'),
+                account=self._div_account if isinstance(getattr(self, '_div_account', None), dict) else None,
+                closed=_closed_all,
+                positions_by_sym=_pos_hist,
+                known_cur=_known_cur,
+            )
+            if _sys_tax.platform == "win32":
+                dlg.finished.connect(lambda: (self.raise_(), self.activateWindow()))
+            dlg.exec()
+            # 🔄 Neu laden: Cache ist geleert → Auszug mit frischen Daten neu aufbauen
+            if not getattr(dlg, "reload_requested", False):
+                break
 
     @safe_slot
     def portfolio_cleanup(self):
@@ -10698,20 +11473,7 @@ class PortfolioDialog(QMainWindow):
         if not self.portfolio_data:
             QMessageBox.information(self, TR("msg_title_info"), TR("msg_portfolio_empty"))
             return
-        n_sym = len(self.portfolio_data)
-        n_pos = sum(len(v) for v in self.portfolio_data.values())
-        reply = QMessageBox.question(
-            self, TR("msg_title_portfolio_delete"),
-            TR("msg_delete_all_confirm", n_pos=n_pos, n_sym=n_sym) + TR("msg_save_hint"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-        if reply == QMessageBox.StandardButton.Yes:
-            self.portfolio_data = {}
-            self._closed_positions = {}
-            self.save_portfolio()
-            self._invalidate_cache()
-            self._update_portfolio_name_label("")
+        if self._clear_overview(self):
             self._build_table({})
             # Admin verstecken, zurück zur (jetzt leeren) Übersicht
             self.hide()
@@ -10731,18 +11493,97 @@ class PortfolioDialog(QMainWindow):
                 migrated[sym] = migrated.get(sym, []) + positions
         return migrated
 
+    def _portfolio_status_html(self, name, compact=False) -> str:
+        """Zusatz zur Namensanzeige: automatisch gespeichert / gesperrt (Link).
+        compact=True (Übersicht auf Full HD / QHD): nur „🔒 Entsperren“ – der
+        lange Text verdrängte dort den Link aus der Button-Zeile; die
+        Erklärung steht im Tooltip (tip_pf_locked)."""
+        if not name or name == "Demo" or not _DB_IMPORT_OK or not CRYPTO_AVAILABLE:
+            return ""
+        if getattr(self, '_pf_session', None):
+            if compact:
+                return "  <span style='color:#27ae60'>🔐</span>"
+            return f"  <span style='color:#27ae60'>{TR('lbl_pf_autosave')}</span>"
+        if not _pdb.portfolio_exists(name):
+            return ""
+        if compact:
+            return (f"  <span style='color:#e67e22'>🔒</span> "
+                    f"<a href='unlock'><b>{TR('lnk_pf_unlock')}</b></a>")
+        return (f"  <span style='color:#e67e22'>{TR('lbl_pf_locked')}</span> "
+                f"<a href='unlock'>{TR('lnk_pf_unlock')}</a>")
+
+    def _setup_name_label(self, lbl):
+        """Link „Entsperren“ in der Namensanzeige anschliessen."""
+        # Stil nur auf das Label beschränken: ein Stil ohne Selektor („color: …“)
+        # gilt auch für den Tooltip → blaue Schrift auf dunklem Tooltip (Dark Mode)
+        _ss = lbl.styleSheet().strip()
+        if _ss and "{" not in _ss:
+            lbl.setStyleSheet("QLabel { " + _ss + " }")
+        lbl.setTextFormat(Qt.TextFormat.RichText)
+        lbl.setOpenExternalLinks(False)
+        lbl.setTextInteractionFlags(Qt.TextInteractionFlag.LinksAccessibleByMouse)
+        lbl.setToolTip(self._portfolio_status_tip(self._get_active_portfolio_name()))
+        lbl.linkActivated.connect(self._unlock_portfolio)
+
+    def _portfolio_status_tip(self, name) -> str:
+        """Tooltip der Namensanzeige passend zum Zustand (Demo, entsperrt,
+        gesperrt, nicht gespeichert)."""
+        if name == "Demo":
+            return TR("tip_pf_demo")
+        if not name:
+            return TR("tip_pf_unsaved")
+        if not _DB_IMPORT_OK or not CRYPTO_AVAILABLE:
+            return ""
+        if getattr(self, '_pf_session', None):
+            return TR("tip_pf_autosave")
+        if _pdb.portfolio_exists(name):
+            return TR("tip_pf_locked")
+        return TR("tip_pf_unsaved")
+
+    def _fit_ov_name_label(self):
+        """Full HD: Namensanzeige in der Button-Zeile nie schmaler als ihr Text.
+        Unter Windows misst Qt kursiven Text + Farb-Emoji (🔒) zu knapp →
+        „Entsperren“ wurde rechts abgeschnitten; daher feste Breite + Reserve."""
+        lbl = getattr(self, '_portfolio_name_label_ov', None)
+        if lbl is None or getattr(self, '_ov_name_label_4k', False):
+            return
+        try:
+            from PyQt6.QtWidgets import QSizePolicy as _QSP_nl
+            lbl.setSizePolicy(_QSP_nl.Policy.Fixed, _QSP_nl.Policy.Preferred)
+            lbl.setFixedWidth(lbl.sizeHint().width() + 16)
+        except RuntimeError:
+            pass
+
     def _update_portfolio_name_label(self, name):
         """Aktualisiert die Titelzeile mit dem Portfolio-Namen"""
+        st = self._portfolio_status_html(name)
+        _tip = self._portfolio_status_tip(name)
+        for _l in (getattr(self, '_portfolio_name_label', None),
+                   getattr(self, '_portfolio_name_label_ov', None)):
+            if _l is not None:
+                try:
+                    _l.setToolTip(_tip)
+                except RuntimeError:
+                    pass
         if hasattr(self, '_portfolio_name_label') and self._portfolio_name_label:
             if name:
-                self._portfolio_name_label.setText(TR("status_active_portfolio", name=name))
+                self._portfolio_name_label.setText(TR("status_active_portfolio", name=name) + st)
             else:
                 self._portfolio_name_label.setText(TR("lbl_not_saved_italic"))
         if hasattr(self, '_portfolio_name_label_ov') and self._portfolio_name_label_ov:
-            if name:
-                self._portfolio_name_label_ov.setText(f"<i>Portfolio: <b>{name}</b></i>")
-            else:
-                self._portfolio_name_label_ov.setText(TR("lbl_no_portfolio_loaded"))
+            try:
+                if name:
+                    _base = (TR("status_active_portfolio2", name=name)
+                             if getattr(self, '_ov_name_label_4k', False)
+                             else f"<i>Portfolio: <b>{name}</b></i>")
+                    self._portfolio_name_label_ov.setText(
+                        _base + self._portfolio_status_html(
+                            name, compact=getattr(self, '_ov_name_compact', False)))
+                else:
+                    self._portfolio_name_label_ov.setText(TR("lbl_no_portfolio_loaded"))
+                self._fit_ov_name_label()
+            except RuntimeError:
+                self._portfolio_name_label_ov = None   # Übersicht wurde neu aufgebaut
 
 
     @safe_slot
@@ -10761,6 +11602,7 @@ class PortfolioDialog(QMainWindow):
         self._portfolio_name_label = QLabel(TR("lbl_not_saved"))
         self._portfolio_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._portfolio_name_label.setStyleSheet("color: #2980b9; font-size: 11px;")
+        self._setup_name_label(self._portfolio_name_label)
         layout.addWidget(self._portfolio_name_label)
 
         info = QLabel(TR("lbl_buy_date_hint"))
@@ -10902,6 +11744,12 @@ class PortfolioDialog(QMainWindow):
         load_btn.clicked.connect(self.portfolio_load)
         btn_layout.addWidget(load_btn)
 
+        backups_btn = _make_portfolio_btn(TR("btn_backups_admin"), TR("btn_backups_admin_plain"),
+                                          TR("tip_backups"))
+        backups_btn.setStyleSheet("padding: 2px 10px;")
+        backups_btn.clicked.connect(self.show_backups)
+        btn_layout.addWidget(backups_btn)
+
         clear_btn = _make_portfolio_btn(TR("btn_portfolio_delete"), TR("btn_portfolio_delete_plain"), TR("tip_portfolio_delete"))
         clear_btn.setStyleSheet("padding: 2px 10px;")
         clear_btn.clicked.connect(self.portfolio_clear)
@@ -10975,11 +11823,44 @@ class PortfolioDialog(QMainWindow):
                 if main_win and hasattr(main_win, '_app_stack'):
                     main_win._app_stack.setCurrentIndex(0)
                 self.close()
+        help_btn_adm = _make_portfolio_btn(TR("btn_help"), TR("btn_help_plain"), TR("tip_help_admin"))
+        def _admin_help():
+            _app = self.parent()
+            while _app and not hasattr(_app, 'show_help'):
+                _app = _app.parent() if hasattr(_app, 'parent') else None
+            if _app:
+                _app.show_help(anchor="administration", parent_widget=self)
+        help_btn_adm.clicked.connect(_admin_help)
+        btn_layout.addWidget(help_btn_adm)
+
         close_btn = _make_portfolio_btn(TR("btn_close"), TR("btn_close_plain"), TR("tip_portfolio_close"))
         close_btn.clicked.connect(_admin_close)
         btn_layout.addWidget(close_btn)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
+
+        # Breite: Fenster so breit, dass alle Buttons Platz haben. Reicht der
+        # Bildschirm nicht (z. B. Full HD mit 125 %), Speichern/Laden/Sicherungen …
+        # in eine zweite Zeile (sonst werden Beschriftungen abgeschnitten).
+        _scr_adm = (self.screen() or QApplication.primaryScreen()).availableGeometry()
+        _need = btn_layout.minimumSize().width() + 40
+        _avail = int(_scr_adm.width() * 0.95)
+        if _need > _avail:
+            row2 = QHBoxLayout(); row2.setSpacing(4)
+            _i = btn_layout.indexOf(save_btn)
+            _sep = btn_layout.itemAt(_i - 1)
+            if _sep is not None and isinstance(_sep.widget(), QLabel):
+                btn_layout.takeAt(_i - 1).widget().deleteLater()
+                _i -= 1
+            while btn_layout.count() > _i:
+                _it = btn_layout.takeAt(_i)
+                if _it.widget() is not None:
+                    row2.addWidget(_it.widget())
+            row2.addStretch()
+            btn_layout.addStretch()
+            layout.addLayout(row2)
+            _need = max(btn_layout.minimumSize().width(), row2.minimumSize().width()) + 40
+        self._admin_min_w = min(_need, _avail)
 
 
     @safe_slot
@@ -11038,6 +11919,8 @@ class PortfolioDialog(QMainWindow):
         idx_netto_konto = col('Nettobetrag in der Währung des Kontos')   # CHF-Betrag
         idx_waehrung    = col('Währung')   # letzte Spalte = Kontowährung
         idx_trade_cur   = col('Währung Nettobetrag')   # Handelswährung (Börsenplatz)
+        idx_kosten      = col('Kosten')        # Gebühren in Handelswährung
+        idx_netto       = col('Nettobetrag')   # inkl. Gebühren, in Handelswährung
 
         # Handelswährung → Yahoo-Börsensuffix (nur eindeutige Fälle; EUR/USD nicht,
         # da mehrere Börsen bzw. US-Börsen ohne Suffix)
@@ -11059,7 +11942,35 @@ class PortfolioDialog(QMainWindow):
         verkauf_rows = []
         split_rows = []
         staking_rows = []   # Krypto-Staking-Erträge ('Crypto Deposit', Stückpreis 0)
+        cash_rows  = []     # Kontobewegungen (Einzahlung, Devisen, Zinsen, Gebühren, Dividenden)
+        bank_saldo = {}     # Kontowährung → (Zeitstempel, Datum, Saldo) der neuesten Zeile
+        csv_days   = []     # alle Buchungsdaten (Zeitraum der CSV)
         skipped    = []
+
+        # Swissquote-Buchungsart → Art im Konto (alles Übrige: 'other')
+        _CASH_KIND = {
+            'Einzahlung': 'deposit', 'Auszahlung': 'withdrawal', 'Zahlung': 'payment',
+            'Forex-Belastung': 'fx', 'Forex-Gutschrift': 'fx',
+            'Fx-Belastung Comp.': 'fx', 'Fx-Gutschrift Comp.': 'fx',
+            'Zinsen auf Belastungen': 'interest', 'Zinsen auf Einlagen': 'interest',
+            'Depotgebühren': 'fee', 'Spesen Steuerauszug': 'fee',
+            'Berichtigung Börsengeb.': 'fee',
+            'Dividende': 'dividend', 'Dividende (Storniert)': 'dividend',
+            'Storno (Dividende)': 'dividend', 'Capital Gain': 'dividend',
+        }
+        idx_saldo = col('Saldo')
+        import hashlib as _hl
+
+        def _cash_num(parts, idx):
+            if idx < 0 or len(parts) <= idx:
+                return None
+            v = parts[idx].strip().replace("'", "").replace(',', '.')
+            if v in ('', '-'):
+                return None
+            try:
+                return float(v)
+            except ValueError:
+                return None
 
         for i, line in enumerate(lines[1:], start=2):
             line = line.strip()
@@ -11070,7 +11981,58 @@ class PortfolioDialog(QMainWindow):
                 continue
 
             typ = parts[idx_typ].strip()
+
+            try:
+                csv_days.append(datetime.strptime(parts[idx_datum].strip()[:10], "%d-%m-%Y")
+                                .strftime("%Y-%m-%d"))
+            except ValueError:
+                pass
+            # Saldo laut Bank (für den Abgleich im Konto) – neueste Zeile je Kontowährung
+            _acur = (parts[idx_waehrung].strip().upper()
+                     if idx_waehrung >= 0 and len(parts) > idx_waehrung else '')
+            _sal = _cash_num(parts, idx_saldo)
+            if _acur and _sal is not None:
+                try:
+                    _ts = datetime.strptime(parts[idx_datum].strip(), "%d-%m-%Y %H:%M:%S")
+                except ValueError:
+                    _ts = None
+                if _ts and (_acur not in bank_saldo or _ts > bank_saldo[_acur][0]):
+                    bank_saldo[_acur] = (_ts, _ts.strftime("%Y-%m-%d"), _sal)
+
             if typ not in ('Kauf', 'Verkauf', 'Split', 'Crypto Deposit'):
+                # Kontobewegung (ohne Wertschriften-Bestand): Betrag in Kontowährung
+                _amt = _cash_num(parts, idx_netto_konto)
+                if _acur and _amt:
+                    try:
+                        _d = datetime.strptime(parts[idx_datum].strip()[:10], "%d-%m-%Y")
+                    except ValueError:
+                        _d = None
+                    if _d:
+                        _kind = _CASH_KIND.get(typ, 'other')
+                        _tax = 0.0
+                        if _kind == 'dividend':
+                            # Kosten = Quellensteuer (in Handelswährung) → in Kontowährung
+                            _k = abs(_cash_num(parts, idx_kosten) or 0.0)
+                            _n = abs(_cash_num(parts, idx_netto) or 0.0)
+                            _tax = _k * (abs(_amt) / _n if _n else 1.0)
+                            _tax = _tax if _amt > 0 else -_tax
+                        _sym = parts[idx_symbol].strip() if len(parts) > idx_symbol else ''
+                        _isin = (parts[idx_isin].strip().upper()
+                                 if idx_isin >= 0 and len(parts) > idx_isin else '')
+                        _ncur = (parts[idx_trade_cur].strip().upper()
+                                 if idx_trade_cur >= 0 and len(parts) > idx_trade_cur else '')
+                        cash_rows.append({
+                            'id':       'sq:' + _hl.sha1(line.encode('utf-8')).hexdigest()[:16],
+                            'date':     _d.strftime("%Y-%m-%d"),
+                            'kind':     _kind,
+                            'currency': _acur,
+                            'gross':    _amt + _tax,      # brutto (Dividenden) bzw. Betrag
+                            'tax':      _tax,
+                            'symbol':   '' if _sym == '-' else _sym,
+                            'note':     typ,
+                            'isin':     '' if _isin == '-' else _isin,
+                            'net_cur':  _ncur,
+                        })
                 continue
 
             symbol_raw = parts[idx_symbol].strip()
@@ -11153,13 +12115,18 @@ class PortfolioDialog(QMainWindow):
             elif isin.upper().startswith('ES') and '.' not in symbol_raw:
                 symbol_raw = symbol_raw + '.MC'
 
-            # Nettobetrag in Kontowährung (CHF) – negativer Wert bei Kauf
-            netto_chf = 0.0
-            if idx_netto_konto >= 0 and len(parts) > idx_netto_konto:
+            # Beträge (negativ bei Kauf → abs). Achtung: die Kontowährung ist
+            # NICHT immer CHF – Swissquote führt Mehrwährungskonten (USD, EUR …).
+            def _amt(idx):
+                if idx < 0 or len(parts) <= idx:
+                    return 0.0
                 try:
-                    netto_chf = abs(float(parts[idx_netto_konto].strip().replace("'","").replace(',','.')))
-                except Exception:
-                    netto_chf = 0.0
+                    return abs(float(parts[idx].strip().replace("'", "").replace(',', '.')))
+                except ValueError:
+                    return 0.0
+            netto_konto = _amt(idx_netto_konto)          # in Kontowährung
+            acct_cur = (parts[idx_waehrung].strip().upper()
+                        if idx_waehrung >= 0 and len(parts) > idx_waehrung else '')
 
             entry = {
                 'symbol':    symbol_raw,
@@ -11169,8 +12136,11 @@ class PortfolioDialog(QMainWindow):
                 'price':     preis,
                 'type':      typ,
                 'isin':      isin,
-                'netto_chf': netto_chf,   # echter CHF-Kaufwert inkl. FX
                 'trade_cur': trade_cur,   # Handelswährung laut CSV (z.B. GBP)
+                'fees':      _amt(idx_kosten),   # Gebühren (Handelswährung)
+                'net':       _amt(idx_netto),    # inkl. Gebühren (Handelswährung)
+                'acct_amount': netto_konto,      # inkl. Gebühren (Kontowährung)
+                'acct_cur':  acct_cur,
             }
             if typ == 'Kauf':
                 kauf_rows.append(entry)
@@ -11284,10 +12254,20 @@ class PortfolioDialog(QMainWindow):
         chk_yahoo_price.setChecked(True)
         chk_yahoo_price.setStyleSheet("color: #a8d8a8; font-weight: normal;" if _dm_sq else "color: #155724; font-weight: normal;")
 
+        chk_amounts = QCheckBox(TR("chk_import_amounts"))
+        chk_amounts.setChecked(True)
+        chk_amounts.setToolTip(TR("tip_import_amounts"))
+        chk_cash = QCheckBox(TR("chk_import_cash", n=len(cash_rows)))
+        chk_cash.setChecked(bool(cash_rows))
+        chk_cash.setToolTip(TR("tip_import_cash"))
+
         opt_layout.addWidget(chk_kauf)
         opt_layout.addWidget(chk_verkauf)
         opt_layout.addWidget(chk_skip_existing)
         opt_layout.addWidget(chk_yahoo_price)
+        opt_layout.addWidget(chk_amounts)
+        if cash_rows:
+            opt_layout.addWidget(chk_cash)
 
         # Staking-Erträge: Checkbox nur anzeigen, wenn die CSV welche enthält
         chk_staking = None
@@ -11391,44 +12371,23 @@ class PortfolioDialog(QMainWindow):
             return 100.0 if _sym_currency_cache[sym] == 'GBp' else 1.0
 
         def do_import():
+            self._secure_backup(force=True, reason="import")   # Stand vor dem Import sichern
             do_kauf      = chk_kauf.isChecked()
             do_verkauf   = chk_verkauf.isChecked()
             skip_dup     = chk_skip_existing.isChecked()
             use_yahoo    = chk_yahoo_price.isChecked()
+            use_amounts  = chk_amounts.isChecked()
 
             # ── Ersetzen oder Zusammenführen? ────────────────────────────────
             sq_action = 'replace'
             if self.portfolio_data:
-                n_exist_sym = len(self.portfolio_data)
-                n_exist_pos = sum(len(v) for v in self.portfolio_data.values())
-                n_new_sym   = len(set(r['symbol'] for r in kauf_rows + verkauf_rows))
-                n_new_pos   = len(kauf_rows) + len(verkauf_rows)
-                sq_merge_dlg = QDialog(preview_dialog)
-                sq_merge_dlg.setWindowTitle("Portfolio laden")
-                sq_merge_dlg.setMinimumWidth(440)
-                sq_ml = QVBoxLayout(sq_merge_dlg)
-                sq_ml.addWidget(QLabel(
-                    f"<b>Aktuelles Portfolio:</b> {n_exist_sym} Symbole, {n_exist_pos} Positionen<br>" +
-                    f"<b>Swissquote Import:</b> {n_new_sym} Symbole, {n_new_pos} Transaktionen<br><br>" +
-                    "<b>Was soll passieren?</b>"
-                ))
-                sq_btn_rep  = QPushButton("🔄 Ersetzen  (nur Swissquote Import behalten)")
-                sq_btn_mrg  = QPushButton("➕ Zusammenführen  (beide kombinieren)")
-                sq_btn_cncl = QPushButton("Abbrechen")
-                sq_btn_rep.setStyleSheet("padding:8px;text-align:left;")
-                sq_btn_mrg.setStyleSheet("padding:8px;text-align:left;")
-                sq_ml.addWidget(sq_btn_rep)
-                sq_ml.addWidget(sq_btn_mrg)
-                sq_ml.addWidget(sq_btn_cncl)
-                sq_merge_result = [None]
-                def _sq_rep(): sq_merge_result[0] = 'replace'; sq_merge_dlg.accept()
-                def _sq_mrg(): sq_merge_result[0] = 'merge';   sq_merge_dlg.accept()
-                sq_btn_rep.clicked.connect(_sq_rep)
-                sq_btn_mrg.clicked.connect(_sq_mrg)
-                sq_btn_cncl.clicked.connect(sq_merge_dlg.reject)
-                if sq_merge_dlg.exec() != QDialog.DialogCode.Accepted or sq_merge_result[0] is None:
+                sq_action = self._ask_replace_or_merge(
+                    preview_dialog, "Swissquote",
+                    len(set(r['symbol'] for r in kauf_rows + verkauf_rows)),
+                    len(kauf_rows) + len(verkauf_rows),
+                    self._orphan_sells(kauf_rows + staking_rows, verkauf_rows))
+                if sq_action is None:
                     return
-                sq_action = sq_merge_result[0]
 
             if sq_action == 'replace':
                 self.portfolio_data = {}
@@ -11445,8 +12404,10 @@ class PortfolioDialog(QMainWindow):
             errors               = []
             _sym_currency_cache.clear()  # sym → instrument_currency
             _resolve_cache       = {}  # raw → resolved sym (verhindert inkonsistente Suffixe)
+            _isin_sym            = {}  # ISIN → {Handelswährung: Portfolio-Symbol} (für Dividenden)
 
             # --- KÄUFE ---
+            _bought_before = self._bought_snapshot() if skip_dup else {}
             if do_kauf:
                 total_k = len(kauf_rows)
                 for ki, entry in enumerate(kauf_rows):
@@ -11464,16 +12425,18 @@ class PortfolioDialog(QMainWindow):
                         _resolve_cache[_rk] = self._resolve_import_symbol(
                             sym_raw, entry.get('isin', ''), entry.get('trade_cur'))
                     sym = _resolve_cache[_rk]
+                    if entry.get('isin'):
+                        _isin_sym.setdefault(entry['isin'].upper(), {})[entry.get('trade_cur', '')] = sym
 
-                    # Duplikat-Check
+                    # Duplikat-Check: nur gegen den Stand VOR dem Import
                     skip_this = False
                     for check_sym in ([sym, sym_raw] if sym != sym_raw else [sym]):
-                        if skip_dup and check_sym in self.portfolio_data:
-                            if any(abs(p['quantity'] - qty) < 0.0001 and p['buy_date'] == date
-                                   for p in self.portfolio_data[check_sym]):
-                                skipped_dup += 1
-                                skip_this = True
-                                break
+                        _k = (check_sym, date)
+                        if _bought_before.get(_k, 0.0) >= qty - 1e-4:
+                            _bought_before[_k] -= qty
+                            skipped_dup += 1
+                            skip_this = True
+                            break
                     if skip_this:
                         continue
 
@@ -11503,7 +12466,7 @@ class PortfolioDialog(QMainWindow):
                         'buy_price':      buy_price,
                         'quantity':       qty,
                         'hist_fx_to_chf': hist_fx_to_chf,  # instrument→CHF zum Kaufdatum
-                        'cost_chf':       entry.get('netto_chf', 0.0),
+                        **(self._import_amounts(entry, 'buy') if use_amounts else {}),
                     })
                     imported_kauf += 1
 
@@ -11582,7 +12545,12 @@ class PortfolioDialog(QMainWindow):
             # --- VERKÄUFE ---
             if do_verkauf:
                 total_v = len(verkauf_rows)
-                for vi, entry in enumerate(verkauf_rows):
+                # Chronologisch verrechnen (Swissquote-CSV ist neueste zuerst sortiert;
+                # sonst „verbraucht“ ein späterer Verkauf die ältesten Lots).
+                # reversed + stabile Sortierung: Reihenfolge innerhalb eines Tages bleibt.
+                _vk_sorted = sorted(reversed(verkauf_rows), key=lambda e: e['date'])
+                _sold_before = self._sold_snapshot() if skip_dup else {}
+                for vi, entry in enumerate(_vk_sorted):
                     sym_raw = entry['symbol']
                     date    = entry['date']
                     qty     = entry['quantity']
@@ -11605,33 +12573,61 @@ class PortfolioDialog(QMainWindow):
                     if not found_sym:
                         errors.append(f"Verkauf {sym} {date}: Symbol nicht im Portfolio – übersprungen")
                         continue
+                    # Schon importiert (überlappende CSV beim Zusammenführen)?
+                    _k = (found_sym, date)
+                    if _sold_before.get(_k, 0.0) >= qty - 1e-6:
+                        _sold_before[_k] -= qty
+                        skipped_dup += 1
+                        continue
 
                     _sell_px = entry.get('price')
                     if _sell_px is not None:
                         _sell_px = _sell_px * _price_factor(found_sym, entry)
 
+                    _sale = self._import_amounts(entry, 'sell') if use_amounts else None
+
                     # FIFO – verkaufte Lots mit Datum in der Verkaufshistorie merken
                     remaining  = qty
-                    positions  = sorted(self.portfolio_data[found_sym], key=lambda p: p['buy_date'])
+                    positions  = self._fifo_order(self.portfolio_data[found_sym], date)
                     new_pos    = []
                     for pos in positions:
                         if remaining <= 0:
                             new_pos.append(pos)
                         elif pos['quantity'] <= remaining + 0.0001:
                             self._record_sale(found_sym, pos, pos['quantity'], date,
-                                              _sell_px, dedupe=True)
+                                              _sell_px, sale=_sale)
                             remaining -= pos['quantity']
                         else:
                             self._record_sale(found_sym, pos, remaining, date,
-                                              _sell_px, dedupe=True)
-                            pos = dict(pos)
-                            pos['quantity'] -= remaining
+                                              _sell_px, sale=_sale)
+                            pos = self._reduce_lot(pos, remaining)
                             remaining = 0
                             new_pos.append(pos)
                     self.portfolio_data[found_sym] = new_pos
                     if not self.portfolio_data[found_sym]:
                         del self.portfolio_data[found_sym]
                     imported_verkauf += 1
+
+            # --- KONTOBEWEGUNGEN → Konto (Ansicht „Alles“) ---
+            imported_cash = 0
+            if cash_rows and chk_cash.isChecked():
+                # Dividenden-Symbol wie im Portfolio (Swissquote 'SAAB^B' → 'SAAB-B.ST'):
+                # über die ISIN der Käufe; bei mehreren Börsenplätzen der in Auszahlungswährung
+                for _r in cash_rows:
+                    _m = _isin_sym.get(_r.get('isin', ''))
+                    if _m:
+                        _r['symbol'] = _m.get(_r.get('net_cur', '')) or next(iter(_m.values()))
+                try:
+                    import dividend_account as _da
+                    self._div_account = _da.ensure_account(getattr(self, '_div_account', None))
+                    imported_cash = _da.import_bank_entries(
+                        self._div_account, cash_rows, "Swissquote",
+                        replace=(sq_action == 'replace'),
+                        period=(min(csv_days), max(csv_days)) if csv_days else None)
+                    _da.bank_set_saldo(self._div_account,
+                                       {c: [d, v] for c, (_t, d, v) in bank_saldo.items()})
+                except Exception as _e:
+                    errors.append(f"Kontobewegungen: {_e}")
 
             progress_label.setText("")
             self.save_portfolio()
@@ -11651,13 +12647,18 @@ class PortfolioDialog(QMainWindow):
                 if yahoo_fallback:
                     msg += f"   davon ohne hist. FX-Kurs (Fallback): {yahoo_fallback}\n"
             msg += TR("msg_import_sells_done", n=imported_verkauf)
+            if imported_cash:
+                msg += TR("msg_import_cash_done", n=imported_cash)
             if skipped_dup:
                 msg += TR("msg_import_dupes_skipped", n=skipped_dup)
             if errors:
                 msg += f"\n⚠️ Hinweise ({len(errors)}):\n" + "\n".join(errors[:8])
                 if len(errors) > 8:
                     msg += f"\n… und {len(errors)-8} weitere"
+            if getattr(self, '_pf_session', None):
+                msg += "\n\n" + TR("msg_backup_hint")
             QMessageBox.information(self, "Import abgeschlossen", msg)
+            self._after_import_save()
 
         import_ok_btn.clicked.connect(do_import)
         preview_dialog.exec()
@@ -12005,7 +13006,14 @@ class PortfolioDialog(QMainWindow):
                 idx = find_col(matched_profile[profile_key])
                 if idx >= 0:
                     auto_idx = idx + 1  # +1 wegen "— nicht vorhanden —"
-            if auto_idx == 0:
+            if auto_idx == 0 and isinstance(col_name_fallback, (list, tuple)):
+                # Optionale Spalten: nur eindeutige Treffer (Begriff im Spaltennamen)
+                for term in col_name_fallback:
+                    hits = [i for i, h in enumerate(header_norm) if h and term in h]
+                    if hits:
+                        auto_idx = hits[0] + 1
+                        break
+            elif auto_idx == 0:
                 idx = find_col(col_name_fallback)
                 if idx >= 0:
                     auto_idx = idx + 1
@@ -12024,8 +13032,12 @@ class PortfolioDialog(QMainWindow):
         row_price,  cmb_price  = make_row(TR("lbl_csv_col_price"),   TR("ph_csv_price"),  'col_price',   'kurs')
         row_type,   cmb_type   = make_row(TR("lbl_csv_col_type"),    TR("ph_csv_type"),   'col_type',    'typ')
         row_name,   cmb_name   = make_row(TR("lbl_csv_col_name"),    TR("ph_csv_name"),   'col_name',    'name')
+        row_fees,   cmb_fees   = make_row(TR("lbl_csv_col_fees"),    TR("ph_csv_fees"),   'col_fees',
+                                          ['gebühr', 'kosten', 'spesen', 'commission', 'comm/fee', 'fees', 'fee'])
+        row_net,    cmb_net    = make_row(TR("lbl_csv_col_net"),     TR("ph_csv_net"),    'col_net',
+                                          ['nettobetrag', 'net amount', 'proceeds', 'endbetrag', 'ausmachender betrag'])
 
-        for w in [row_sym, row_date, row_qty, row_price, row_type, row_name]:
+        for w in [row_sym, row_date, row_qty, row_price, row_type, row_name, row_fees, row_net]:
             map_layout.addWidget(w)
 
         # Typ-Schlüsselwörter
@@ -12122,6 +13134,8 @@ class PortfolioDialog(QMainWindow):
             price_idx = get_idx(cmb_price)
             type_idx  = get_idx(cmb_type)
             name_idx  = get_idx(cmb_name)
+            fees_idx  = get_idx(cmb_fees)
+            net_idx   = get_idx(cmb_net)
 
             if sym_idx < 0 or date_idx < 0 or qty_idx < 0 or price_idx < 0:
                 QMessageBox.warning(mapping_dialog, TR("msg_title_mandatory"),
@@ -12140,6 +13154,8 @@ class PortfolioDialog(QMainWindow):
             mapping_result['price_idx']   = price_idx
             mapping_result['type_idx']    = type_idx
             mapping_result['name_idx']    = name_idx
+            mapping_result['fees_idx']    = fees_idx
+            mapping_result['net_idx']     = net_idx
             mapping_result['decimal_sep'] = decimal_sep
             mapping_result['buy_kws']     = buy_kws
             mapping_result['sell_kws']    = sell_kws
@@ -12160,6 +13176,8 @@ class PortfolioDialog(QMainWindow):
         price_idx   = mapping_result['price_idx']
         type_idx    = mapping_result['type_idx']
         name_idx    = mapping_result['name_idx']
+        fees_idx    = mapping_result['fees_idx']
+        net_idx     = mapping_result['net_idx']
         decimal_sep = mapping_result['decimal_sep']
         buy_kws     = mapping_result['buy_kws']
         sell_kws    = mapping_result['sell_kws']
@@ -12257,6 +13275,17 @@ class PortfolioDialog(QMainWindow):
             raw_type  = parts[type_idx].lower() if type_idx >= 0 and type_idx < len(parts) else ''
             raw_name  = parts[name_idx] if name_idx >= 0 and name_idx < len(parts) else ''
 
+            # Optionale Beträge (Vorzeichen egal – Banken schreiben Käufe oft negativ)
+            def _opt_amt(idx):
+                if idx < 0 or idx >= len(parts) or not parts[idx].strip():
+                    return 0.0
+                try:
+                    return abs(parse_num(parts[idx]))
+                except Exception:
+                    return 0.0
+            fees_amt = _opt_amt(fees_idx)
+            net_amt  = _opt_amt(net_idx)
+
             if not raw_sym or raw_sym == '-':
                 skipped.append(f"Zeile {i}: Kein Symbol")
                 continue
@@ -12324,6 +13353,8 @@ class PortfolioDialog(QMainWindow):
                 'qty_signed': qty_signed,
                 'price':      price,
                 'type':       tx_type,
+                'fees':       fees_amt,
+                'net':        net_amt,
             }
             if tx_type == 'Kauf':
                 kauf_rows.append(entry)
@@ -12513,6 +13544,14 @@ class PortfolioDialog(QMainWindow):
         opt2_layout.addWidget(chk2_kauf)
         opt2_layout.addWidget(chk2_verkauf)
         opt2_layout.addWidget(chk2_skip)
+        # Nur anbieten, wenn Gebühren- oder Nettobetrag-Spalte zugeordnet ist
+        chk2_amounts = QCheckBox(TR("chk_import_amounts"))
+        chk2_amounts.setChecked(True)
+        chk2_amounts.setToolTip(TR("tip_import_amounts"))
+        if fees_idx >= 0 or net_idx >= 0:
+            opt2_layout.addWidget(chk2_amounts)
+        else:
+            chk2_amounts.setChecked(False)
         prev_dlg_layout.addWidget(opt2_frame)
 
         prog2_lbl = QLabel("")
@@ -12532,43 +13571,22 @@ class PortfolioDialog(QMainWindow):
         cancel2_btn.clicked.connect(prev_dlg.reject)
 
         def do_generic_import():
+            self._secure_backup(force=True, reason="import")   # Stand vor dem Import sichern
             do_k   = chk2_kauf.isChecked()
             do_v   = chk2_verkauf.isChecked()
             skip_d = chk2_skip.isChecked()
+            use_amounts2 = chk2_amounts.isChecked()
 
             # ── Ersetzen oder Zusammenführen? ────────────────────────────────
             generic_action = 'replace'
             if self.portfolio_data:
-                n_exist_sym = len(self.portfolio_data)
-                n_exist_pos = sum(len(v) for v in self.portfolio_data.values())
-                n_new_sym   = len(set(r['symbol'] for r in kauf_rows + verkauf_rows))
-                n_new_pos   = len(kauf_rows) + len(verkauf_rows)
-                merge_dlg2 = QDialog(prev_dlg)
-                merge_dlg2.setWindowTitle("Portfolio laden")
-                merge_dlg2.setMinimumWidth(440)
-                ml2 = QVBoxLayout(merge_dlg2)
-                ml2.addWidget(QLabel(
-                    f"<b>Aktuelles Portfolio:</b> {n_exist_sym} Symbole, {n_exist_pos} Positionen<br>" +
-                    f"<b>CSV-Import:</b> {n_new_sym} Symbole, {n_new_pos} Transaktionen<br><br>" +
-                    "<b>Was soll passieren?</b>"
-                ))
-                btn_rep2  = QPushButton("🔄 Ersetzen  (nur CSV-Import behalten)")
-                btn_mrg2  = QPushButton("➕ Zusammenführen  (beide kombinieren)")
-                btn_cncl2 = QPushButton("Abbrechen")
-                btn_rep2.setStyleSheet("padding:8px;text-align:left;")
-                btn_mrg2.setStyleSheet("padding:8px;text-align:left;")
-                ml2.addWidget(btn_rep2)
-                ml2.addWidget(btn_mrg2)
-                ml2.addWidget(btn_cncl2)
-                merge_result2 = [None]
-                def _rep2(): merge_result2[0] = 'replace'; merge_dlg2.accept()
-                def _mrg2(): merge_result2[0] = 'merge';   merge_dlg2.accept()
-                btn_rep2.clicked.connect(_rep2)
-                btn_mrg2.clicked.connect(_mrg2)
-                btn_cncl2.clicked.connect(merge_dlg2.reject)
-                if merge_dlg2.exec() != QDialog.DialogCode.Accepted or merge_result2[0] is None:
+                generic_action = self._ask_replace_or_merge(
+                    prev_dlg, "CSV",
+                    len(set(r['symbol'] for r in kauf_rows + verkauf_rows)),
+                    len(kauf_rows) + len(verkauf_rows),
+                    self._orphan_sells(kauf_rows, verkauf_rows))
+                if generic_action is None:
                     return
-                generic_action = merge_result2[0]
 
             if generic_action == 'replace':
                 self.portfolio_data = {}
@@ -12582,6 +13600,7 @@ class PortfolioDialog(QMainWindow):
             skipped_d  = 0
             errors2    = []
 
+            _bought_before2 = self._bought_snapshot() if skip_d else {}
             if do_k:
                 for ki2, entry in enumerate(kauf_rows):
                     prog2_lbl.setText(TR("status_importing_buy", n=ki2+1, total=len(kauf_rows), sym=entry['symbol']))
@@ -12592,16 +13611,16 @@ class PortfolioDialog(QMainWindow):
                     qty   = entry['quantity']
                     price = entry['price']
 
-                    # Duplikat-Check
+                    # Duplikat-Check: nur gegen den Stand VOR dem Import
                     if skip_d:
                         skip_this = False
                         for cs in ([sym, entry['symbol']] if sym != entry['symbol'] else [sym]):
-                            if cs in self.portfolio_data:
-                                if any(abs(p['quantity'] - qty) < 0.0001 and p['buy_date'] == date
-                                       for p in self.portfolio_data[cs]):
-                                    skipped_d += 1
-                                    skip_this = True
-                                    break
+                            _k = (cs, date)
+                            if _bought_before2.get(_k, 0.0) >= qty - 1e-4:
+                                _bought_before2[_k] -= qty
+                                skipped_d += 1
+                                skip_this = True
+                                break
                         if skip_this:
                             continue
 
@@ -12614,6 +13633,8 @@ class PortfolioDialog(QMainWindow):
                         'hist_fx_to_chf': None,
                         'cost_chf':       0.0,
                         **({'staking': True} if entry.get('staking') else {}),
+                        **(self._import_amounts(entry, 'buy')
+                           if use_amounts2 and not entry.get('staking') else {}),
                     })
                     imported_k += 1
 
@@ -12667,7 +13688,10 @@ class PortfolioDialog(QMainWindow):
             div_total_count = len(div_rows)
 
             if do_v:
-                for vi2, entry in enumerate(verkauf_rows):
+                # Chronologisch verrechnen (Reihenfolge der CSV ist je nach Bank verschieden)
+                _vk_sorted = sorted(verkauf_rows, key=lambda e: e['date'])
+                _sold_before2 = self._sold_snapshot() if skip_d else {}
+                for vi2, entry in enumerate(_vk_sorted):
                     prog2_lbl.setText(TR("status_importing_sell", n=vi2+1, total=len(verkauf_rows), sym=entry['symbol']))
                     QApplication.processEvents()
 
@@ -12683,22 +13707,28 @@ class PortfolioDialog(QMainWindow):
                     if not found_sym:
                         errors2.append(f"Verkauf {sym} {date}: nicht im Portfolio")
                         continue
+                    _k2 = (found_sym, date)
+                    if _sold_before2.get(_k2, 0.0) >= qty - 1e-6:
+                        _sold_before2[_k2] -= qty
+                        skipped_d += 1
+                        continue
+
+                    _sale2 = self._import_amounts(entry, 'sell') if use_amounts2 else None
 
                     remaining2 = qty
-                    positions2 = sorted(self.portfolio_data[found_sym], key=lambda p: p['buy_date'])
+                    positions2 = self._fifo_order(self.portfolio_data[found_sym], date)
                     new_pos2 = []
                     for pos2 in positions2:
                         if remaining2 <= 0:
                             new_pos2.append(pos2)
                         elif pos2['quantity'] <= remaining2 + 0.0001:
                             self._record_sale(found_sym, pos2, pos2['quantity'], date,
-                                              entry.get('price'), dedupe=True)
+                                              entry.get('price'), sale=_sale2)
                             remaining2 -= pos2['quantity']
                         else:
                             self._record_sale(found_sym, pos2, remaining2, date,
-                                              entry.get('price'), dedupe=True)
-                            pos2 = dict(pos2)
-                            pos2['quantity'] -= remaining2
+                                              entry.get('price'), sale=_sale2)
+                            pos2 = self._reduce_lot(pos2, remaining2)
                             remaining2 = 0
                             new_pos2.append(pos2)
                     self.portfolio_data[found_sym] = new_pos2
@@ -12730,7 +13760,10 @@ class PortfolioDialog(QMainWindow):
                     msg2 += f"\n… und {len(skipped)-5} weitere"
             if errors2:
                 msg2 += f"\n\n⚠️ Weitere Hinweise:\n" + '\n'.join(errors2[:5])
+            if getattr(self, '_pf_session', None):
+                msg2 += "\n\n" + TR("msg_backup_hint")
             QMessageBox.information(self, "Import abgeschlossen", msg2)
+            self._after_import_save()
 
         import2_btn.clicked.connect(do_generic_import)
         prev_dlg.exec()
@@ -12761,12 +13794,7 @@ class PortfolioDialog(QMainWindow):
                 embed_cb(wrapper)
                 # Admin-Fenster als normales nicht-modales Fenster zeigen
                 self.setWindowModality(Qt.WindowModality.NonModal)
-                self.resize(1500, 700)
-                _scr = (self.screen() or QApplication.primaryScreen()).availableGeometry()
-                self.move(
-                    _scr.x() + (_scr.width()  - self.width())  // 2,
-                    _scr.y() + (_scr.height() - self.height()) // 2
-                )
+                self._fit_admin_window()
                 self.show()
                 self.raise_()
                 self.activateWindow()
@@ -12821,6 +13849,8 @@ class PortfolioDialog(QMainWindow):
         # Bildschirmgrösse ermitteln für adaptive Button-Beschriftungen
         _ov_screen = QApplication.primaryScreen().geometry()
         _ov_is_fullhd = _ov_screen.width() <= 1920
+        # Kurzer Portfolio-Status („🔒 Entsperren“) unterhalb 4K (Full HD, QHD 2560)
+        self._ov_name_compact = _ov_screen.width() < 3000
 
         # Dark-Mode-Erkennung für das Übersichts-Widget
         from PyQt6.QtGui import QPalette as _QPalette_ov
@@ -12882,10 +13912,7 @@ class PortfolioDialog(QMainWindow):
         def open_admin():
             self._stack.setCurrentWidget(self._admin_widget)
             self.setWindowTitle("\U0001f4bc Portfolio-Administration")
-            self.setMinimumSize(1500, 650)
-            screen = QApplication.primaryScreen().geometry()
-            w, h = 1400, 750
-            self.setGeometry(max(0,(screen.width()-w)//2), max(0,(screen.height()-h)//2), w, h)
+            self._fit_admin_window()
             self.show(); self.raise_(); self.activateWindow()
         admin_btn.clicked.connect(open_admin)
         _add_btn(admin_btn, 1)
@@ -13004,6 +14031,14 @@ class PortfolioDialog(QMainWindow):
         div_btn.clicked.connect(self.show_dividend_chart)
         _add_btn(div_btn, 1 if _ov_is_fullhd else 2)
 
+        # Konto (Ansicht „Alles“: Käufe/Verkäufe, Kontobewegungen, realisierte Gewinne)
+        # Full HD: Zeile 1 direkt neben „Dividenden“; 4K: Zeile 2 genau unter
+        # „Dividenden“ (siehe _tax_row_4k)
+        konto_btn = _make_ov_btn(TR("btn_ov_account"), TR("tip_ov_account"), 130)
+        konto_btn.clicked.connect(lambda: self.open_account_dialog(self, view="all"))
+        if _ov_is_fullhd:
+            _add_btn(konto_btn, 1)
+
         pf_bewertung_btn = _make_ov_btn(
             TR("btn_ov_pf_bewertung_hd") if _ov_is_fullhd else TR("btn_ov_pf_bewertung"),
             TR("tip_ov_pf_bewertung"),
@@ -13078,7 +14113,9 @@ class PortfolioDialog(QMainWindow):
             TR("tip_ov_correlation"), 120)
         korr_btn.clicked.connect(self.show_correlation_matrix)
         if _ov_is_fullhd:
-            _add_btn(korr_btn, 1)   # Full HD: Row 1, links neben Export
+            # Full HD: Zeile 2 direkt nach „Sharpe“ (Platz in Zeile 1 für „💰 Konto“;
+            # Zeile 1 muss auch bei 125 % Skalierung in ca. 1536 px passen)
+            _btn_bot.insertWidget(_btn_bot.indexOf(sharpe_btn) + 1, korr_btn)
 
         notes_ov_btn = _make_ov_btn(
             TR("btn_ov_notes"),
@@ -13341,24 +14378,11 @@ class PortfolioDialog(QMainWindow):
             if not self.portfolio_data:
                 QMessageBox.information(dlg, TR("msg_title_info"), TR("msg_portfolio_empty"))
                 return
-            n_sym = len(self.portfolio_data)
-            n_pos = sum(len(v) for v in self.portfolio_data.values())
-            reply = QMessageBox.question(
-                dlg, TR("lbl_delete_all_stocks"),
-                TR("msg_delete_all_positions", n_pos=n_pos, n_sym=n_sym) + TR("msg_save_hint2"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No)
-            if reply == QMessageBox.StandardButton.Yes:
-                self.portfolio_data = {}
-                self._closed_positions = {}
-                self.save_portfolio()
-                self._invalidate_cache()
+            if self._clear_overview(dlg):
                 self._overview_cache = {}; self._overview_cache_ts = 0; self._ov_data = {}
                 self._build_table({})
                 if hasattr(self,'_ov_build_rows'): self._ov_build_rows()
                 if hasattr(self,'_ov_sum_label'): self._ov_sum_label.setText("Portfolio ist leer.")
-                self._update_portfolio_name_label("")
-                QMessageBox.information(self, TR("msg_title_done"), TR("msg_all_removed"))
         clear_all_btn.clicked.connect(do_clear_all)
         _add_spacing(10, 2)
 
@@ -13411,6 +14435,7 @@ class PortfolioDialog(QMainWindow):
         _add_btn(close_btn_top, 1 if _ov_is_fullhd else 2)
 
         if _ov_is_fullhd:
+            self._ov_name_label_4k = False
             self._portfolio_name_label_ov = QLabel()
             _active = self._get_active_portfolio_name()
             if _active:
@@ -13418,6 +14443,12 @@ class PortfolioDialog(QMainWindow):
             else:
                 self._portfolio_name_label_ov.setText(TR("lbl_no_portfolio_loaded"))
             self._portfolio_name_label_ov.setStyleSheet("color: #2980b9; font-size: 11px; padding-left: 4px;")
+            self._setup_name_label(self._portfolio_name_label_ov)
+            if _active:
+                self._portfolio_name_label_ov.setText(
+                    f"<i>Portfolio: <b>{_active}</b></i>"
+                    + self._portfolio_status_html(_active, compact=True))
+            self._fit_ov_name_label()
             _btn_bot.insertWidget(0, self._portfolio_name_label_ov)
             _btn_bot.insertSpacing(1, 8)
             _btn_bot.addStretch()
@@ -13431,6 +14462,44 @@ class PortfolioDialog(QMainWindow):
             _tax_row_4k = QHBoxLayout()
             _tax_row_4k.setSpacing(6)
             _tax_row_4k.setContentsMargins(0, 0, 0, 0)
+            # „💰 Konto“ links, horizontal exakt unter „Dividenden“ (Zeile 1):
+            # Abstand + Breite folgen dem Dividenden-Button bei jeder Grössenänderung
+            # Eigene Namen: ein lokaler Import von z. B. „QEvent“ würde den Namen in der
+            # ganzen Funktion lokal machen → NameError auf Full HD (Block läuft dort nicht)
+            from PyQt6.QtWidgets import QSpacerItem as _QSpacer4k, QSizePolicy as _QSP4k
+            from PyQt6.QtCore import QObject as _QObj4k, QEvent as _QEv4k, QPoint as _QPt4k
+            _konto_sp = _QSpacer4k(0, 0, _QSP4k.Policy.Fixed, _QSP4k.Policy.Minimum)
+            _tax_row_4k.addItem(_konto_sp)
+            _tax_row_4k.addWidget(konto_btn)
+
+            def _align_konto():
+                try:
+                    par = konto_btn.parentWidget()
+                    if par is None or not div_btn.isVisible():
+                        return
+                    # Tatsächliche Positionen messen und um die Differenz korrigieren
+                    # (Layout-Abstände/Ränder müssen so nicht vorausberechnet werden)
+                    dx = (div_btn.mapTo(par, _QPt4k(0, 0)).x()
+                          - konto_btn.mapTo(par, _QPt4k(0, 0)).x())
+                    if konto_btn.width() != div_btn.width():
+                        konto_btn.setFixedWidth(div_btn.width())
+                    if dx == 0:
+                        return
+                    w = max(0, _konto_sp.sizeHint().width() + dx)
+                    _konto_sp.changeSize(w, 0, _QSP4k.Policy.Fixed, _QSP4k.Policy.Minimum)
+                    _tax_row_4k.invalidate()
+                    QTimer.singleShot(0, _align_konto)   # nach dem Neu-Layout nachmessen
+                except RuntimeError:
+                    pass
+
+            class _KontoAlign(_QObj4k):
+                def eventFilter(self_, obj, ev):
+                    if ev.type() in (_QEv4k.Type.Move, _QEv4k.Type.Resize, _QEv4k.Type.Show):
+                        QTimer.singleShot(0, _align_konto)
+                    return False
+            self._konto_align_filter = _KontoAlign(div_btn)
+            div_btn.installEventFilter(self._konto_align_filter)
+            QTimer.singleShot(80, _align_konto)
             _tax_row_4k.addStretch()
             _tax_row_4k.addWidget(korr_btn)
             _tax_row_4k.addWidget(notes_ov_btn)
@@ -13484,9 +14553,16 @@ class PortfolioDialog(QMainWindow):
                     _m = _re.search(r'<b>(.*?)</b>', _txt)
                     _cur_pname = _m.group(1) if _m else ""
             if _cur_pname:
-                _pname_display.setText(TR("status_active_portfolio2", name=_cur_pname))
+                _pname_display.setText(TR("status_active_portfolio2", name=_cur_pname)
+                                       + self._portfolio_status_html(
+                                           _cur_pname, compact=self._ov_name_compact))
             else:
                 _pname_display.setText(f"<i style='color:#aaa;'>{TR('lbl_no_portfolio_loaded').replace('<i>', '').replace('</i>', '')}</i>")
+            # 4K: diese Anzeige übernimmt die Rolle der Full-HD-Namenszeile
+            # (Status „automatisch gespeichert“ / „gesperrt · Entsperren“)
+            self._setup_name_label(_pname_display)
+            self._portfolio_name_label_ov = _pname_display
+            self._ov_name_label_4k = True
             top_row.addWidget(_pname_display, 1)
 
             # --- Rechts: Status ---
@@ -14657,6 +15733,17 @@ class PortfolioDialog(QMainWindow):
         close_btn.clicked.connect(dialog.close)
         ctrl.addWidget(close_btn)
         outer.addLayout(ctrl)
+        # Zu schmaler Bildschirm (z. B. Full HD mit 150 % Skalierung, 1280 px):
+        # Buttons in eine zweite Zeile, sonst wird die Kopfzeile abgeschnitten.
+        # Bei 100 %/125 % und grösser bleibt alles in einer Zeile.
+        if ctrl.minimumSize().width() + 40 > int(screen.width() * 0.95):
+            ctrl2 = QHBoxLayout(); ctrl2.setSpacing(8)
+            for _w in (calc_btn, mc_btn, ecy_perf_btn):
+                ctrl.removeWidget(_w); ctrl2.addWidget(_w)
+            ctrl2.addStretch()
+            for _w in (export_btn, close_btn):
+                ctrl.removeWidget(_w); ctrl2.addWidget(_w)
+            outer.addLayout(ctrl2)
 
         status_label = QLabel(TR("lbl_period_status"))
         try:
@@ -17045,6 +18132,46 @@ class PortfolioDialog(QMainWindow):
         dialog.exec()
 
 
+    def open_account_dialog(self, parent=None, view="div"):
+        """Konto (dividend_account.py) öffnen.
+        view="div": Ansicht „Nur Dividenden“ (Button im Dividenden-Fenster)
+        view="all": Ansicht „Alles“ mit Käufen/Verkäufen und realisierten Gewinnen
+                    (Button „💰 Konto“ in der Übersicht)"""
+        parent = parent or self
+        try:
+            from dividend_account import DividendAccountDialog
+        except ImportError as _exc:
+            QMessageBox.warning(parent, TR("msg_title_error"),
+                                f"dividend_account.py:\n{_exc}")
+            return
+        if not isinstance(getattr(self, '_div_account', None), dict):
+            self._div_account = {}
+        if not isinstance(getattr(self, '_closed_positions', None), dict):
+            self._closed_positions = {}
+
+        def _skip_sym(s):
+            # Krypto (keine Dividenden), Rohstoffe, Devisen
+            is_crypto = s.upper().endswith(('-USD', '-EUR', '-CHF', '-BTC'))
+            return is_crypto or _is_commodity(s) or '=' in s
+
+        def _stop_chart_workers():
+            # Wie beim Steuerauszug: laufende Chart-Worker stoppen –
+            # curl_cffi ist nicht thread-sicher für parallele yfinance-Sessions
+            for _w in list(StockChartWidget._worker_registry):
+                try:
+                    _w.quit(); _w.wait(1500)
+                except Exception:
+                    pass
+            StockChartWidget._worker_registry.clear()
+        _acc_dlg = DividendAccountDialog(
+            self._positions_with_history(), self._div_account, self.save_portfolio, parent,
+            base_currency=getattr(self, '_ov_currency', 'USD') or 'USD',
+            fmt_fn=_fmt, export_factory=self._make_export_btn, skip_fn=_skip_sym,
+            price_cache=self._price_cache if isinstance(self._price_cache, dict) else None,
+            before_fetch=_stop_chart_workers,
+            closed=self._closed_positions, view=view)
+        _acc_dlg.exec()
+
     def show_dividend_chart(self):
         """Portfolio-Performance: 3 Balken – Gesamt, Wachstum, Dividenden."""
         if not self.portfolio_data:
@@ -17131,32 +18258,7 @@ class PortfolioDialog(QMainWindow):
         acc_btn.setToolTip(TR("tip_div_account"))
         self._ef(acc_btn)
         def _open_div_account():
-            try:
-                from dividend_account import DividendAccountDialog
-            except ImportError as _exc:
-                QMessageBox.warning(dialog, TR("msg_title_error"),
-                                    f"dividend_account.py nicht gefunden:\n{_exc}")
-                return
-            if not isinstance(getattr(self, '_div_account', None), dict):
-                self._div_account = {}
-            def _skip_sym(s):
-                return is_crypto(s) or _is_commodity(s) or '=' in s
-            def _stop_chart_workers():
-                # Wie beim Steuerauszug: laufende Chart-Worker stoppen –
-                # curl_cffi ist nicht thread-sicher für parallele yfinance-Sessions
-                for _w in list(StockChartWidget._worker_registry):
-                    try:
-                        _w.quit(); _w.wait(1500)
-                    except Exception:
-                        pass
-                StockChartWidget._worker_registry.clear()
-            _acc_dlg = DividendAccountDialog(
-                self._positions_with_history(), self._div_account, self.save_portfolio, dialog,
-                base_currency=getattr(self, '_ov_currency', 'USD') or 'USD',
-                fmt_fn=_fmt, export_factory=self._make_export_btn, skip_fn=_skip_sym,
-                price_cache=self._price_cache if isinstance(self._price_cache, dict) else None,
-                before_fetch=_stop_chart_workers)
-            _acc_dlg.exec()
+            self.open_account_dialog(dialog, view="div")
         acc_btn.clicked.connect(_open_div_account)
         ctrl.addWidget(acc_btn)
 
@@ -27016,7 +28118,8 @@ class PortfolioDialog(QMainWindow):
                                 if not self.portfolio_data[sym]:
                                     del self.portfolio_data[sym]
                             else:
-                                self.portfolio_data[sym][idx]['quantity'] -= amount
+                                self.portfolio_data[sym][idx] = self._reduce_lot(
+                                    self.portfolio_data[sym][idx], amount)
                             self.save_portfolio()
                             self.refresh_table()
                     return _sell
@@ -34125,6 +35228,58 @@ class StockMonitorApp(QMainWindow):
 
 
 
+def _apply_dark_indicator_style(app):
+    """Dark Mode: Checkboxen und Auswahlknöpfe gut sichtbar machen.
+
+    Fusion zeichnet die Kästchen im Dark Mode nur minimal dunkler als den
+    Hintergrund (kaum sichtbar – Charts, Zoom, Export PDF/XLSX/ODS …). Hier
+    zentral: hellerer Rahmen, ausgewählt = blau mit weissem Haken bzw. Punkt.
+    Hell-Modus bleibt unverändert. Der Haken ist ein beim Start erzeugtes PNG
+    (SVG-Unterstützung ist in EXE/Flatpak nicht garantiert)."""
+    from PyQt6.QtGui import QPalette as _QP, QPixmap, QPainter, QPen, QColor
+    pal = app.palette()
+    if pal.color(_QP.ColorRole.Window).lightness() >= 128:
+        return
+    import tempfile
+    path = os.path.join(tempfile.gettempdir(), "stock_monitor_check_dark.png")
+    try:
+        pm = QPixmap(28, 28)                    # 2× für scharfe Darstellung
+        pm.fill(QColor(0, 0, 0, 0))
+        qp = QPainter(pm)
+        qp.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(QColor("#ffffff"), 3.6)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        qp.setPen(pen)
+        from PyQt6.QtCore import QPointF
+        qp.drawPolyline([QPointF(6.5, 14.5), QPointF(11.5, 19.5), QPointF(21.5, 8.5)])
+        qp.end()
+        if not pm.save(path, "PNG"):
+            path = ""
+    except Exception:
+        path = ""
+    border = "#9aa3ab"          # gut sichtbar auf dunklem Grund
+    base = pal.color(_QP.ColorRole.Base).name()
+    accent = "#3d8ee0"
+    check_img = f'image: url("{path.replace(os.sep, "/")}");' if path else ""
+    app.setStyleSheet(app.styleSheet() + f"""
+QCheckBox::indicator {{ width: 14px; height: 14px; border: 1px solid {border};
+    border-radius: 3px; background: {base}; }}
+QCheckBox::indicator:hover {{ border-color: {accent}; }}
+QCheckBox::indicator:checked {{ background: {accent}; border-color: {accent}; {check_img} }}
+QCheckBox::indicator:indeterminate {{ background: #5f6b76; border-color: {border}; }}
+QCheckBox::indicator:disabled {{ border-color: #5a6066; background: #2b2f33; }}
+QCheckBox::indicator:checked:disabled {{ background: #4a5560; border-color: #4a5560; }}
+QRadioButton::indicator {{ width: 14px; height: 14px; border: 1px solid {border};
+    border-radius: 8px; background: {base}; }}
+QRadioButton::indicator:hover {{ border-color: {accent}; }}
+QRadioButton::indicator:checked {{ border-color: {accent};
+    background: qradialgradient(cx:0.5, cy:0.5, radius:0.5, fx:0.5, fy:0.5,
+        stop:0 #ffffff, stop:0.38 #ffffff, stop:0.48 {accent}, stop:1 {accent}); }}
+QRadioButton::indicator:disabled {{ border-color: #5a6066; background: #2b2f33; }}
+""")
+
+
 def main():
     # Ausführungsrecht automatisch setzen (damit kein manuelles chmod nötig ist)
     try:
@@ -34161,6 +35316,10 @@ def main():
     if os.environ.get("FLATPAK_ID") or sys.platform != "win32":
         app.setDesktopFileName("stock-monitor")
     app.setStyle('Fusion')  # KDE-freundlicher Style
+    try:
+        _apply_dark_indicator_style(app)   # Dark Mode: Kästchen gut sichtbar
+    except Exception as _e:
+        _log.warning(f"Dark-Mode-Kästchen: {_e}")
 
     # Snap: Emoji-Fonts explizit laden (fontconfig-Fallback reicht im Snap nicht)
     _snap_dir = os.environ.get('SNAP', '')

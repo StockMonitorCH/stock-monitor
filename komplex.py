@@ -981,8 +981,13 @@ def show_komplex_dialog(parent,
     btn_mode_custom = QPushButton(TRK("btn_mode_custom"))
     _tog_style = ("QPushButton{padding:2px 10px; border:1px solid #888; border-radius:3px;}"
                   "QPushButton:checked{font-weight:bold; border:2px solid #4a90d9;}")
+    from PyQt6.QtGui import QFontMetrics
     for _b in (btn_mode_hist, btn_mode_custom):
         _b.setCheckable(True); _b.setMinimumHeight(26); _b.setStyleSheet(_tog_style)
+        # Breite für die fette Schrift im aktiven Zustand reservieren
+        # (sonst wird z. B. „Benutzerdefiniert“ abgeschnitten)
+        _bf = QFont(_b.font()); _bf.setBold(True)
+        _b.setMinimumWidth(QFontMetrics(_bf).horizontalAdvance(_b.text()) + 30)
     btn_mode_hist.setChecked(True)
     t6mode_row.addWidget(btn_mode_hist); t6mode_row.addWidget(btn_mode_custom)
     t6mode_row.addStretch(); t6l.addLayout(t6mode_row)

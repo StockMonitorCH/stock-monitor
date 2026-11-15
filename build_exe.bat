@@ -81,6 +81,8 @@ for %%f in (
     mc_scenarios.py
     dividend_account.py
     dividend_account_translations.py
+    realized_gains.py
+    realized_gains_translations.py
 ) do (
     if not exist "%%f" (
         echo [FEHLER] Fehlende Datei: %%f
@@ -157,6 +159,8 @@ python -m PyInstaller ^
     --add-data "mc_scenarios.py;." ^
     --add-data "dividend_account.py;." ^
     --add-data "dividend_account_translations.py;." ^
+    --add-data "realized_gains.py;." ^
+    --add-data "realized_gains_translations.py;." ^
     --hidden-import "PyQt6.QtCore" ^
     --hidden-import "PyQt6.QtGui" ^
     --hidden-import "PyQt6.QtWidgets" ^

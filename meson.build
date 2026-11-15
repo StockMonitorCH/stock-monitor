@@ -1,5 +1,5 @@
 project('stock-monitor',
-  version: '5.9.0',
+  version: '5.10.0',
   meson_version: '>= 0.59.0',
 )
 
@@ -26,6 +26,8 @@ py_sources = [
   'mc_scenarios.py',
   'dividend_account.py',
   'dividend_account_translations.py',
+  'realized_gains.py',
+  'realized_gains_translations.py',
 ]
 
 install_data(py_sources,

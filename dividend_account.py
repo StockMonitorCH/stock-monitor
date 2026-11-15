@@ -32,7 +32,7 @@ import sys
 import uuid
 from datetime import date, datetime, timedelta
 
-from PyQt6.QtCore import Qt, QThread, QDate, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QObject, QThread, QDate, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QFontDatabase
 from PyQt6.QtWidgets import (
     QAbstractItemView, QCheckBox, QComboBox, QDateEdit, QDialog, QFrame,
@@ -169,24 +169,38 @@ def entry_amount(e: dict, net: bool) -> float:
     """Vorzeichenbehafteter Betrag einer Buchung in Kontowährung."""
     t = e.get("type")
     gross = float(e.get("gross", 0) or 0)
+    if t == "bank":
+        # Bankbuchung (Import): gross trägt das Vorzeichen; Dividenden mit Steuer
+        if e.get("kind") == "dividend":
+            return gross - float(e.get("tax", 0) or 0) if net else gross
+        return gross
     if t == "dividend":
         return gross - float(e.get("tax", 0) or 0) if net else gross
-    if t == "withdrawal":
+    if t in ("withdrawal", "buy"):
         return -gross
-    return gross   # deposit
+    return gross   # deposit, sell
 
 
-def balances(acc: dict, net: bool) -> dict:
-    """{cur: {"div": brutto, "tax": .., "transfers": .., "balance": ..}}
-    "div" ist immer brutto; "balance" je nach Modus brutto oder netto."""
+def balances(acc: dict, net: bool, entries=None) -> dict:
+    """{cur: {"div": brutto, "tax": .., "trades": .., "transfers": .., "balance": ..}}
+    "div" ist immer brutto; "balance" je nach Modus brutto oder netto.
+    entries: Buchungen einer Ansicht (view_entries); Standard = alle gespeicherten."""
     out = {}
-    for e in acc.get("entries", []):
+    for e in (acc.get("entries", []) if entries is None else entries):
         cur = e.get("currency", "USD")
-        b = out.setdefault(cur, {"div": 0.0, "tax": 0.0, "transfers": 0.0, "balance": 0.0})
+        b = out.setdefault(cur, {"div": 0.0, "tax": 0.0, "trades": 0.0, "fx": 0.0,
+                                 "costs": 0.0, "transfers": 0.0, "balance": 0.0})
         amt = entry_amount(e, net)
-        if e.get("type") == "dividend":
+        t, kind = e.get("type"), e.get("kind")
+        if t == "dividend" or (t == "bank" and kind == "dividend"):
             b["div"] += float(e.get("gross", 0) or 0)
             b["tax"] += float(e.get("tax", 0) or 0)
+        elif t in ("buy", "sell"):
+            b["trades"] += amt
+        elif t == "bank" and kind == "fx":
+            b["fx"] = b.get("fx", 0.0) + amt
+        elif t == "bank" and kind in ("interest", "fee"):
+            b["costs"] = b.get("costs", 0.0) + amt
         else:
             b["transfers"] += amt
         b["balance"] += amt
@@ -267,6 +281,270 @@ def recalc_tax(acc: dict) -> None:
         e["tax"] = round(float(e.get("gross", 0)) * rate, 4)
 
 
+# ── Ansicht „Alles“: Geldkonto mit Käufen/Verkäufen ───────────────────────────
+#
+# settings["trades"] = {"enabled": bool, "start": "YYYY-MM-DD", "asked": bool}
+# Ein-/Auszahlungen:   "div_scope"  – gehört zur Ansicht „Nur Dividenden“
+#                                     (fehlt = True: alle Buchungen von früher)
+#                      "reinvested" – Auszahlung wurde in Aktien investiert →
+#                                     in „Alles“ nicht abziehen (Kauf belastet schon)
+# Anfangssaldo:        type "deposit", "opening": True, "div_scope": False
+# Käufe/Verkäufe werden NICHT gespeichert, sondern bei jeder Anzeige aus dem
+# Portfolio abgeleitet (trade_entries) – das Konto folgt so jeder Änderung.
+
+VIEW_DIV, VIEW_ALL = "div", "all"
+
+
+def trade_settings(acc: dict) -> dict:
+    t = acc["settings"].get("trades")
+    if not isinstance(t, dict):
+        t = {"enabled": False, "start": "", "asked": False}
+        acc["settings"]["trades"] = t
+    return t
+
+
+def entry_in_view(e: dict, view: str) -> bool:
+    t = e.get("type")
+    if t == "dividend":
+        return True
+    if t in ("buy", "sell", "bank"):
+        return view == VIEW_ALL
+    if view == VIEW_DIV:
+        return bool(e.get("div_scope", True))
+    return not e.get("reinvested")
+
+
+def _crypto_cur(sym: str):
+    s = sym.upper()
+    for suf in _CRYPTO_SUFFIXES:
+        if s.endswith(suf):
+            return suf[1:]
+    return None
+
+
+def symbol_currency(sym, acc, known_cur=None):
+    """(Währung normiert, Faktor) eines Symbols oder (None, 1.0)."""
+    raw = (known_cur or {}).get(sym)
+    if raw:
+        return normalize_currency(raw)
+    m = acc.get("symbols", {}).get(sym) or {}
+    if m.get("currency"):
+        return m["currency"], float(m.get("factor", 1.0) or 1.0)
+    c = _crypto_cur(sym)
+    if c:
+        return c, 1.0
+    return None, 1.0
+
+
+def _f(v):
+    try:
+        return float(v or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def trade_entries(positions_by_sym, acc, known_cur=None, all_dates=False):
+    """Käufe/Verkäufe ab Startdatum als (virtuelle) Buchungen.
+
+    positions_by_sym: offene Lots + verkaufte Lots (mit sell_date), wie
+                      PortfolioDialog._positions_with_history()
+    Rangfolge der Beträge: Betrag in Kontowährung (Bank-CSV) > Nettobetrag in
+    Handelswährung > Kurs × Stück. Teile desselben Auftrags (FIFO über mehrere
+    Lots, Restposten nach Teilverkauf) werden je Symbol/Tag/Währung zusammengefasst.
+    all_dates=True: unabhängig von der Einstellung alle (für die Einrichtung).
+    Gibt (entries, n_missing) zurück.
+    """
+    ts = trade_settings(acc)
+    if not ts.get("enabled") and not all_dates:
+        return [], 0
+    start = "" if all_dates else str(ts.get("start") or "")[:10]
+    groups = {}
+    missing = 0
+
+    def add(kind, sym, day, cur, amount, qty):
+        key = (kind, sym, day, cur)
+        g = groups.get(key)
+        if g is None:
+            g = groups[key] = {"id": f"trd:{kind}:{sym}:{day}:{cur}", "type": kind,
+                               "date": day, "currency": cur, "gross": 0.0, "tax": 0.0,
+                               "symbol": sym, "qty": 0.0, "note": "", "auto": True}
+        g["gross"] += amount
+        g["qty"] += qty
+
+    for sym, lots in (positions_by_sym or {}).items():
+        cur_n, factor = symbol_currency(sym, acc, known_cur)
+        for p in lots or []:
+            qty = _f(p.get("quantity"))
+            if qty <= 0:
+                continue
+            bd = str(p.get("buy_date", ""))[:10]
+            if bd and bd >= start and not p.get("staking"):
+                if _f(p.get("acct_amount")) and p.get("acct_cur"):
+                    add("buy", sym, bd, p["acct_cur"].upper(), _f(p["acct_amount"]), qty)
+                elif _f(p.get("net_cost")) and p.get("net_cur"):
+                    add("buy", sym, bd, p["net_cur"].upper(), _f(p["net_cost"]), qty)
+                elif cur_n and _f(p.get("buy_price")) > 0:
+                    add("buy", sym, bd, cur_n, _f(p["buy_price"]) * qty * factor, qty)
+                elif _f(p.get("buy_price")) > 0:
+                    missing += 1
+            sd = str(p.get("sell_date", "") or "")[:10]
+            if sd and sd >= start:
+                if _f(p.get("sell_acct_amount")) and p.get("sell_acct_cur"):
+                    add("sell", sym, sd, p["sell_acct_cur"].upper(), _f(p["sell_acct_amount"]), qty)
+                elif _f(p.get("net_proceeds")) and p.get("sell_net_cur"):
+                    add("sell", sym, sd, p["sell_net_cur"].upper(), _f(p["net_proceeds"]), qty)
+                elif cur_n and _f(p.get("sell_price")) > 0:
+                    add("sell", sym, sd, cur_n, _f(p["sell_price"]) * qty * factor, qty)
+                else:
+                    missing += 1
+    out = []
+    for g in groups.values():
+        g["gross"] = round(g["gross"], 4)
+        g["qty"] = round(g["qty"], 8)
+        if g["qty"]:
+            g["per_share"] = g["gross"] / g["qty"]
+        out.append(g)
+    return out, missing
+
+
+def bank_info(acc: dict) -> dict:
+    """settings["bank"] = {"source", "from", "to", "saldo": {cur: [iso, betrag]}}"""
+    b = acc["settings"].get("bank")
+    return b if isinstance(b, dict) else {}
+
+
+def view_entries(acc, view, trades=None):
+    """Alle Buchungen der Ansicht (gespeicherte + bei „Alles“ die Käufe/Verkäufe).
+
+    „Alles“ mit importierten Bankbuchungen: Für den Zeitraum der Bank-CSV gelten
+    die Dividenden laut Bank (exakt, inkl. Stornos) statt der Yahoo-Berechnung;
+    Bankbuchungen vor dem Startdatum zählen nicht (Anfangssaldo deckt sie ab)."""
+    es = [e for e in acc.get("entries", []) if entry_in_view(e, view)]
+    if view == VIEW_ALL:
+        bi = bank_info(acc)
+        lo, hi = bi.get("from", ""), bi.get("to", "")
+        start = str(trade_settings(acc).get("start") or "")[:10]
+        if lo and hi:
+            es = [e for e in es if not (e.get("type") == "dividend"
+                                        and lo <= str(e.get("date", ""))[:10] <= hi)]
+        es = [e for e in es if e.get("type") != "bank"
+              or str(e.get("date", ""))[:10] >= start]
+        if trades:
+            es = es + list(trades)
+    return es
+
+
+def balance_at(acc, positions_by_sym, day_iso, known_cur=None):
+    """Kontosaldo (netto) je Währung am Ende des Tages ``day_iso`` in der Ansicht
+    „Alles“ – für die Vermögenssteuer (Steuerauszug).
+    None, wenn die Ansicht „Alles“ (Käufe/Verkäufe ab Startdatum) nicht
+    eingerichtet ist: Die Ansicht „Nur Dividenden“ ist kein echter Geldsaldo."""
+    acc = ensure_account(acc)
+    ts = trade_settings(acc)
+    start = str(ts.get("start") or "")[:10]
+    if not ts.get("enabled") or not start:
+        return None
+    if day_iso < start:
+        return {}
+    trades, _ = trade_entries(positions_by_sym, acc, known_cur)
+    es = [e for e in view_entries(acc, VIEW_ALL, trades)
+          if str(e.get("date", ""))[:10] <= day_iso]
+    return {cur: b["balance"] for cur, b in balances(acc, True, es).items()
+            if abs(b["balance"]) >= 0.005}
+
+
+def sync_signature(positions_by_sym, base, skip=None) -> str:
+    """Prüfsumme über alles, was den Dividenden-Abruf beeinflusst (Symbole,
+    Lots mit Kauf-/Verkaufsdatum und Menge, Portfoliowährung). Gleiche
+    Signatur am selben Tag → kein neuer Abruf nötig."""
+    import hashlib
+    import json
+    data = []
+    for sym in sorted(positions_by_sym or {}):
+        if skip and skip(sym):
+            continue
+        lots = sorted((str(p.get("buy_date", ""))[:10], str(p.get("sell_date", "") or "")[:10],
+                       round(_f(p.get("quantity")), 8))
+                      for p in positions_by_sym[sym] or [] if isinstance(p, dict))
+        data.append([sym, lots])
+    raw = json.dumps([str(base or "").upper(), data], separators=(",", ":"))
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
+BANK_KINDS = ("deposit", "withdrawal", "payment", "fx", "interest", "fee",
+              "dividend", "other")
+
+
+def import_bank_entries(acc: dict, rows, source: str, replace=False, period=None) -> int:
+    """Übernimmt Kontobewegungen einer Bank-CSV ins Konto (nur Ansicht „Alles“).
+
+    rows: [{"id", "date", "kind", "currency", "gross" (mit Vorzeichen), "tax",
+            "symbol", "note"}], dazu optional saldo={cur: [iso, betrag]} über
+    bank_set_saldo. Doppelte (gleiche id) werden übersprungen.
+    replace=True: bisherige Bankbuchungen dieser Quelle zuerst entfernen.
+    Ist das Konto noch nicht eingerichtet, werden Käufe/Verkäufe ab dem ersten
+    Datum der CSV gebucht (Anfangssaldo 0 – die CSV beginnt mit Kontoeröffnung).
+    period: (erstes, letztes Datum) der ganzen CSV – Standard: aus rows.
+    Gibt die Zahl neuer Buchungen zurück."""
+    acc = ensure_account(acc)
+    if replace:
+        acc["entries"] = [e for e in acc["entries"]
+                          if not (e.get("type") == "bank" and e.get("bank") == source)]
+    have = {e.get("id"): e for e in acc["entries"] if e.get("id")}
+    n = 0
+    dates = []
+    for r in rows:
+        dates.append(r["date"])
+        if r["id"] in have:
+            if r.get("symbol"):                 # Symbol-Zuordnung kann sich verbessert haben
+                have[r["id"]]["symbol"] = r["symbol"]
+            continue
+        e = {"id": r["id"], "type": "bank", "kind": r.get("kind", "other"),
+             "date": r["date"], "currency": r["currency"],
+             "gross": round(float(r.get("gross", 0)), 4),
+             "tax": round(float(r.get("tax", 0) or 0), 4),
+             "symbol": r.get("symbol", ""), "note": r.get("note", ""),
+             "bank": source, "div_scope": False, "edited": True}
+        acc["entries"].append(e)
+        have[r["id"]] = e
+        n += 1
+    if period and period[0] and period[1]:
+        dates += [period[0], period[1]]
+    if dates:
+        bi = bank_info(acc) if not replace else {}
+        lo, hi = min(dates), max(dates)
+        bi.update({"source": source,
+                   "from": min(lo, bi.get("from") or lo),
+                   "to": max(hi, bi.get("to") or hi)})
+        acc["settings"]["bank"] = bi
+        ts = trade_settings(acc)
+        if not ts.get("asked"):
+            ts.update({"enabled": True, "start": bi["from"], "asked": True})
+    return n
+
+
+def bank_set_saldo(acc: dict, saldo: dict) -> None:
+    """Letzter Saldo je Währung laut Bank {cur: [iso, betrag]} (neuere gewinnen)."""
+    bi = bank_info(acc)
+    cur_s = bi.get("saldo") if isinstance(bi.get("saldo"), dict) else {}
+    for cur, (d, v) in saldo.items():
+        if cur not in cur_s or d >= cur_s[cur][0]:
+            cur_s[cur] = [d, v]
+    bi["saldo"] = cur_s
+    acc["settings"]["bank"] = bi
+
+
+def bank_reconcile(acc: dict, entries) -> list:
+    """Vergleicht den berechneten Netto-Saldo mit dem Saldo laut Bank.
+    Gibt [(cur, datum, bank, berechnet, differenz)] zurück."""
+    out = []
+    for cur, (d, bank) in sorted((bank_info(acc).get("saldo") or {}).items()):
+        calc = sum(entry_amount(e, True) for e in entries
+                   if e.get("currency") == cur and str(e.get("date", ""))[:10] <= d)
+        out.append((cur, d, float(bank), calc, calc - float(bank)))
+    return out
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  Hintergrund-Abruf
 # ══════════════════════════════════════════════════════════════════════════════
@@ -281,8 +559,10 @@ class _SyncWorker(QThread):
     progress = pyqtSignal(str)
     done = pyqtSignal(dict)
 
-    def __init__(self, positions_by_sym, symbol_meta, currencies, base, known_cur=None):
+    def __init__(self, positions_by_sym, symbol_meta, currencies, base, known_cur=None,
+                 fx_only=False):
         super().__init__()
+        self._fx_only = fx_only
         self._known_cur = known_cur or {}
         self._pos = positions_by_sym
         self._meta = symbol_meta
@@ -294,11 +574,12 @@ class _SyncWorker(QThread):
         # ticker.history(actions=True) statt ticker.dividends, alle Yahoo-Abfragen
         # nacheinander in DIESEM Thread (curl_cffi ist nicht thread-sicher –
         # Problem v. a. unter Windows).
-        result = {"computed": {}, "meta": {}, "fx": {}, "errors": [], "error": ""}
+        result = {"computed": {}, "meta": {}, "fx": {}, "errors": [], "error": "",
+                  "fx_only": self._fx_only}
         try:
             import yfinance as yf
             today = date.today()
-            syms = sorted(self._pos)
+            syms = [] if self._fx_only else sorted(self._pos)
             for i, sym in enumerate(syms, 1):
                 if self.isInterruptionRequested():
                     return
@@ -442,6 +723,63 @@ def _center_on(dlg: QDialog, parent: QWidget, w_frac=0.5, h_frac=0.6):
     dlg.move(screen.x() + (screen.width() - w) // 2, screen.y() + (screen.height() - h) // 2)
 
 
+class _FitColumns(QObject):
+    """Spaltenbreite = Inhalt (inkl. Überschrift) + gleichmässig verteilter Rest.
+    Ersetzt „alle Spalten gleich breit“ (Stretch): Dort richtete sich jede
+    Spalte nach der längsten Überschrift, auf Full HD mit 125 % Skalierung
+    wurden so Überschriften wie „Ein-/Auszahlungen“ abgeschnitten."""
+
+    def __init__(self, table):
+        super().__init__(table)
+        self._t = table
+        self._busy = False
+        self._pending = False
+        table.viewport().installEventFilter(self)
+        m = table.model()
+        for sig in (m.dataChanged, m.rowsInserted, m.rowsRemoved, m.modelReset):
+            sig.connect(self.schedule)
+
+    def schedule(self, *_):
+        """Nach Änderungen gesammelt einmal anpassen (nicht je Zelle)."""
+        if self._pending:
+            return
+        self._pending = True
+
+        def _run():
+            self._pending = False
+            try:
+                self.fit()
+            except RuntimeError:
+                pass                     # Tabelle schon geschlossen
+        QTimer.singleShot(0, _run)
+
+    def eventFilter(self, obj, ev):
+        from PyQt6.QtCore import QEvent
+        if ev.type() == QEvent.Type.Resize:
+            self.fit()
+        return False
+
+    def fit(self):
+        t = self._t
+        if self._busy:
+            return
+        self._busy = True
+        try:
+            cols = [c for c in range(t.columnCount()) if not t.isColumnHidden(c)]
+            if not cols:
+                return
+            t.resizeColumnsToContents()
+            need = {c: t.columnWidth(c) for c in cols}
+            free = t.viewport().width() - sum(need.values())
+            extra = max(0, free) // len(cols)
+            for i, c in enumerate(cols):
+                # Rest des Rundens an die letzte Spalte (keine Lücke rechts)
+                add = extra + (max(0, free) - extra * len(cols) if i == len(cols) - 1 else 0)
+                t.setColumnWidth(c, need[c] + add)
+        finally:
+            self._busy = False
+
+
 def _make_table(headers):
     t = QTableWidget(0, len(headers))
     t.setHorizontalHeaderLabels(headers)
@@ -450,8 +788,17 @@ def _make_table(headers):
     t.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
     t.setAlternatingRowColors(True)
     t.verticalHeader().setVisible(False)
-    t.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+    t.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+    t.horizontalHeader().setStretchLastSection(False)
+    t._fit_columns = _FitColumns(t)
     return t
+
+
+def _fit_table(t):
+    """Nach dem Füllen bzw. Ein-/Ausblenden von Spalten aufrufen."""
+    f = getattr(t, "_fit_columns", None)
+    if f is not None:
+        f.fit()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -504,9 +851,10 @@ def _ok_cancel(dlg: QDialog):
 class BookingDialog(QDialog):
     """Manuelle Ein-/Auszahlung erfassen."""
 
-    def __init__(self, currencies, preset_currency=None, parent=None):
+    def __init__(self, currencies, preset_currency=None, parent=None, div_scope=True):
         super().__init__(parent)
         _fix_win_focus(self, parent)
+        self._div_scope = div_scope
         self.setWindowTitle(T("title_booking"))
         self.setMinimumWidth(420)
         lay = QVBoxLayout(self)
@@ -541,7 +889,120 @@ class BookingDialog(QDialog):
                 "date": self.date.date().toString("yyyy-MM-dd"),
                 "currency": (self.cur.currentText().strip().upper() or "CHF")[:5],
                 "gross": round(self.amount.value(), 2), "tax": 0.0,
-                "note": self.note.text().strip(), "edited": True}
+                "note": self.note.text().strip(), "edited": True,
+                # erfasst in „Nur Dividenden“ → in beiden Ansichten; in „Alles“ → nur dort
+                "div_scope": bool(self._div_scope)}
+
+
+class SetupDialog(QDialog):
+    """Einrichtung der Ansicht „Alles“: Käufe/Verkäufe ab Datum, Anfangssaldo
+    je Währung, Einordnung früherer Auszahlungen (Bankkonto / reinvestiert)."""
+
+    def __init__(self, acc, currencies, first_buy, parent=None):
+        super().__init__(parent)
+        _fix_win_focus(self, parent)
+        self._acc = acc
+        self.setWindowTitle(T("title_setup"))
+        self.setMinimumWidth(560)
+        ts = trade_settings(acc)
+        muted = "#9aa5b1" if _is_dark() else "#6c7a89"
+        lay = QVBoxLayout(self)
+        intro = QLabel(T("lbl_setup_intro")); intro.setWordWrap(True)
+        bg = "#0d2a3d" if _is_dark() else "#EBF5FB"
+        intro.setStyleSheet(f"background:{bg}; border-radius:6px; padding:8px 12px;")
+        lay.addWidget(intro)
+
+        self.chk = QCheckBox(T("chk_trades"))
+        self.chk.setChecked(bool(ts.get("enabled")) or not ts.get("asked"))
+        f = self.chk.font(); f.setBold(True); self.chk.setFont(f)
+        lay.addWidget(self.chk)
+
+        self._body = QWidget()
+        bl = QVBoxLayout(self._body); bl.setContentsMargins(18, 0, 0, 0)
+        row = QHBoxLayout()
+        row.addWidget(QLabel(T("lbl_start")))
+        start = _parse_date(ts.get("start")) or date.today()
+        self.start = QDateEdit(QDate(start.year, start.month, start.day))
+        self.start.setCalendarPopup(True)
+        try:
+            _df = _cfg.get_date_format() if _cfg else "EU"
+        except Exception:
+            _df = "EU"
+        self.start.setDisplayFormat({"ISO": "yyyy-MM-dd", "US": "MM/dd/yyyy"}.get(_df, "dd.MM.yyyy"))
+        row.addWidget(self.start)
+        b_first = QPushButton(T("btn_start_first"))
+        b_first.clicked.connect(lambda: self.start.setDate(
+            QDate(first_buy.year, first_buy.month, first_buy.day)))
+        b_first.setEnabled(first_buy is not None)
+        b_today = QPushButton(T("btn_start_today"))
+        b_today.clicked.connect(lambda: self.start.setDate(QDate.currentDate()))
+        row.addWidget(b_first); row.addWidget(b_today); row.addStretch()
+        bl.addLayout(row)
+        hint = QLabel(T("lbl_start_hint")); hint.setWordWrap(True)
+        hint.setStyleSheet(f"color:{muted}; font-size:11px;")
+        bl.addWidget(hint)
+
+        bl.addWidget(QLabel(T("lbl_opening")))
+        form = QFormLayout()
+        opening = {e.get("currency"): float(e.get("gross", 0))
+                   for e in acc["entries"] if e.get("opening")}
+        self._open_spins = {}
+        for cur in currencies:
+            sp = QDoubleSpinBox(); sp.setRange(-1e12, 1e12); sp.setDecimals(2)
+            sp.setGroupSeparatorShown(True)
+            sp.setValue(opening.get(cur, 0.0))
+            sp.setMinimumWidth(160)
+            form.addRow(f"{cur}:", sp)
+            self._open_spins[cur] = sp
+        bl.addLayout(form)
+        lay.addWidget(self._body)
+        self.chk.toggled.connect(self._body.setEnabled)
+        self._body.setEnabled(self.chk.isChecked())
+
+        # Frühere Auszahlungen (aus der Zeit vor „Alles“)
+        self._wd = [e for e in acc["entries"]
+                    if e.get("type") == "withdrawal" and e.get("div_scope", True)]
+        self._wd_combos = []
+        if self._wd:
+            sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
+            lay.addWidget(sep)
+            lbl = QLabel(T("lbl_withdrawals")); lbl.setWordWrap(True)
+            lay.addWidget(lbl)
+            wf = QFormLayout()
+            for e in sorted(self._wd, key=lambda x: x.get("date", "")):
+                cb = QComboBox()
+                cb.addItem(T("wd_bank"), False)
+                cb.addItem(T("wd_reinvested"), True)
+                cb.setCurrentIndex(1 if e.get("reinvested") else 0)
+                note = f"  ({e['note']})" if e.get("note") else ""
+                wf.addRow(f"{_fmt_date(e.get('date'))}  {e.get('currency', '')} "
+                          f"{_default_fmt(float(e.get('gross', 0)))}{note}", cb)
+                self._wd_combos.append((e, cb))
+            lay.addLayout(wf)
+        lay.addLayout(_ok_cancel(self))
+
+    def apply(self):
+        acc = self._acc
+        ts = trade_settings(acc)
+        ts["asked"] = True
+        ts["enabled"] = self.chk.isChecked()
+        ts["start"] = self.start.date().toString("yyyy-MM-dd")
+        # Anfangssaldo: je Währung eine Buchung am Startdatum (nur Ansicht „Alles“)
+        acc["entries"] = [e for e in acc["entries"] if not e.get("opening")]
+        if ts["enabled"]:
+            for cur, sp in self._open_spins.items():
+                v = round(sp.value(), 2)
+                if abs(v) >= 0.005:
+                    acc["entries"].append({
+                        "id": f"open:{cur}", "type": "deposit" if v > 0 else "withdrawal",
+                        "date": ts["start"], "currency": cur, "gross": abs(v), "tax": 0.0,
+                        "note": T("type_opening"), "edited": True, "opening": True,
+                        "div_scope": False})
+        for e, cb in self._wd_combos:
+            if cb.currentData():
+                e["reinvested"] = True
+            else:
+                e.pop("reinvested", None)
 
 
 class EditDividendDialog(QDialog):
@@ -625,8 +1086,11 @@ class EntriesDialog(QDialog):
 
     # ── Daten ─────────────────────────────────────────────────────────────
     def _entries(self):
-        es = [e for e in self._owner.account["entries"] if e.get("currency") == self._cur]
-        return sorted(es, key=lambda e: (e.get("date", ""), e.get("id", "")))
+        es = [e for e in self._owner.entries() if e.get("currency") == self._cur]
+        # Bei gleichem Datum: Anfangssaldo zuerst, dann Gutschriften vor Belastungen
+        order = {"deposit": 1, "dividend": 2, "sell": 3, "withdrawal": 4, "buy": 5}
+        return sorted(es, key=lambda e: (e.get("date", ""), 0 if e.get("opening") else
+                                         order.get(e.get("type"), 9), e.get("id", "")))
 
     def _rows(self):
         """Chronologisch mit laufendem Saldo, Anzeige neueste zuerst."""
@@ -647,24 +1111,34 @@ class EntriesDialog(QDialog):
         for r, (e, bal) in enumerate(rows):
             t = e.get("type")
             is_div = t == "dividend"
+            is_trade = t in ("buy", "sell")
+            is_bank = t == "bank"
+            if is_bank and e.get("kind") == "dividend":
+                is_div = True
+            has_sym = is_div or is_trade
             gross = float(e.get("gross", 0))
             tax = float(e.get("tax", 0)) if is_div else 0.0
-            signed_gross = -gross if t == "withdrawal" else gross
+            signed_gross = -gross if t in ("withdrawal", "buy") else gross   # bank: mit Vorzeichen
             date_it = QTableWidgetItem(_fmt_date(e.get("date")))
             date_it.setData(Qt.ItemDataRole.UserRole, e.get("id"))
-            type_txt = T(f"type_{t}")
-            if is_div and e.get("edited"):
+            type_txt = (T("type_opening") if e.get("opening")
+                        else T(f"bank_{e.get('kind', 'other')}") if is_bank else T(f"type_{t}"))
+            if is_div and e.get("edited") and not is_bank:
                 type_txt += " ✏"
             type_it = QTableWidgetItem(type_txt)
-            if is_div and e.get("edited"):
+            if is_bank:
+                type_it.setToolTip(T("tip_bank"))
+            elif is_div and e.get("edited"):
                 type_it.setToolTip(T("tip_edited"))
+            elif is_trade:
+                type_it.setToolTip(T("tip_trade"))
             self.table.setItem(r, 0, date_it)
             self.table.setItem(r, 1, type_it)
-            self.table.setItem(r, 2, QTableWidgetItem(e.get("symbol", "") if is_div else ""))
+            self.table.setItem(r, 2, QTableWidgetItem(e.get("symbol", "") if has_sym else ""))
             self.table.setItem(r, 3, _num_item(fmt(e.get("qty", 0), 4).rstrip("0").rstrip(".,")
-                                               if is_div and e.get("qty") else ""))
+                                               if has_sym and e.get("qty") else ""))
             self.table.setItem(r, 4, _num_item(fmt(e.get("per_share", 0), 4)
-                                               if is_div and e.get("per_share") else ""))
+                                               if has_sym and e.get("per_share") else ""))
             self.table.setItem(r, 5, _num_item(fmt(signed_gross), color=neg if signed_gross < 0 else None))
             self.table.setItem(r, 6, _num_item(fmt(-tax) if tax else ""))
             net_amt = signed_gross - tax
@@ -690,11 +1164,15 @@ class EntriesDialog(QDialog):
             QMessageBox.information(self, T("msg_title_info"), T("msg_select"))
             return None
         eid = self.table.item(r, 0).data(Qt.ItemDataRole.UserRole)
+        if str(eid).startswith("trd:"):
+            QMessageBox.information(self, T("msg_title_info"), T("msg_trade_edit"))
+            return None
         return next((e for e in self._owner.account["entries"] if e.get("id") == eid), None)
 
     # ── Aktionen ──────────────────────────────────────────────────────────
     def _add(self):
-        dlg = BookingDialog(self._owner.currencies(), self._cur, self)
+        dlg = BookingDialog(self._owner.currencies(), self._cur, self,
+                            div_scope=self._owner.view == VIEW_DIV)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self._owner.account["entries"].append(dlg.entry())
             self._owner.changed()
@@ -705,7 +1183,8 @@ class EntriesDialog(QDialog):
         if e is None:
             return
         if e.get("type") != "dividend":
-            QMessageBox.information(self, T("msg_title_info"), T("msg_no_edit"))
+            QMessageBox.information(self, T("msg_title_info"), T("msg_no_edit")
+                                    if e.get("type") != "bank" else T("tip_bank"))
             return
         dlg = EditDividendDialog(e, self)
         if dlg.exec() == QDialog.DialogCode.Accepted:
@@ -753,8 +1232,12 @@ class DividendAccountDialog(QDialog):
 
     def __init__(self, portfolio_data, account, save_fn, parent=None,
                  base_currency="USD", fmt_fn=None, export_factory=None, skip_fn=None,
-                 price_cache=None, before_fetch=None):
+                 price_cache=None, before_fetch=None, closed=None, view=VIEW_DIV):
         super().__init__(parent)
+        self._closed = closed          # Verkaufshistorie (für „Realisierte Gewinne“)
+        self.view = view if view in (VIEW_DIV, VIEW_ALL) else VIEW_DIV
+        self._trades, self._trades_missing = [], 0
+        self._gains = None
         self._known_cur = {s: d.get("cur") for s, d in (price_cache or {}).items()
                            if isinstance(d, dict) and d.get("cur")}
         self._before_fetch = before_fetch
@@ -773,28 +1256,86 @@ class DividendAccountDialog(QDialog):
         fx = self.account.get("fx", {})
         self._fx = dict(fx.get("rates", {})) if fx.get("base") == self._base else {}
         self._fx[self._base] = 1.0
+        self._fx_failed = set()        # Wechselkurse, die Yahoo nicht liefert (nicht dauernd neu versuchen)
+        self._sig = sync_signature(self._portfolio, self._base, self._skip)
 
         self.setWindowTitle(T("title"))
-        _center_on(self, parent, 0.5, 0.55)
+        _center_on(self, parent, 0.6 if self.view == VIEW_ALL else 0.5, 0.6)
         self._build()
+        if self.view == VIEW_ALL and not trade_settings(self.account).get("asked"):
+            self.view = VIEW_DIV           # erst nach der Einrichtung umschalten
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(0, lambda: self._set_view(VIEW_ALL))
+        self._apply_view()
         self.refresh()
         self.finished.connect(self._stop_worker)
 
         if not self.account["settings"].get("configured"):
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(0, self._first_run)
+        elif self._sync_cached():
+            self.status.setText(T("status_cached", time=self._last_sync().get("time", "")))
+            if any(c not in self._fx for c in self.currencies()):
+                from PyQt6.QtCore import QTimer
+                QTimer.singleShot(0, lambda: self.start_sync(fx_only=True))
         else:
             from PyQt6.QtCore import QTimer
             QTimer.singleShot(0, self.start_sync)
 
+    # ── Abruf-Cache ───────────────────────────────────────────────────────
+    def _last_sync(self) -> dict:
+        ls = self.account["settings"].get("last_sync")
+        return ls if isinstance(ls, dict) else {}
+
+    def _sync_cached(self) -> bool:
+        """Heute schon mit denselben Positionen abgerufen? Dann reichen die
+        gespeicherten Dividenden und Wechselkurse (🔄 lädt trotzdem neu)."""
+        ls = self._last_sync()
+        return ls.get("day") == date.today().isoformat() and ls.get("sig") == self._sig
+
     # ── Aufbau ────────────────────────────────────────────────────────────
     def _build(self):
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(14, 10, 14, 10)
-        info = QLabel(T("info")); info.setWordWrap(True)
-        bg = "#0d2a3d" if _is_dark() else "#EBF5FB"
-        info.setStyleSheet(f"background:{bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
-        lay.addWidget(info)
+        from PyQt6.QtWidgets import QButtonGroup, QTabWidget
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(14, 10, 14, 10)
+
+        # Ansicht: „Nur Dividenden“ | „Alles“
+        vrow = QHBoxLayout()
+        self._view_btns = {}
+        grp = QButtonGroup(self); grp.setExclusive(True)
+        dark = _is_dark()
+        sel_bg = "#2980b9"
+        for v, key in ((VIEW_DIV, "view_div"), (VIEW_ALL, "view_all")):
+            b = QPushButton(T(key)); b.setCheckable(True)
+            b.setToolTip(T("tip_view"))
+            b.setMinimumWidth(130)
+            b.setStyleSheet(f"QPushButton:checked {{ background:{sel_bg}; color:white; "
+                            f"font-weight:bold; }} QPushButton {{ padding:4px 12px; }}")
+            grp.addButton(b)
+            b.clicked.connect(lambda _=False, v=v: self._set_view(v))
+            vrow.addWidget(b)
+            self._view_btns[v] = b
+        vrow.addSpacing(10)
+        self.btn_setup = QPushButton(T("btn_setup")); _emoji_font(self.btn_setup)
+        self.btn_setup.setToolTip(T("tip_setup"))
+        self.btn_setup.clicked.connect(self._setup)
+        vrow.addWidget(self.btn_setup)
+        vrow.addStretch()
+        outer.addLayout(vrow)
+
+        self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)      # kein Rahmen – „Nur Dividenden“ sieht aus wie bisher
+        outer.addWidget(self.tabs, stretch=1)
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(0, 8, 0, 0)
+        self.tabs.addTab(page, T("tab_entries"))
+        self.tabs.currentChanged.connect(self._on_tab)
+
+        self.info = QLabel(T("info")); self.info.setWordWrap(True)
+        bg = "#0d2a3d" if dark else "#EBF5FB"
+        self.info.setStyleSheet(f"background:{bg}; border-radius:6px; padding:8px 14px; font-size:12px;")
+        lay.addWidget(self.info)
 
         ctrl = QHBoxLayout()
         self.btn_mode = QPushButton(T("btn_net"))
@@ -828,8 +1369,9 @@ class DividendAccountDialog(QDialog):
         lay.addWidget(self.status)
 
         self.table = _make_table([
-            T("col_currency"), T("col_dividends"), T("col_tax"), T("col_transfers"),
-            T("col_balance"), T("col_balance_base", cur=self._base)])
+            T("col_currency"), T("col_dividends"), T("col_tax"), T("col_trades"),
+            T("col_fx"), T("col_costs"), T("col_transfers"), T("col_balance"),
+            T("col_balance_base", cur=self._base)])
         self.table.doubleClicked.connect(lambda _: self._open_selected())
         lay.addWidget(self.table, stretch=1)
 
@@ -844,6 +1386,86 @@ class DividendAccountDialog(QDialog):
         self.fx_label.setStyleSheet("color:#888; font-size:11px;")
         lay.addWidget(self.fx_label)
         self._build_overlay()
+
+    # ── Ansicht ───────────────────────────────────────────────────────────
+    def _apply_view(self):
+        all_v = self.view == VIEW_ALL
+        self._view_btns[self.view].setChecked(True)
+        self.setWindowTitle(T("title_all") if all_v else T("title"))
+        self.info.setText(T("info_all") if all_v else T("info"))
+        self.btn_setup.setVisible(all_v)
+        for c in (3, 4, 5):            # Käufe/Verkäufe, Devisen, Zinsen/Gebühren
+            self.table.setColumnHidden(c, not all_v)
+        _fit_table(self.table)
+        if all_v and self._closed is not None and self.tabs.count() == 1:
+            self.tabs.addTab(QWidget(), T("tab_gains"))     # Inhalt beim ersten Öffnen
+        elif not all_v and self.tabs.count() > 1:
+            self.tabs.setCurrentIndex(0)
+        self.tabs.tabBar().setVisible(self.tabs.count() > 1 and all_v)
+        if self.tabs.count() > 1:
+            self.tabs.setTabVisible(1, all_v)
+
+    def _set_view(self, view):
+        if view == VIEW_ALL and not trade_settings(self.account).get("asked"):
+            if not self._setup():
+                self._view_btns[self.view].setChecked(True)
+                return
+        self.view = view
+        self._apply_view()
+        self.refresh()
+        # Nur nachladen, wenn für eine Währung der Ansicht ein Wechselkurs fehlt
+        # (Dividenden und Kurse sind seit dem Öffnen schon geladen)
+        if any(c not in self._fx and c not in self._fx_failed for c in self.currencies()):
+            self.start_sync(fx_only=True)
+
+    def _on_tab(self, idx):
+        if idx != 1 or self._gains is not None:
+            return
+        try:
+            from realized_gains import RealizedGainsWidget
+        except ImportError as exc:
+            QMessageBox.warning(self, T("msg_title_error"), str(exc))
+            return
+        self._gains = RealizedGainsWidget(
+            self._closed, base_currency=self._base, save_fn=self._save_fn,
+            account=self.account, known_cur=self._known_cur, fmt_fn=self._fmt,
+            export_factory=self._export_factory, before_fetch=self._before_fetch,
+            parent=self, auto_fetch=False,
+            busy_fn=lambda: self._worker is not None and self._worker.isRunning())
+        page = QWidget(); pl = QVBoxLayout(page); pl.setContentsMargins(0, 8, 0, 0)
+        pl.addWidget(self._gains)
+        self.tabs.blockSignals(True)
+        self.tabs.removeTab(1)
+        self.tabs.insertTab(1, page, T("tab_gains"))
+        self.tabs.setCurrentIndex(1)
+        self.tabs.blockSignals(False)
+        self._start_gains_fetch()
+
+    def _start_gains_fetch(self):
+        """Yahoo-Abrufe nie parallel (curl_cffi ist nicht thread-sicher):
+        Gewinne erst laden, wenn die Dividenden-Aktualisierung fertig ist."""
+        if self._gains is None:
+            return
+        if self._worker is not None and self._worker.isRunning():
+            return                       # _on_done startet den Abruf danach
+        self._gains.start_fetch()
+
+    def _first_buy(self):
+        days = [d for d in (_parse_date(p.get("buy_date", ""))
+                            for lots in self._portfolio.values() for p in lots or []) if d]
+        return min(days) if days else None
+
+    def _setup(self):
+        all_tr, _ = trade_entries(self._portfolio, self.account, self._known_cur,
+                                  all_dates=True)
+        curs = sorted({e.get("currency") for e in all_tr} | set(self.currencies())
+                      | {self._base}, key=lambda c: (c != self._base, c))
+        dlg = SetupDialog(self.account, curs, self._first_buy(), self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return False
+        dlg.apply()
+        self.changed()
+        return True
 
     # ── Lade-Overlay (Dollarnote, wie im Dividendenfenster) ──────────────
     _NOTES = ("💵", "💴", "💶", "💷")
@@ -905,13 +1527,23 @@ class DividendAccountDialog(QDialog):
             self._place_overlay()
 
     # ── Anzeige ───────────────────────────────────────────────────────────
+    def entries(self):
+        """Buchungen der aktuellen Ansicht (inkl. Käufe/Verkäufe bei „Alles“)."""
+        return view_entries(self.account, self.view, self._trades)
+
     def currencies(self):
-        return sorted({e.get("currency", "USD") for e in self.account["entries"]})
+        return sorted({e.get("currency", "USD") for e in self.entries()}
+                      | {e.get("currency", "USD") for e in self.account["entries"]})
 
     def refresh(self):
         fmt = self._fmt
         neg = "#e74c3c" if _is_dark() else "#c0392b"
-        bals = balances(self.account, self.net_mode)
+        if self.view == VIEW_ALL:
+            self._trades, self._trades_missing = trade_entries(
+                self._portfolio, self.account, self._known_cur)
+        else:
+            self._trades, self._trades_missing = [], 0
+        bals = balances(self.account, self.net_mode, self.entries())
         curs = sorted(bals, key=lambda c: (c != self._base, c))
         self.table.setRowCount(len(curs))
         total = 0.0
@@ -923,30 +1555,60 @@ class DividendAccountDialog(QDialog):
             self.table.setItem(r, 0, cur_it)
             self.table.setItem(r, 1, _num_item(fmt(b["div"])))
             self.table.setItem(r, 2, _num_item(fmt(-b["tax"]) if b["tax"] and self.net_mode else ""))
-            self.table.setItem(r, 3, _num_item(fmt(b["transfers"]) if b["transfers"] else "",
-                                               color=neg if b["transfers"] < 0 else None))
-            self.table.setItem(r, 4, _num_item(fmt(b["balance"]), bold=True,
+            for c, k in ((3, "trades"), (4, "fx"), (5, "costs"), (6, "transfers")):
+                v = b.get(k, 0.0)
+                self.table.setItem(r, c, _num_item(fmt(v) if abs(v) >= 0.005 else "",
+                                                   color=neg if v < 0 else None))
+            self.table.setItem(r, 7, _num_item(fmt(b["balance"]), bold=True,
                                                color=neg if b["balance"] < 0 else None))
             rate = self._fx.get(cur)
             if rate:
                 conv = b["balance"] * rate
                 total += conv
-                self.table.setItem(r, 5, _num_item(fmt(conv), color=neg if conv < 0 else None))
+                self.table.setItem(r, 8, _num_item(fmt(conv), color=neg if conv < 0 else None))
             else:
-                missing.append(cur)
-                self.table.setItem(r, 5, _num_item("–"))
+                if abs(b["balance"]) >= 0.005:
+                    missing.append(cur)
+                self.table.setItem(r, 8, _num_item("–"))
         self.empty_label.setVisible(not curs)
         mode = T("lbl_mode_net") if self.net_mode else T("lbl_mode_gross")
         self.total_label.setText(T("lbl_total", mode=mode, cur=self._base, amount=fmt(total)))
         note = T("lbl_fx_note") if any(c != self._base for c in curs) else ""
         if missing:
             note = (note + " " if note else "") + T("lbl_fx_missing", curs=", ".join(missing))
+        if self.view == VIEW_ALL:
+            ts = trade_settings(self.account)
+            extra = (T("lbl_trades_since", date=_fmt_date(ts.get("start")))
+                     if ts.get("enabled") else T("lbl_trades_off"))
+            if self._trades_missing:
+                extra += " " + T("lbl_trades_missing", n=self._trades_missing)
+            note = (note + " " if note else "") + extra
+            note += self._reconcile_text()
         self.fx_label.setText(note)
         if self._entries_dlg is not None:
             try:
                 self._entries_dlg.refresh()
             except RuntimeError:
                 self._entries_dlg = None
+
+    def _reconcile_text(self):
+        """Abgleich mit dem Saldo laut Bank-CSV (nur netto sinnvoll)."""
+        bi = bank_info(self.account)
+        if not bi.get("saldo") or not self.net_mode:
+            return ""
+        ts = trade_settings(self.account)
+        if not ts.get("enabled") or str(ts.get("start", ""))[:10] > str(bi.get("from", "")):
+            return ""              # Startdatum nach CSV-Beginn: Anfangssaldo von Hand
+        rows = bank_reconcile(self.account, self.entries())
+        bad = [r for r in rows if abs(r[4]) >= 0.01]
+        src = bi.get("source", "Bank")
+        if not bad:
+            d = max((r[1] for r in rows), default="")
+            return "\n" + T("lbl_reconcile_ok", source=src, date=_fmt_date(d))
+        items = "; ".join(T("lbl_reconcile_item", cur=c, diff=self._fmt(diff),
+                            bank=self._fmt(bank), date=_fmt_date(d))
+                          for c, d, bank, _calc, diff in bad)
+        return "\n⚠️ " + T("lbl_reconcile_diff", source=src, items=items)
 
     def _toggle_mode(self, checked):
         self.net_mode = checked
@@ -967,8 +1629,12 @@ class DividendAccountDialog(QDialog):
         rows = [tuple((self.table.item(r, c).text() if self.table.item(r, c) else "")
                       for c in range(self.table.columnCount()))
                 for r in range(self.table.rowCount())]
-        rows.append(("", "", "", "", "", self.total_label.text()))
-        return {"title": T("export_title"), "headers": headers, "rows": rows}
+        hidden = [c for c in range(self.table.columnCount()) if self.table.isColumnHidden(c)]
+        headers = [h for c, h in enumerate(headers) if c not in hidden]
+        rows = [tuple(v for c, v in enumerate(r) if c not in hidden) for r in rows]
+        rows.append(tuple([""] * (len(headers) - 1) + [self.total_label.text()]))
+        title = T("title_all").replace("💰 ", "") if self.view == VIEW_ALL else T("export_title")
+        return {"title": title, "headers": headers, "rows": rows}
 
     # ── Aktionen ──────────────────────────────────────────────────────────
     def _open_selected(self):
@@ -987,7 +1653,8 @@ class DividendAccountDialog(QDialog):
     def _add_booking(self):
         r = self.table.currentRow()
         preset = self.table.item(r, 0).text() if r >= 0 else self._base
-        dlg = BookingDialog(self.currencies(), preset, self)
+        dlg = BookingDialog(self.currencies(), preset, self,
+                            div_scope=self.view == VIEW_DIV)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             self.account["entries"].append(dlg.entry())
             self.changed()
@@ -1009,19 +1676,34 @@ class DividendAccountDialog(QDialog):
         self.start_sync()
 
     # ── Synchronisation ───────────────────────────────────────────────────
-    def start_sync(self):
+    def start_sync(self, fx_only=False):
+        """Dividenden + Wechselkurse laden. fx_only=True: nur fehlende Wechselkurse
+        (Ansichtswechsel, Abruf von heute im Cache)."""
+        fx_only = fx_only is True        # clicked(bool) des Buttons → voller Abruf
         if self._worker is not None and self._worker.isRunning():
             return
-        positions = {s: copy.deepcopy(p) for s, p in self._portfolio.items()
-                     if p and not self._skip(s)}
-        curs = set(self.currencies())
+        g = self._gains
+        if g is not None and g._worker is not None and g._worker.isRunning():
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(500, lambda: self.start_sync(fx_only))  # warten, bis Gewinne geladen sind
+            return
+        if fx_only:
+            positions = {}
+            curs = {c for c in self.currencies() if c not in self._fx}
+            if not curs:
+                return
+        else:
+            self._fx_failed.clear()
+            positions = {s: copy.deepcopy(p) for s, p in self._portfolio.items()
+                         if p and not self._skip(s)}
+            curs = set(self.currencies())
         if self._before_fetch:
             try:
                 self._before_fetch()      # z. B. laufende Chart-Worker anhalten
             except Exception:
                 pass
         w = _SyncWorker(positions, copy.deepcopy(self.account["symbols"]), curs, self._base,
-                        known_cur=self._known_cur)
+                        known_cur=self._known_cur, fx_only=fx_only)
         w.progress.connect(self._on_progress)
         w.done.connect(self._on_done)
         _RUNNING_WORKERS.add(w)
@@ -1048,6 +1730,17 @@ class DividendAccountDialog(QDialog):
         if result.get("error"):
             self.status.setText(T("status_failed", e=result["error"]))
             return
+        if result.get("fx_only"):
+            # Nur Wechselkurse nachgeladen: Dividenden bleiben, kein Speichern nötig
+            got = result.get("fx") or {}
+            self._fx_failed |= {c for c in self.currencies() if c not in self._fx and c not in got}
+            if got:
+                self._fx.update(got)
+                self.account["fx"] = {"base": self._base,
+                                      "rates": {k: v for k, v in self._fx.items()}}
+            self.refresh()
+            self._start_gains_fetch()
+            return
         self.account["symbols"].update(result.get("meta", {}))
         n_new, n_upd = merge_dividends(self.account, result.get("computed", {}),
                                        [s for s in self._portfolio if not self._skip(s)])
@@ -1055,6 +1748,13 @@ class DividendAccountDialog(QDialog):
             self._fx.update(result["fx"])
             self.account["fx"] = {"base": self._base,
                                   "rates": {k: v for k, v in self._fx.items()}}
+        self._fx_failed |= {c for c in self.currencies() if c not in self._fx}
+        # Heute nicht nochmals automatisch laden (auch wenn einzelne Symbole fehlen –
+        # sonst würde ein Symbol ohne Yahoo-Daten jedes Öffnen verlangsamen)
+        from datetime import datetime as _dt
+        self.account["settings"]["last_sync"] = {
+            "day": date.today().isoformat(), "time": _dt.now().strftime("%H:%M"),
+            "sig": self._sig}
         msg = T("status_done", new=n_new, upd=n_upd)
         if result.get("errors"):
             msg += "  │  " + T("status_errors", syms=", ".join(result["errors"]))
@@ -1062,8 +1762,14 @@ class DividendAccountDialog(QDialog):
                 msg += "  (" + result["first_error"][:160] + ")"
         self.status.setText(msg)
         self.changed()
+        self._start_gains_fetch()
 
     def _stop_worker(self, *_):
+        if self._gains is not None:
+            try:
+                self._gains.stop()
+            except RuntimeError:
+                pass
         self._show_overlay(False)
         w = self._worker
         if w is not None and w.isRunning():
