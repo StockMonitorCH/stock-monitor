@@ -45,3 +45,13 @@ HomePage/chart-monitor/
 HomePage/fx/
 HomePage/docs/
 HomePage/zinsen.jpg
+
+# --- Eigene Projekte mit eigenem Repo / Arbeitskopien ---
+Chart Monitor/
+fx_calc/
+Arbeitsdateien/
+Windows/
+szene.png
+StockMonitor.flatpakref
+HomePage/license_de.md
+HomePage/license_en.md
