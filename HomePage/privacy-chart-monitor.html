@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<title>Privacy Policy – Chart Monitor</title>
+<meta name="robots" content="noindex, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e14;
+  --card: #111827;
+  --border: #1a2535;
+  --border2: #253652;
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,0.12);
+  --blue: #3b82f6;
+  --text: #f4f8ff;
+  --text2: #ccdaee;
+  --text3: #8aabca;
+  --radius: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px;
+  line-height: 1.75;
+}
+
+/* NAV */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 32px;
+  background: rgba(10,14,20,0.90);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.3rem;
+  color: var(--text);
+  text-decoration: none;
+}
+.logo span { color: var(--green); }
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.back-btn:hover { border-color: var(--green); color: var(--text); }
+
+/* CONTENT */
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 120px 24px 80px;
+}
+.page-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 2.4rem;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.page-subtitle {
+  color: var(--text3);
+  font-size: 0.95rem;
+  margin-bottom: 48px;
+}
+.section {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  margin-bottom: 20px;
+}
+.section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--green);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section p {
+  color: var(--text2);
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+.section p + p { margin-top: 10px; }
+
+footer {
+  text-align: center;
+  color: var(--text3);
+  font-size: 0.82rem;
+  padding: 32px 24px;
+  border-top: 1px solid var(--border);
+  margin-top: 40px;
+}
+footer a { color: var(--green); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="logo" href="https://www.stock-monitor.ch/en/">Stock <span>Monitor</span></a>
+  <a class="back-btn" href="https://www.stock-monitor.ch/en/">← Back</a>
+</nav>
+
+<div class="container">
+  <h1 class="page-title">Privacy Policy</h1>
+  <p class="page-subtitle">Chart Monitor · Last updated: June 2026</p>
+
+  <div class="section">
+    <div class="section-title">📊 Data Storage</div>
+    <p>Chart Monitor stores all user data (watchlist, notes, indicator settings, price alerts) exclusively on your device. No personal data or usage statistics are transmitted to any server.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📈 Market Data</div>
+    <p>Stock prices, exchange rates and financial data are fetched in real time from Yahoo Finance. Chart Monitor acts as a client only — no data entered by the user is sent to Yahoo Finance.</p>
+    <p>Yahoo Finance privacy policy: <a href="https://legal.yahoo.com/us/en/yahoo/privacy/index.html" target="_blank" style="color:var(--green)">legal.yahoo.com</a></p>
+    <p>Stock screener data (pre-computed financial metrics such as P/E ratio, market capitalisation, and sector) is loaded from <strong>stock-monitor.ch</strong>. This is a read-only request; no user data is transmitted.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🔔 Notifications</div>
+    <p>Price alerts (Stop-Loss / Target Price) are processed entirely on your device using Android WorkManager. No alert data is transmitted to external servers.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🔄 Update Check</div>
+    <p>The in-app update check connects to GitHub Releases to compare version numbers. No personal data is transmitted during this process.</p>
+    <p>GitHub privacy policy: <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" style="color:var(--green)">docs.github.com</a></p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📋 No Tracking</div>
+    <p>Chart Monitor contains no analytics, no advertising SDKs, no crash reporting services, and no third-party tracking of any kind. The app is free and open source (GPL-3.0).</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">✉ Contact</div>
+    <p>Questions regarding privacy can be directed to: <a href="mailto:info@stock-monitor.ch" style="color:var(--green)">info@stock-monitor.ch</a></p>
+  </div>
+</div>
+
+<footer>
+  © 2026 Stock Monitor · <a href="https://www.stock-monitor.ch/en/">www.stock-monitor.ch</a> · <a href="https://github.com/StockMonitorCH/chart-monitor" target="_blank">GitHub</a>
+</footer>
+
+</body>
+</html>
