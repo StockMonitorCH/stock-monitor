@@ -80,7 +80,7 @@
 - [x] `fp/io.github.StockMonitorCH.stock-monitor.metainfo.xml`: gleich anpassen
 - [x] `fp/io.github.StockMonitorCH.stock-monitor.yml`: `tag: v5.9.0` → `tag: v5.10.0` (erst nachdem der Tag existiert)
 - [x] Windows-EXE bauen (`build_exe.bat`, neue Dateien: realized_gains*.py) + Flatpak bauen
-- [ ] Update-Pfad testen (5.9.0 → 5.10.0), siehe Checkliste „Updates müssen immer funktionieren“
+- [x] Update-Pfad testen (5.9.0 → 5.10.0), siehe Checkliste „Updates müssen immer funktionieren“ – Windows + Flatpak OK (16.11.2026)
 - [x] GitHub-Release-Text: neue Features zuerst, Verbesserungen, Bug-Fixes zuletzt
 
 ## Ideen / Backlog
