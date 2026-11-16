@@ -1,6 +1,6 @@
 # 📈 Stock Monitor
 
-**Professional stock portfolio management for Windows and Linux**
+**Professional stock portfolio management for Windows, macOS and Linux**
 
 Stock Monitor is a free, open-source desktop application for tracking and analysing your investment portfolio. Monitor stocks, ETFs, cryptocurrencies and commodities across all major global exchanges — all in one place, without any cloud or subscription.
 
@@ -28,6 +28,15 @@ Stock Monitor is a free, open-source desktop application for tracking and analys
 
 ![Portfolio Overview](screenshots/portfolio_EN.png)
 
+### 🏦 Account & Realized Gains
+- Complete cash account: buys and sells come automatically from the portfolio, plus deposits/withdrawals, currency exchanges, interest and fees
+- Multi-currency account: balance per currency and total balance in the portfolio currency
+- **Realized gains per lot** – buy/sell price, holding period, gain in trading and portfolio currency
+- Total return = capital gains + dividends − interest and fees, plus an after-tax estimate
+- Swissquote import with account movements and reconciliation
+
+![Account – Realized Gains](screenshots/konto_EN.png)
+
 ### 🔍 Portfolio Analysis
 - **Performance comparison** – all positions as bar chart
 - **Sector distribution** – GICS sector breakdown
@@ -36,6 +45,28 @@ Stock Monitor is a free, open-source desktop application for tracking and analys
 - **Monte Carlo Simulation** – thousands of future scenarios
 
 ![Monte Carlo Simulation](screenshots/montecarlo_EN.png)
+
+### 🧠 Komplex Analysis
+Institutional-grade risk analysis in 7 tabs:
+- **Factor exposure** – beta & R² against 5 benchmarks (S&P 500, bonds, gold, real estate, commodities)
+- **Rolling correlation** (30/60/90 days) – shows when diversification breaks down in a crisis
+- **VaR / CVaR**, Calmar Ratio, skewness, kurtosis, Tail Ratio
+- **Drawdown analysis** – underwater chart and the 5 worst drawdown periods
+- **Sector stress test** – 15 historical scenarios or fully custom
+
+![Komplex Analysis](screenshots/komplex_EN.png)
+
+### 🔎 Stock Screener
+- Filter **18 indices** (S&P 500, Nasdaq 100, DAX, SMI, CAC 40, FTSE 100, Nikkei 225, Russell 2000 and more) by 1-year performance and P/E
+- Add results directly to favorites / watchlist or open the zoom chart
+
+![Stock Screener](screenshots/screener_EN.png)
+
+### ⭐ Stock Rating
+- Overall rating from **6 weighted categories**: performance, risk, technical, trading suitability, long-term suitability, analyst recommendation
+- Up to 5 stars per category – a quick read, not a buy recommendation
+
+![Stock Rating](screenshots/bewertung_EN.png)
 
 ### 🤖 AI Features
 - **AI Balance** – rebalancing proposals weighted by analyst consensus and news sentiment
@@ -66,12 +97,17 @@ Stock Monitor is a free, open-source desktop application for tracking and analys
 
 ## 💻 Download & Installation
 
+All downloads are on the **[latest release page](https://github.com/StockMonitorCH/stock-monitor/releases/latest)**.
+
 ### Windows (Portable)
-1. Download `StockMonitor-5.0.1-Windows.zip`
+1. Download `stock_monitor.zip`
 2. Extract to any folder
 3. Run `stock_monitor.exe` — no installation required
 
-[⬇ Download for Windows](https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.0.1/stock_monitor.zip)
+[⬇ Download for Windows](https://github.com/StockMonitorCH/stock-monitor/releases/latest/download/stock_monitor.zip)
+
+### macOS
+Download the `.dmg` file from the [latest release](https://github.com/StockMonitorCH/stock-monitor/releases/latest), open it and drag Stock Monitor into the Applications folder.
 
 ### Linux (Flatpak)
 
@@ -89,10 +125,10 @@ flatpak install stockmonitor ch.stockmonitor.StockMonitor
 
 **Option 2 – Direct download**
 
-[⬇ Download Flatpak](https://github.com/StockMonitorCH/stock-monitor/releases/download/v5.0.1/StockMonitor-5.0.1.flatpak)
+Download the `.flatpak` file from the [latest release](https://github.com/StockMonitorCH/stock-monitor/releases/latest), then:
 
 ```bash
-flatpak install StockMonitor-5.0.1.flatpak
+flatpak install StockMonitor-*.flatpak
 ```
 
 ### Run from source
