@@ -7,7 +7,7 @@
 <!-- PRIMARY META -->
 <title>Stock Monitor – Portfolio Tracker &amp; Finance App for Private Investors</title>
 <meta content="Stock Monitor – free portfolio app for private investors. Portfolio Tracker with 16 charts, AI analysis, Monte Carlo simulation, ECY, dividend calendar, tax assistant (CH/DE/AT/UK/US), CSV import, cryptocurrencies, precious metals. For Windows, macOS &amp; Linux (Fedora, openSUSE, Nobara). Open Source." name="description"/>
-<meta content="Portfolio Tracker, Finanz App, Aktien Portfolio, Portfolio Verwaltung, Portfolio Manager, Portfolio Analyse, Anlage Tool, Depot, Depot Verwaltung, Depotanalyse, Wertschriftendepot, Wertschriften, Aktien verwalten, Aktien App, Dividenden Tracker, Dividenden Kalender, Steuer Assistent Aktien, Charts Aktien, mehrere Charts gleichzeitig, Portfolio Software, Kryptowährungen Portfolio, Cryptos Portfolio, Edelmetalle Portfolio, Währungsrechner, Monte Carlo Simulation Portfolio, ECY Earnings Current Yield, Alpha Beta Sharpe Ratio, Correlation Matrix Portfolio, Korrelationsmatrix Portfolio, Bollinger Bands RSI, TWR MWR IRR, KI Analyse Portfolio, AI Portfolio Analysis, GICS Sektoren, CSV Import, CSV Import Aktien, CSV Import Bank, Swissquote CSV, DeGiro CSV, Flatex CSV, Portfolio Weltkarte, Weltkarte Aktien, Stock Portfolio, Investment Tracker, Portfolio Analysis, Stock Monitor, Open Source Portfolio, Free Portfolio Manager, Investment Portfolio App, Stock Portfolio Tracker, Cryptocurrency Portfolio, Precious Metals Portfolio, Tax Assistant Stocks, Dividend History, Monte Carlo Simulation Stocks, Portfolio Rebalancing, CSV import stocks, world map portfolio, ETF, ETFs, SMI, DAX, S&amp;P 500, Candlestick, Benchmark Indizes, Benchmark Indices, Linux Portfolio App, Linux Aktien App, Flatpak Portfolio, Fedora Portfolio App, openSUSE Portfolio App, Nobara Portfolio App, portfolio app linux, stock tracker linux, finanz app linux" name="keywords"/>
+<meta content="Portfolio Tracker, Finanz App, Aktien Portfolio, Portfolio Verwaltung, Portfolio Manager, Portfolio Analyse, Anlage Tool, Depot, Depot Verwaltung, Depotanalyse, Wertschriftendepot, Wertschriften, Aktien verwalten, Aktien App, Dividenden Tracker, Dividenden Kalender, Dividendenkonto, Geldkonto Depot, Realisierte Gewinne, Realized Gains, Steuer Assistent Aktien, Charts Aktien, mehrere Charts gleichzeitig, Portfolio Software, Kryptowährungen Portfolio, Cryptos Portfolio, Edelmetalle Portfolio, Währungsrechner, Monte Carlo Simulation Portfolio, ECY Earnings Current Yield, Alpha Beta Sharpe Ratio, Correlation Matrix Portfolio, Korrelationsmatrix Portfolio, Bollinger Bands RSI, TWR MWR IRR, KI Analyse Portfolio, AI Portfolio Analysis, GICS Sektoren, CSV Import, CSV Import Aktien, CSV Import Bank, Swissquote CSV, DeGiro CSV, Flatex CSV, Portfolio Weltkarte, Weltkarte Aktien, Stock Portfolio, Investment Tracker, Portfolio Analysis, Stock Monitor, Open Source Portfolio, Free Portfolio Manager, Investment Portfolio App, Stock Portfolio Tracker, Cryptocurrency Portfolio, Precious Metals Portfolio, Tax Assistant Stocks, Dividend History, Monte Carlo Simulation Stocks, Portfolio Rebalancing, CSV import stocks, world map portfolio, ETF, ETFs, SMI, DAX, S&amp;P 500, Candlestick, Benchmark Indizes, Benchmark Indices, Linux Portfolio App, Linux Aktien App, Flatpak Portfolio, Fedora Portfolio App, openSUSE Portfolio App, Nobara Portfolio App, portfolio app linux, stock tracker linux, finanz app linux" name="keywords"/>
 <meta content="Timm" name="author"/>
 <meta content="index, follow" name="robots"/>
 <link href="https://www.stock-monitor.ch/en/" rel="canonical"/><link href="https://www.stock-monitor.ch/" hreflang="de" rel="alternate"/><link href="https://www.stock-monitor.ch/en/" hreflang="en" rel="alternate"/><link href="https://www.stock-monitor.ch/" hreflang="x-default" rel="alternate"/>
@@ -983,7 +983,7 @@ footer a:hover { color: var(--green); }
 <nav class="main-nav">
 <a href="#about">About</a>
 <a href="#contact">Contact</a>
-<a href="/mobile/">Mobile Apps</a>
+<a href="/mobile/?lang=en">Mobile Apps</a>
 <a href="/glossaryEN.html">Glossary</a>
 <a href="#" onclick="openPrivacy(event)">Privacy</a>
 <a href="#download" class="nav-cta">Downloads</a>
@@ -1005,7 +1005,7 @@ footer a:hover { color: var(--green); }
 <div class="mobile-nav-panel" id="mobile-nav-panel">
 <a href="#about" onclick="closeMobileNav()">About</a>
 <a href="#contact" onclick="closeMobileNav()">Contact</a>
-<a href="/mobile/">Mobile Apps</a>
+<a href="/mobile/?lang=en">Mobile Apps</a>
 <a href="/glossaryEN.html">Glossary</a>
 <a href="#" onclick="closeMobileNav(); openCoffee(event)">☕ Buy me a coffee</a>
 <a href="#" onclick="closeMobileNav(); openPrivacy(event)">Privacy</a>
@@ -1043,7 +1043,7 @@ footer a:hover { color: var(--green); }
 </div>
 
 <a class="btn-secondary" href="#stats" style="border-color:var(--text3); color:var(--text2);">Explore Features ↓</a>
-<a class="btn-secondary" href="/mobile/" style="border-color:var(--text3); color:var(--text2);">Mobile Apps ↓</a>
+<a class="btn-secondary" href="/mobile/?lang=en" style="border-color:var(--text3); color:var(--text2);">Mobile Apps ↓</a>
 
 <div class="badge" style="margin-bottom:0; margin-top:4px;"><span class="dot"></span> Open Source · Switzerland 🇨🇭</div>
 </div>
@@ -1250,9 +1250,31 @@ footer a:hover { color: var(--green); }
 </div>
 </div>
 </section>
-<!-- Regionen-Weltkarte -->
+<!-- HIGHLIGHT: Account & Realized Gains — directly after Dividend History -->
 <section class="highlight fade-in">
 <div class="highlight-inner reverse">
+<div class="highlight-img-wrap">
+<img alt="Account – Realized Gains" class="clickable-img" data-src-de="/screenshots/konto_DE.png" data-src-en="/screenshots/konto_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/konto_EN.png"/>
+</div>
+<div class="highlight-text">
+<span class="tag tag-gold">Account</span>
+<h3>🏦 Account — all movements &amp; realized gains</h3>
+<p>The dividend account becomes a complete cash account: buys and sells come automatically from the portfolio, plus deposits/withdrawals, currency exchanges, interest and fees. The "Realized gains" tab shows for every sold lot what you actually ended up with.</p>
+<ul class="feature-list">
+<li>Switch between "Dividends only" and "Everything" — the dividend account stays as you know it</li>
+<li>Multi-currency account: balance per currency and total balance in the portfolio currency</li>
+<li>Realized gains per lot: buy/sell price, holding period, gain in trading and portfolio currency (rate on the buy/sell date)</li>
+<li>Total return = capital gains + dividends − interest and fees (e.g. margin loan interest) — plus an after-tax estimate</li>
+<li>Swissquote import with account movements and reconciliation: "✔ Matches" or the difference per currency</li>
+<li>Account balance and realized gains feed into the tax assistant</li>
+<li>Stored encrypted in the portfolio, export as PDF, XLSX and ODS</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Regionen-Weltkarte -->
+<section class="highlight fade-in">
+<div class="highlight-inner">
 <div class="highlight-img-wrap">
 <img alt="World Map" class="clickable-img" data-src-de="/screenshots/worldmap_DE.png" data-src-en="/screenshots/worldmap_EN.png" onerror="this.parentElement.style.minHeight='260px'; this.parentElement.style.background='var(--bg3)'; this.style.display='none'" src="/screenshots/worldmap_DE.png"/>
 </div>

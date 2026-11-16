@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- FAVICON -->
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+<link rel="manifest" href="/site.webmanifest">
+
+<title>Glossary – Financial Terms Explained Simply | Stock Monitor</title>
+<meta name="description" content="Financial terms explained clearly: moving averages, RSI, Sharpe ratio, Golden Cross, P/E ratio, IPO and more — with examples. A reference from Stock Monitor, the free portfolio app for private investors.">
+<meta name="keywords" content="finance glossary, financial terms explained, stock market glossary, investing glossary, learn investing, RSI explained, Sharpe ratio explained, Golden Cross, P/E ratio, IPO, moving average, Bollinger Bands, alpha beta stocks, dividend aristocrat, market capitalization, stock volatility">
+<meta name="author" content="Timm">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://www.stock-monitor.ch/glossaryEN.html">
+<link rel="alternate" hreflang="de" href="https://www.stock-monitor.ch/glossary.html">
+<link rel="alternate" hreflang="en" href="https://www.stock-monitor.ch/glossaryEN.html">
+<link rel="alternate" hreflang="x-default" href="https://www.stock-monitor.ch/glossary.html">
+
+<!-- OPEN GRAPH -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.stock-monitor.ch/glossaryEN.html">
+<meta property="og:title" content="Glossary – Financial Terms Explained Simply | Stock Monitor">
+<meta property="og:description" content="Financial terms explained clearly, with examples: moving averages, RSI, Sharpe ratio, Golden Cross, P/E ratio, IPO and more.">
+<meta property="og:image" content="https://www.stock-monitor.ch/screenshots/dashboard_DE.png">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="de_CH">
+<meta property="og:site_name" content="Stock Monitor">
+
+<!-- Cloudflare Web Analytics -->
+<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "148d754028fe414e9912b6d4aa4700dd"}'></script>
+<!-- End Cloudflare Web Analytics -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #0a0e14;
+  --bg2: #0f1520;
+  --bg3: #141c2b;
+  --card: #131a27;
+  --card2: #192135;
+  --border: #1e2d45;
+  --border2: #253652;
+  --green: #22c55e;
+  --green2: #16a34a;
+  --green-dim: rgba(34,197,94,0.12);
+  --red: #ef4444;
+  --red-dim: rgba(239,68,68,0.1);
+  --gold: #f59e0b;
+  --gold-dim: rgba(245,158,11,0.12);
+  --blue: #3b82f6;
+  --blue-dim: rgba(59,130,246,0.1);
+  --text: #f4f8ff;
+  --text2: #ccdaee;
+  --text3: #8aabca;
+  --accent: #22c55e;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+/* HEADER (angelehnt an Hauptseite) */
+.sticky-header-group {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+header.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 32px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.logo-small {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.3rem;
+  color: var(--text);
+  text-decoration: none;
+}
+.logo-small span { color: var(--green); }
+.logo-small img { height: 30px; width: auto; display: block; }
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+.back-link {
+  color: var(--text2);
+  text-decoration: none;
+  font-size: 0.95rem;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  transition: all 0.2s;
+}
+.back-link:hover { border-color: var(--green); color: var(--text); }
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.lang-btn:hover { border-color: var(--green); color: var(--text); }
+.lang-btn.active { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+
+/* PAGE INTRO */
+.glossary-intro {
+  max-width: 780px;
+  margin: 18px auto 0;
+  padding: 0 24px;
+  text-align: center;
+}
+.glossary-intro h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(1.3rem, 3vw, 1.7rem);
+  margin-bottom: 6px;
+}
+.glossary-intro h1 span { color: var(--green); }
+.glossary-intro p {
+  color: var(--text2);
+  font-size: 0.92rem;
+}
+
+/* SEARCH */
+.search-sticky {
+  padding-bottom: 16px;
+}
+.search-wrap {
+  max-width: 560px;
+  margin: 28px auto 0;
+  padding: 0 24px;
+  position: relative;
+}
+#glossary-search {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+#glossary-search:focus { border-color: var(--green); }
+#search-count {
+  text-align: center;
+  color: var(--text3);
+  font-size: 0.85rem;
+  margin-top: 10px;
+}
+
+/* ALPHA NAV */
+.alpha-nav {
+  max-width: 780px;
+  margin: 28px auto 0;
+  background: var(--bg);
+  padding: 12px 24px 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.alpha-link {
+  color: var(--text3);
+  text-decoration: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.9rem;
+  padding: 4px 9px;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+.alpha-link:hover { color: var(--green); background: var(--green-dim); }
+
+/* CONTENT */
+.glossary-content {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 24px 24px 80px;
+  overflow-wrap: break-word;
+}
+.term-card, .term-card td, .term-card th, .term-card code {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.letter-heading {
+  font-family: 'DM Serif Display', serif;
+  color: var(--green);
+  font-size: 1.5rem;
+  margin: 44px 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  scroll-margin-top: var(--sticky-offset, 190px);
+}
+.letter-heading:first-of-type { margin-top: 8px; }
+
+.term-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 26px;
+  margin-bottom: 16px;
+  scroll-margin-top: var(--sticky-offset, 190px);
+  transition: border-color 0.2s;
+}
+.term-card:target { border-color: var(--green); }
+.term-card.hidden { display: none; }
+.term-card.jump-target {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px var(--green);
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+.term-card h3 {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 1.15rem;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+.term-card p { margin: 8px 0; color: var(--text2); }
+.term-card code {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.9em;
+  color: var(--text);
+}
+.term-card table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 0.92rem;
+}
+.term-card th {
+  background: var(--bg3);
+  color: var(--text2);
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border2);
+  font-weight: 600;
+}
+.term-card td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+}
+.term-card .tip {
+  background: var(--green-dim);
+  border-left: 3px solid var(--green);
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  margin: 12px 0;
+  font-size: 0.94rem;
+  color: var(--text2);
+}
+.term-card .warning {
+  background: var(--gold-dim);
+  border-left: 3px solid var(--gold);
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  margin: 12px 0;
+  font-size: 0.94rem;
+  color: var(--text2);
+}
+.term-card .planned {
+  background: var(--blue-dim);
+  border-left: 3px solid var(--blue);
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  margin: 12px 0;
+  font-size: 0.94rem;
+  color: var(--text2);
+}
+#no-results {
+  display: none;
+  text-align: center;
+  color: var(--text3);
+  padding: 60px 20px;
+}
+
+/* FOOTER */
+footer {
+  padding: 36px 24px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--text3);
+  font-size: 0.82rem;
+}
+footer a { color: var(--text2); text-decoration: none; }
+footer a:hover { color: var(--green); }
+.footer-links { display: flex; justify-content: center; gap: 24px; margin-top: 10px; flex-wrap: wrap; }
+
+@media (max-width: 640px) {
+  header.site-header { padding: 12px 16px; }
+  .glossary-intro, .search-wrap, .glossary-content { padding-left: 16px; padding-right: 16px; }
+  .term-card { padding: 18px 18px; }
+  .glossary-intro p { display: none; }
+  /* Higher contrast for explanation text on mobile */
+  .term-card p,
+  .term-card td,
+  .term-card th,
+  .term-card .tip,
+  .term-card .warning,
+  .term-card .planned { color: #dde8f7; }
+
+  /* As soon as the user scrolls or jumps to a letter, collapse the logo
+     header and title so the search box + letter nav stay pinned near
+     the top and more reading room opens up below. Mobile only. */
+  header.site-header,
+  .glossary-intro {
+    overflow: hidden;
+    max-height: 160px;
+    transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease, margin 0.25s ease;
+  }
+  .sticky-header-group.compact header.site-header,
+  .sticky-header-group.compact .glossary-intro {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin: 0;
+    pointer-events: none;
+  }
+}
+
+/* Landscape / short viewport height: keep header compact */
+@media (max-height: 500px) {
+  header.site-header { padding: 8px 16px; }
+  .glossary-intro { margin-top: 8px; }
+  .glossary-intro h1 { font-size: 1.1rem; margin-bottom: 2px; }
+  .glossary-intro p { display: none; }
+  .search-wrap { margin-top: 10px; }
+  .alpha-nav { margin-top: 10px; padding-top: 6px; gap: 3px; }
+  .alpha-link { padding: 2px 6px; font-size: 0.8rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="sticky-header-group">
+<header class="site-header">
+  <a href="/" class="logo-small">
+    <img src="screenshots/logo.png" alt="Stock Monitor Logo">
+    Stock<span>Monitor</span>
+  </a>
+  <div class="header-right">
+    <a href="/?lang=en" class="back-link">← Back to Home</a>
+    <a href="glossary.html" class="lang-btn">DE</a>
+    <a href="glossaryEN.html" class="lang-btn active">EN</a>
+  </div>
+</header>
+
+<div class="glossary-intro">
+  <h1>Glossary – <span>Financial Terms</span> Explained Simply</h1>
+  <p>From moving averages to the Golden Cross: every important term around Stock Monitor and the stock market in general — explained clearly, with plenty of examples.</p>
+</div>
+
+<div class="search-sticky">
+<div class="search-wrap">
+  <input type="text" id="glossary-search" placeholder="Search a term … (e.g. RSI, Golden Cross, IPO)" autocomplete="off">
+  <div id="search-count"></div>
+</div>
+
+<nav class="alpha-nav" id="alpha-nav">
+  <a href="#letter-num" class="alpha-link">#</a> <a href="#letter-A" class="alpha-link">A</a> <a href="#letter-B" class="alpha-link">B</a> <a href="#letter-C" class="alpha-link">C</a> <a href="#letter-D" class="alpha-link">D</a> <a href="#letter-E" class="alpha-link">E</a> <a href="#letter-F" class="alpha-link">F</a> <a href="#letter-G" class="alpha-link">G</a> <a href="#letter-H" class="alpha-link">H</a> <a href="#letter-I" class="alpha-link">I</a> <a href="#letter-L" class="alpha-link">L</a> <a href="#letter-M" class="alpha-link">M</a> <a href="#letter-N" class="alpha-link">N</a> <a href="#letter-O" class="alpha-link">O</a> <a href="#letter-P" class="alpha-link">P</a> <a href="#letter-R" class="alpha-link">R</a> <a href="#letter-S" class="alpha-link">S</a> <a href="#letter-T" class="alpha-link">T</a> <a href="#letter-V" class="alpha-link">V</a> <a href="#letter-W" class="alpha-link">W</a> <a href="#letter-X" class="alpha-link">X</a>
+</nav>
+</div>
+</div>
+
+<main class="glossary-content" id="glossary-content">
+<h2 class="letter-heading" id="letter-num">#</h2>
+<article class="term-card" id="52-week-high-low" data-search=" the highest and lowest price of a stock over the past 52 weeks (1 year), shown as reference lines in the chart. 
+ 💡  practical tip:  when the current price is near the 52-week high, the stock is at its yearly peak – some traders see that as a breakout signal, others as a warning sign. being near the 52-week low can point to a favorable entry opportunity.  52-week high/low"><h3>52-Week High/Low</h3><p>The highest and lowest price of a stock over the past 52 weeks (1 year), shown as reference lines in the chart.</p>
+<div class="tip">💡 <strong>Practical tip:</strong> When the current price is near the 52-week high, the stock is at its yearly peak – some traders see that as a breakout signal, others as a warning sign. Being near the 52-week low can point to a favorable entry opportunity.</div></article>
+<h2 class="letter-heading" id="letter-A">A</h2>
+<article class="term-card" id="ai-balance-rebalancing" data-search=" shows what the portfolio would look like if position sizes followed past performance. for each position, current value and target value are compared, resulting in a buy/sell/hold recommendation. 
+ ⚠️  note:  this is not investment advice. past performance is no guarantee of future results.  ai-balance (rebalancing)"><h3>AI-Balance (Rebalancing)</h3><p>Shows what the portfolio would look like if position sizes followed past performance. For each position, current value and target value are compared, resulting in a buy/sell/hold recommendation.</p>
+<div class="warning">⚠️ <strong>Note:</strong> This is not investment advice. Past performance is no guarantee of future results.</div></article>
+<article class="term-card" id="aktiensplit-stock-split" data-search=" splitting existing shares into several new shares (e.g. 1:10) without changing the total value of the position. the price per share drops accordingly while the number of shares increases – economically, nothing changes for the investor. 
+ 💡  example:  a 1:10 stock split turns 1 share worth 1,000 chf into ten shares worth 100 chf each. the total value of the holding stays the same. 
+ ⚠️  note:  a split alone makes a company neither cheaper nor more expensive – it's often done to make the share more accessible to small investors (lower price per unit).  aktiensplit (stock split)"><h3>Aktiensplit (Stock Split)</h3><p>Splitting existing shares into several new shares (e.g. 1:10) without changing the total value of the position. The price per share drops accordingly while the number of shares increases – economically, nothing changes for the investor.</p>
+<div class="tip">💡 <strong>Example:</strong> A 1:10 stock split turns 1 share worth 1,000 CHF into ten shares worth 100 CHF each. The total value of the holding stays the same.</div>
+<div class="warning">⚠️ <strong>Note:</strong> A split alone makes a company neither cheaper nor more expensive – it's often done to make the share more accessible to small investors (lower price per unit).</div></article>
+<article class="term-card" id="alpha-jensen-s-alpha" data-search=" measures whether a stock  earns more return than its risk would justify  – in other words, whether it &quot;beats&quot; the market once the risk taken is accounted for. 
+  formula:   alpha = actual return − (rf + β × (rm − rf))  
+ 
+ 
+ 
+ value 
+ meaning 
+ 
+ 
+ 
+ 
+ positive 
+ outperformance – the stock earned more than its risk would suggest 
+ 
+ 
+ negative 
+ underperformance 
+ 
+ 
+ 
+ ⚠️  important:  alpha measures return  relative  to the market, not the absolute profit. a stock can have positive alpha (it performed better than its risk level implied) and still be down in absolute terms – e.g. if the overall market fell even more sharply during the same period. 
+ 💡  practical tip:  positive alpha over 1–2 years can mean you picked a good stock – or that you're overweight in a sector that's currently trending.  alpha (jensen's alpha)"><h3>Alpha (Jensen's Alpha)</h3><p>Measures whether a stock <strong>earns more return than its risk would justify</strong> – in other words, whether it "beats" the market once the risk taken is accounted for.</p>
+<p><strong>Formula:</strong> <code>Alpha = Actual return − (Rf + β × (Rm − Rf))</code></p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Positive</td>
+<td>Outperformance – the stock earned more than its risk would suggest</td>
+</tr>
+<tr>
+<td>Negative</td>
+<td>Underperformance</td>
+</tr>
+</tbody>
+</table>
+<div class="warning">⚠️ <strong>Important:</strong> Alpha measures return <em>relative</em> to the market, not the absolute profit. A stock can have positive alpha (it performed better than its risk level implied) and still be down in absolute terms – e.g. if the overall market fell even more sharply during the same period.</div>
+<div class="tip">💡 <strong>Practical tip:</strong> Positive alpha over 1–2 years can mean you picked a good stock – or that you're overweight in a sector that's currently trending.</div></article>
+<article class="term-card" id="analyst-info" data-search=" overview of wall street analyst opinions on a stock: buy recommendation on a 5-level scale (strong buy to strong sell), price-target range (min/average/max), and an automated sentiment analysis of recent headlines (news score).  analyst info"><h3>Analyst Info</h3><p>Overview of Wall Street analyst opinions on a stock: buy recommendation on a 5-level scale (Strong Buy to Strong Sell), price-target range (min/average/max), and an automated sentiment analysis of recent headlines (News Score).</p></article>
+<article class="term-card" id="ask-price" data-search=" the price at which sellers are willing to sell a security – also called the &quot;offer&quot; price. buyers pay the (higher) ask price; together with the bid price it forms the bid-ask spread. 
+ 💡  practical tip:  the more liquid a security, the tighter the spread between bid and ask tends to be – for thinly traded small caps the gap can be considerably wider (see bid price).  ask price"><h3>Ask Price</h3><p>The price at which sellers are willing to sell a security – also called the "offer" price. Buyers pay the (higher) ask price; together with the bid price it forms the bid-ask spread.</p>
+<div class="tip">💡 <strong>Practical tip:</strong> The more liquid a security, the tighter the spread between bid and ask tends to be – for thinly traded small caps the gap can be considerably wider (see Bid Price).</div></article>
+<h2 class="letter-heading" id="letter-B">B</h2>
+<article class="term-card" id="balance-sheet" data-search=" a snapshot of a company's financial position at a specific date: what the company owns (assets) and how that's financed (liabilities = debt + equity). part of the financial data in stock monitor. 
+ 💡  example:  a high equity ratio (equity as a share of total assets) suggests a solidly financed, less indebted company.  balance sheet"><h3>Balance Sheet</h3><p>A snapshot of a company's financial position at a specific date: what the company owns (assets) and how that's financed (liabilities = debt + equity). Part of the financial data in Stock Monitor.</p>
+<div class="tip">💡 <strong>Example:</strong> A high equity ratio (equity as a share of total assets) suggests a solidly financed, less indebted company.</div></article>
+<article class="term-card" id="benchmark" data-search=" a reference point against which the performance of an investment is measured – usually a well-known stock market index. without a benchmark, it's hard to judge whether a given return was actually good. 
+ 💡  example:  a +8% return sounds good – but if the comparison index gained +15% over the same period, you've clearly underperformed the market. 
+ 💡  tip:  in stock monitor, the benchmark for alpha, beta, and the index comparison can be freely chosen – depending on your portfolio's focus, a different index may make more sense (e.g. the smi for a switzerland-heavy portfolio instead of the s&amp;p 500).  benchmark"><h3>Benchmark</h3><p>A reference point against which the performance of an investment is measured – usually a well-known stock market index. Without a benchmark, it's hard to judge whether a given return was actually good.</p>
+<div class="tip">💡 <strong>Example:</strong> A +8% return sounds good – but if the comparison index gained +15% over the same period, you've clearly underperformed the market.</div>
+<div class="tip">💡 <strong>Tip:</strong> In Stock Monitor, the benchmark for Alpha, Beta, and the index comparison can be freely chosen – depending on your portfolio's focus, a different index may make more sense (e.g. the SMI for a Switzerland-heavy portfolio instead of the S&amp;P 500).</div></article>
+<article class="term-card" id="beta" data-search=" measures how strongly a stock moves relative to the overall market (s&amp;p 500) – i.e. its sensitivity to market fluctuations. 
+  formula:   β = covariance(stock, market) / variance(market)  
+ 
+ 
+ 
+ beta 
+ meaning 
+ 
+ 
+ 
+ 
+ β = 1.0 
+ moves in line with the s&amp;p 500 
+ 
+ 
+ β &gt; 1.0 
+ more volatile than the market 
+ 
+ 
+ β &lt; 1.0 
+ defensive, less fluctuation 
+ 
+ 
+ β &lt; 0 
+ moves opposite to the market (e.g. gold) 
+ 
+ 
+ 
+ 💡  practical tip:  beta &lt; 0.5 combined with positive alpha is the holy grail of stock picking – defensive yet still outperforming.  beta"><h3>Beta</h3><p>Measures how strongly a stock moves relative to the overall market (S&amp;P 500) – i.e. its sensitivity to market fluctuations.</p>
+<p><strong>Formula:</strong> <code>β = Covariance(stock, market) / Variance(market)</code></p>
+<table>
+<thead>
+<tr>
+<th>Beta</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>β = 1.0</td>
+<td>Moves in line with the S&amp;P 500</td>
+</tr>
+<tr>
+<td>β &gt; 1.0</td>
+<td>More volatile than the market</td>
+</tr>
+<tr>
+<td>β &lt; 1.0</td>
+<td>Defensive, less fluctuation</td>
+</tr>
+<tr>
+<td>β &lt; 0</td>
+<td>Moves opposite to the market (e.g. gold)</td>
+</tr>
+</tbody>
+</table>
+<div class="tip">💡 <strong>Practical tip:</strong> Beta &lt; 0.5 combined with positive alpha is the holy grail of stock picking – defensive yet still outperforming.</div></article>
+<article class="term-card" id="bid-price" data-search=" the price at which buyers are willing to buy a security – also called the &quot;bid&quot;. together with the ask price it forms the bid-ask spread. 
+ 💡  practical tip:  sellers receive the (lower) bid price – the difference to the ask price is effectively the trading margin of the market maker or exchange (see ask price).  bid price"><h3>Bid Price</h3><p>The price at which buyers are willing to buy a security – also called the "bid". Together with the ask price it forms the bid-ask spread.</p>
+<div class="tip">💡 <strong>Practical tip:</strong> Sellers receive the (lower) bid price – the difference to the ask price is effectively the trading margin of the market maker or exchange (see Ask Price).</div></article>
+<article class="term-card" id="bollinger-bands" data-search=" frame the price chart with a moving average (ma20) plus/minus 2 standard deviations, showing whether a stock is relatively high or low compared to its recent trading range. 
+ 
+ 
+ 
+ line 
+ calculation 
+ 
+ 
+ 
+ 
+ midline 
+ 20-day simple moving average 
+ 
+ 
+ upper band 
+ sma20 + 2 × standard deviation 
+ 
+ 
+ lower band 
+ sma20 − 2 × standard deviation 
+ 
+ 
+ 
+ 💡  practical tip:  combining bollinger bands with the rsi: price at the lower band  and  rsi below 30 significantly increases the odds of a potential recovery.  bollinger bands"><h3>Bollinger Bands</h3><p>Frame the price chart with a moving average (MA20) plus/minus 2 standard deviations, showing whether a stock is relatively high or low compared to its recent trading range.</p>
+<table>
+<thead>
+<tr>
+<th>Line</th>
+<th>Calculation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Midline</td>
+<td>20-day simple moving average</td>
+</tr>
+<tr>
+<td>Upper band</td>
+<td>SMA20 + 2 × standard deviation</td>
+</tr>
+<tr>
+<td>Lower band</td>
+<td>SMA20 − 2 × standard deviation</td>
+</tr>
+</tbody>
+</table>
+<div class="tip">💡 <strong>Practical tip:</strong> Combining Bollinger Bands with the RSI: price at the lower band <em>and</em> RSI below 30 significantly increases the odds of a potential recovery.</div></article>
+<article class="term-card" id="bubble-speculative-bubble" data-search=" a situation where the price of an asset (stock, cryptocurrency, real estate, etc.) rises far above its actual (&quot;fundamental&quot;) value – usually driven by euphoria and the expectation that prices will keep rising. when the bubble bursts, prices often fall abruptly and sharply. 
+ 💡  example:  well-known historical cases include the dot-com bubble (late 1990s) or the dutch tulip mania in the 17th century. 
+ ⚠️  good to know:  whether a market is currently in a bubble can usually only be said with certainty in hindsight. metrics like the excess cape yield or the p/e ratio can hint at high valuations, but on their own are no proof of a bubble.  bubble (speculative bubble)"><h3>Bubble (Speculative Bubble)</h3><p>A situation where the price of an asset (stock, cryptocurrency, real estate, etc.) rises far above its actual ("fundamental") value – usually driven by euphoria and the expectation that prices will keep rising. When the bubble bursts, prices often fall abruptly and sharply.</p>
+<div class="tip">💡 <strong>Example:</strong> Well-known historical cases include the dot-com bubble (late 1990s) or the Dutch tulip mania in the 17th century.</div>
+<div class="warning">⚠️ <strong>Good to know:</strong> Whether a market is currently in a bubble can usually only be said with certainty in hindsight. Metrics like the Excess CAPE Yield or the P/E ratio can hint at high valuations, but on their own are no proof of a bubble.</div></article>
+<article class="term-card" id="bull-and-bear-market" data-search="  bull market:  a market phase with rising prices over an extended period – usually accompanied by optimism and growing investor confidence. 
+  bear market:  the opposite – a market phase with falling prices (common rule of thumb: a decline of at least 20% from the last high), usually accompanied by pessimism. 
+ 💡  where do the names come from?  a bull attacks by thrusting its horns upward – matching rising prices. a bear strikes downward with its paw – matching falling prices. 
+ ⚠️  good to know:  both phases are a normal part of the market cycle. buy-and-hold investors typically pay more attention to the long-term trend (e.g. moving averages) than to short-term labels for current market sentiment.  bull and bear market"><h3>Bull and Bear Market</h3><p><strong>Bull market:</strong> A market phase with rising prices over an extended period – usually accompanied by optimism and growing investor confidence.</p>
+<p><strong>Bear market:</strong> The opposite – a market phase with falling prices (common rule of thumb: a decline of at least 20% from the last high), usually accompanied by pessimism.</p>
+<div class="tip">💡 <strong>Where do the names come from?</strong> A bull attacks by thrusting its horns upward – matching rising prices. A bear strikes downward with its paw – matching falling prices.</div>
+<div class="warning">⚠️ <strong>Good to know:</strong> Both phases are a normal part of the market cycle. Buy-and-hold investors typically pay more attention to the long-term trend (e.g. moving averages) than to short-term labels for current market sentiment.</div></article>
+<article class="term-card" id="buy-and-hold" data-search=" an investment strategy where securities are held for a long period regardless of short-term price swings, rather than trading frequently. stock monitor is deliberately built for this audience: there are intentionally no leveraged products, futures, or options. 
+ 💡  practical tip:  buy-and-hold investors tend to focus on long-term metrics (ma200, multi-year alpha/beta, dividend history) rather than short-term signals like the rsi or candlestick patterns.  buy-and-hold"><h3>Buy-and-Hold</h3><p>An investment strategy where securities are held for a long period regardless of short-term price swings, rather than trading frequently. Stock Monitor is deliberately built for this audience: there are intentionally no leveraged products, futures, or options.</p>
+<div class="tip">💡 <strong>Practical tip:</strong> Buy-and-hold investors tend to focus on long-term metrics (MA200, multi-year Alpha/Beta, dividend history) rather than short-term signals like the RSI or candlestick patterns.</div></article>
+<h2 class="letter-heading" id="letter-C">C</h2>
+<article class="term-card" id="calmar-ratio" data-search=" relates annualized return (usually cagr) to the maximum drawdown – showing how much return an investment generated per unit of the worst setback it suffered.
+ formula: calmar = cagr / |max drawdown|
+symbol meaning cagr annualized return over the observation period (usually 3 years) max drawdown largest decline from peak to trough within the same period
+value assessment ≥ 3.0 very good ≥ 1.0 good ≥ 0.5 acceptable &lt; 0.5 weak
+💡 context: unlike the sharpe or sortino ratio, which use volatility as the risk measure, the calmar ratio focuses directly on the most painful outcome – the drawdown. that makes it especially intuitive, since investors usually fear a price crash more concretely than statistical dispersion.
+⚠️ limitations: because only the single largest drawdown counts, one extreme event can distort the metric heavily – especially over short observation periods. a 36-month calculation window is standard practice. calmar ratio"><h3>Calmar Ratio</h3><p>Relates annualized return (usually CAGR) to the maximum drawdown – showing how much return an investment generated per unit of the worst setback it suffered.</p>
+<p><strong>Formula:</strong> <code>Calmar = CAGR / |Max Drawdown|</code></p>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CAGR</td>
+<td>Annualized return over the observation period (usually 3 years)</td>
+</tr>
+<tr>
+<td>Max Drawdown</td>
+<td>Largest decline from peak to trough within the same period</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Assessment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>≥ 3.0</td>
+<td>Very good</td>
+</tr>
+<tr>
+<td>≥ 1.0</td>
+<td>Good</td>
+</tr>
+<tr>
+<td>≥ 0.5</td>
+<td>Acceptable</td>
+</tr>
+<tr>
+<td>&lt; 0.5</td>
+<td>Weak</td>
+</tr>
+</tbody>
+</table>
+<div class="tip">💡 <strong>Context:</strong> Unlike the Sharpe or Sortino ratio, which use volatility as the risk measure, the Calmar ratio focuses directly on the most painful outcome – the drawdown. That makes it especially intuitive, since investors usually fear a price crash more concretely than statistical dispersion.</div>
+<div class="warning">⚠️ <strong>Limitations:</strong> Because only the single largest drawdown counts, one extreme event can distort the metric heavily – especially over short observation periods. A 36-month calculation window is standard practice.</div></article>
+<article class="term-card" id="candlestick" data-search=" an alternative way of displaying a price chart, where each &quot;candle&quot; summarizes one trading day: open, close, high, and low at a glance. 
+ 
+  green candle:  close &gt; open (positive day) 
+  red candle:  close &lt; open (negative day) 
+ the wick shows the day's high and low 
+ 
+ 💡  tip:  candlestick charts work especially well for short-term technical analysis (e.g. a 1-day to 1-month range).  candlestick"><h3>Candlestick</h3><p>An alternative way of displaying a price chart, where each "candle" summarizes one trading day: open, close, high, and low at a glance.</p>
+<ul>
+<li><strong>Green candle:</strong> Close &gt; open (positive day)</li>
+<li><strong>Red candle:</strong> Close &lt; open (negative day)</li>
+<li>The wick shows the day's high and low</li>
+</ul>
+<div class="tip">💡 <strong>Tip:</strong> Candlestick charts work especially well for short-term technical analysis (e.g. a 1-day to 1-month range).</div></article>
+<article class="term-card" id="cash-flow" data-search=" shows a company's actual flow of money – how much cash effectively comes in and goes out, independent of accounting profit. part of the financial data in stock monitor. 
+ 💡  why it matters:  a company can show a profit on paper (income statement) and still run into payment trouble if cash flow is negative – e.g. because customers aren't paying their invoices on time. many investors therefore consider cash flow a &quot;more honest&quot; metric than pure book profit.  cash flow"><h3>Cash Flow</h3><p>Shows a company's actual flow of money – how much cash effectively comes in and goes out, independent of accounting profit. Part of the financial data in Stock Monitor.</p>
+<div class="tip">💡 <strong>Why it matters:</strong> A company can show a profit on paper (income statement) and still run into payment trouble if cash flow is negative – e.g. because customers aren't paying their invoices on time. Many investors therefore consider cash flow a "more honest" metric than pure book profit.</div></article>
+<article class="term-card" id="central-bank" data-search=" the institution responsible for the monetary policy of a currency area – including setting policy interest rates, managing the money supply, and ensuring price stability. well-known examples: the swiss national bank (snb), the us federal reserve (fed), and the european central bank (ecb). 
+ 💡  why this matters for investors:  central bank interest-rate decisions are among the most influential events for the stock market – even the mere expectation of a rate change can move prices sharply, often before the decision is officially announced (see interest rates, government bonds).  central bank"><h3>Central Bank</h3><p>The institution responsible for the monetary policy of a currency area – including setting policy interest rates, managing the money supply, and ensuring price stability. Well-known examples: the Swiss National Bank (SNB), the US Federal Reserve (Fed), and the European Central Bank (ECB).</p>
+<div class="tip">💡 <strong>Why this matters for investors:</strong> Central bank interest-rate decisions are among the most influential events for the stock market – even the mere expectation of a rate change can move prices sharply, often before the decision is officially announced (see Interest Rates, Government Bonds).</div></article>
+<article class="term-card" id="commodities" data-search=" the english term for physical raw materials – widely used on international exchanges and in financial media (e.g. &quot;commodity etf&quot;, &quot;commodity trading&quot;). 
+ 💡  tip:  in stock monitor, this asset class also appears under this name (see commodities/rohstoffe).  commodities"><h3>Commodities</h3><p>The English term for physical raw materials – widely used on international exchanges and in financial media (e.g. "commodity ETF", "commodity trading").</p>
+<div class="tip">💡 <strong>Tip:</strong> In Stock Monitor, this asset class also appears under this name (see Commodities/Rohstoffe).</div></article>
+<article class="term-card" id="commodities-rohstoffe" data-search=" an umbrella term for precious metals (e.g. gold, silver) and other physical trading goods that can be tracked as their own asset class in the portfolio – often used for diversification, since they tend to behave differently from stocks (see beta).  commodities (rohstoffe)"><h3>Commodities (Rohstoffe)</h3><p>An umbrella term for precious metals (e.g. gold, silver) and other physical trading goods that can be tracked as their own asset class in the portfolio – often used for diversification, since they tend to behave differently from stocks (see Beta).</p></article>
+<article class="term-card" id="company-forms-ag-gmbh-ltd-and-co" data-search=" a company's legal form determines, among other things, how much liability owners bear for debts, how capital is structured – and whether shares can even be traded on a stock exchange. 
+ 
+ 
+ 
+ abbreviation 
+ meaning 
+ common in 
+ brief explanation 
+ 
+ 
+ 
+ 
+ ag 
+ aktiengesellschaft (stock corporation) 
+ switzerland, germany, austria 
+ capital is divided into shares, exchange-tradable; owners are liable only up to their contribution 
+ 
+ 
+ gmbh 
+ gesellschaft mit beschränkter haftung (limited liability company) 
+ germany, austria (similar in switzerland as &quot;sàrl&quot;/&quot;gmbh&quot;) 
+ similar to an ag, but shares are usually not freely tradable on an exchange; typical for small/medium businesses 
+ 
+ 
+ ltd. 
+ limited (company) 
+ uk and many english-speaking countries 
+ roughly equivalent to a gmbh; limited liability, often for smaller firms 
+ 
+ 
+ inc. / corp. 
+ incorporated / corporation 
+ usa 
+ roughly equivalent to an ag; shares usually exchange-tradable 
+ 
+ 
+ 
+ 💡  good to know:  only exchange-tradable legal forms like ag, ltd. (public), or inc. ever show up in a stock portfolio at all – a plain gmbh won't be found in stock monitor, since its shares aren't publicly tradable.  company forms (ag, gmbh, ltd. & co.)"><h3>Company Forms (AG, GmbH, Ltd. & Co.)</h3><p>A company's legal form determines, among other things, how much liability owners bear for debts, how capital is structured – and whether shares can even be traded on a stock exchange.</p>
+<table>
+<thead>
+<tr>
+<th>Abbreviation</th>
+<th>Meaning</th>
+<th>Common in</th>
+<th>Brief explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AG</td>
+<td>Aktiengesellschaft (stock corporation)</td>
+<td>Switzerland, Germany, Austria</td>
+<td>Capital is divided into shares, exchange-tradable; owners are liable only up to their contribution</td>
+</tr>
+<tr>
+<td>GmbH</td>
+<td>Gesellschaft mit beschränkter Haftung (limited liability company)</td>
+<td>Germany, Austria (similar in Switzerland as "Sàrl"/"GmbH")</td>
+<td>Similar to an AG, but shares are usually not freely tradable on an exchange; typical for small/medium businesses</td>
+</tr>
+<tr>
+<td>Ltd.</td>
+<td>Limited (Company)</td>
+<td>UK and many English-speaking countries</td>
+<td>Roughly equivalent to a GmbH; limited liability, often for smaller firms</td>
+</tr>
+<tr>
+<td>Inc. / Corp.</td>
+<td>Incorporated / Corporation</td>
+<td>USA</td>
+<td>Roughly equivalent to an AG; shares usually exchange-tradable</td>
+</tr>
+</tbody>
+</table>
+<div class="tip">💡 <strong>Good to know:</strong> Only exchange-tradable legal forms like AG, Ltd. (public), or Inc. ever show up in a stock portfolio at all – a plain GmbH won't be found in Stock Monitor, since its shares aren't publicly tradable.</div></article>
+<article class="term-card" id="company-info" data-search=" basic company data: ceo, employee count, market capitalization, revenue, profit (ttm = trailing twelve months), and a short description of the business model.  company info"><h3>Company Info</h3><p>Basic company data: CEO, employee count, market capitalization, revenue, profit (TTM = trailing twelve months), and a short description of the business model.</p></article>
+<article class="term-card" id="compound-interest-effect" data-search=" occurs when not only the originally invested capital earns interest, but the interest already received also starts earning interest itself. over long periods, this is considered one of the strongest levers for building wealth – which is why it's at the core of every buy-and-hold strategy. 
+ 💡  example:  10,000 chf at a 7% annual return grows to 17,000 chf after 10 years under simple interest (calculated only on the starting capital). with compound interest – where annual gains are reinvested and themselves earn interest – it grows to roughly 19,672 chf. the difference looks small at first but keeps growing exponentially over time. 
+ ⚠️  practical tip:  this effect is the main reason why starting to invest early is often more important than the size of the amount invested – time in the market has a disproportionate impact.  compound interest effect"><h3>Compound Interest Effect</h3><p>Occurs when not only the originally invested capital earns interest, but the interest already received also starts earning interest itself. Over long periods, this is considered one of the strongest levers for building wealth – which is why it's at the core of every buy-and-hold strategy.</p>
+<div class="tip">💡 <strong>Example:</strong> 10,000 CHF at a 7% annual return grows to 17,000 CHF after 10 years under simple interest (calculated only on the starting capital). With compound interest – where annual gains are reinvested and themselves earn interest – it grows to roughly 19,672 CHF. The difference looks small at first but keeps growing exponentially over time.</div>
+<div class="warning">⚠️ <strong>Practical tip:</strong> This effect is the main reason why starting to invest early is often more important than the size of the amount invested – time in the market has a disproportionate impact.</div></article>
+<article class="term-card" id="correlation-matrix" data-search=" shows how closely the daily price movements of all portfolio positions relate to each other – an important tool for assessing a portfolio's true diversification. 
+ 
+ 🟢  near +1:  strong positive correlation – positions move similarly 
+ ⬜  near 0:  no correlation – positions move independently 
+ 🔴  near −1:  strong negative correlation – positions move opposite to each other 
+ 
+ 💡  practical tip:  a portfolio of 20 stocks that all correlate strongly is, in reality, less diversified than the number of positions suggests.  correlation matrix"><h3>Correlation Matrix</h3><p>Shows how closely the daily price movements of all portfolio positions relate to each other – an important tool for assessing a portfolio's true diversification.</p>
+<ul>
+<li>🟢 <strong>Near +1:</strong> Strong positive correlation – positions move similarly</li>
+<li>⬜ <strong>Near 0:</strong> No correlation – positions move independently</li>
+<li>🔴 <strong>Near −1:</strong> Strong negative correlation – positions move opposite to each other</li>
+</ul>
+<div class="tip">💡 <strong>Practical tip:</strong> A portfolio of 20 stocks that all correlate strongly is, in reality, less diversified than the number of positions suggests.</div></article>
+<article class="term-card" id="cryptocurrencies" data-search=" digital assets based on a blockchain (e.g. bitcoin, ethereum) – organized in a decentralized way, with no central bank or regulator behind them. in stock monitor, they can be tracked as their own asset class alongside stocks and commodities, including a dedicated section in the alpha and beta analysis. 
+ ⚠️  good to know:  cryptocurrencies are considered especially volatile (see volatility) and, unlike bank deposits, are not covered by any deposit protection scheme.  cryptocurrencies"><h3>Cryptocurrencies</h3><p>Digital assets based on a blockchain (e.g. Bitcoin, Ethereum) – organized in a decentralized way, with no central bank or regulator behind them. In Stock Monitor, they can be tracked as their own asset class alongside stocks and commodities, including a dedicated section in the Alpha and Beta analysis.</p>
+<div class="warning">⚠️ <strong>Good to know:</strong> Cryptocurrencies are considered especially volatile (see Volatility) and, unlike bank deposits, are not covered by any deposit protection scheme.</div></article>
+<article class="term-card" id="currency-risk" data-search=" the risk that the value of an investment changes due to exchange-rate fluctuations – independent of how the stock itself performs. 
+ 💡  example:  a swiss investor buys a us stock for 100 usd. if the stock rises 10% to 110 usd, but the us dollar simultaneously weakens 5% against the swiss franc, the real gain left over is less than the 10% would suggest. 
+ 💡  tip:  anyone heavily invested in a single foreign currency (e.g. us stocks only) automatically carries currency risk. hedging against it is possible, but comes with additional costs.  currency risk"><h3>Currency Risk</h3><p>The risk that the value of an investment changes due to exchange-rate fluctuations – independent of how the stock itself performs.</p>
+<div class="tip">💡 <strong>Example:</strong> A Swiss investor buys a US stock for 100 USD. If the stock rises 10% to 110 USD, but the US dollar simultaneously weakens 5% against the Swiss franc, the real gain left over is less than the 10% would suggest.</div>
+<div class="tip">💡 <strong>Tip:</strong> Anyone heavily invested in a single foreign currency (e.g. US stocks only) automatically carries currency risk. Hedging against it is possible, but comes with additional costs.</div></article>
+<article class="term-card" id="cvar-conditional-value-at-risk" data-search=" also called expected shortfall – complements the var by answering the question it leaves open: how large is the loss on average when the var is actually exceeded? the cvar calculates the mean of all losses in exactly that &quot;worst-case&quot; part of the distribution. 
+ 💡  practical tip:  the cvar is considered more informative than the plain var, because it also captures the magnitude of extreme losses (tail risk), not just their probability – an important distinction especially during crises with fatter tails in the distribution.  cvar (conditional value at risk)"><h3>CVaR (Conditional Value at Risk)</h3><p>Also called Expected Shortfall – complements the VaR by answering the question it leaves open: how large is the loss on average when the VaR is actually exceeded? The CVaR calculates the mean of all losses in exactly that "worst-case" part of the distribution.</p>
+<div class="tip">💡 <strong>Practical tip:</strong> The CVaR is considered more informative than the plain VaR, because it also captures the magnitude of extreme losses (tail risk), not just their probability – an important distinction especially during crises with fatter tails in the distribution.</div></article>
+<h2 class="letter-heading" id="letter-D">D</h2>
+<article class="term-card" id="dax-german-stock-index" data-search=" germany's leading stock index, tracking the 40 largest and most actively traded companies on the frankfurt stock exchange (e.g. sap, siemens, allianz). considered a barometer of the german economy. selectable as a benchmark in stock monitor (ticker ^gdaxi).  dax (german stock index)"><h3>DAX (German Stock Index)</h3><p>Germany's leading stock index, tracking the 40 largest and most actively traded companies on the Frankfurt Stock Exchange (e.g. SAP, Siemens, Allianz). Considered a barometer of the German economy. Selectable as a benchmark in Stock Monitor (ticker ^GDAXI).</p></article>
+<article class="term-card" id="death-cross" data-search=" a classic technical sell signal: the short-term moving average (ma50) crosses the long-term one (ma200)  from above to below . considered the counterpart to the golden cross and often read as a warning sign of a possible downtrend. 
+ ⚠️  note:  as with the golden cross, this signal reacts with a delay since it's based on moving averages – it tends to confirm a trend rather than predict it.  death cross"><h3>Death Cross</h3><p>A classic technical sell signal: the short-term moving average (MA50) crosses the long-term one (MA200) <strong>from above to below</strong>. Considered the counterpart to the Golden Cross and often read as a warning sign of a possible downtrend.</p>
+<div class="warning">⚠️ <strong>Note:</strong> As with the Golden Cross, this signal reacts with a delay since it's based on moving averages – it tends to confirm a trend rather than predict it.</div></article>
+<article class="term-card" id="delisting" data-search=" the permanent removal of a stock from an exchange – after which it can no longer be traded normally. reasons can include a takeover, insolvency, going private, or failure to meet listing requirements. 
+ ⚠️  note:  in a delisting due to insolvency, shareholders may suffer a total loss. in a delisting due to a takeover, shareholders usually receive a buyout offer.  delisting"><h3>Delisting</h3><p>The permanent removal of a stock from an exchange – after which it can no longer be traded normally. Reasons can include a takeover, insolvency, going private, or failure to meet listing requirements.</p>
+<div class="warning">⚠️ <strong>Note:</strong> In a delisting due to insolvency, shareholders may suffer a total loss. In a delisting due to a takeover, shareholders usually receive a buyout offer.</div></article>
+<article class="term-card" id="dividends" data-search=" overview of historical and forecasted dividend payments across all portfolio positions. in the per-stock detail view: dividend history, cagr (annual growth rate), and a stability metric. 
+ ⚠️  important limitation:  stock monitor sources dividend data via yahoo finance – this data source does not reliably flag special dividends (one-off extra distributions outside the regular dividend) as such. they can therefore appear as if they were regular dividend increases, or be missing entirely. this affects all dividend-related evaluations in the app, especially the dividend aristocrat classification (see below). 
+  dividend aristocrat:  a term for companies that have increased their dividend every year for many consecutive years (classic threshold: 25+ years in the us). because of the limitation above, stock monitor applies this classification conservatively – a stock may actually deserve a higher title than shown.  dividends"><h3>Dividends</h3><p>Overview of historical and forecasted dividend payments across all portfolio positions. In the per-stock detail view: dividend history, CAGR (annual growth rate), and a stability metric.</p>
+<div class="warning">⚠️ <strong>Important limitation:</strong> Stock Monitor sources dividend data via Yahoo Finance – this data source does not reliably flag special dividends (one-off extra distributions outside the regular dividend) as such. They can therefore appear as if they were regular dividend increases, or be missing entirely. This affects all dividend-related evaluations in the app, especially the Dividend Aristocrat classification (see below).</div>
+<p><strong>Dividend Aristocrat:</strong> A term for companies that have increased their dividend every year for many consecutive years (classic threshold: 25+ years in the US). Because of the limitation above, Stock Monitor applies this classification conservatively – a stock may actually deserve a higher title than shown.</p></article>
+<article class="term-card" id="dow-jones-dow-jones-industrial-average" data-search=" one of the oldest and most well-known us stock indices, covering 30 large us companies (e.g. apple, microsoft, coca-cola). selectable as a benchmark in stock monitor (ticker dia). 
+ ⚠️  note:  despite its fame, it's methodologically somewhat outdated – unlike most modern indices, it's price-weighted rather than weighted by market capitalization. this means a high-priced stock moves the index more than a low-priced one, regardless of the company's actual size. the s&amp;p 500 doesn't have this weakness.  dow jones (dow jones industrial average)"><h3>Dow Jones (Dow Jones Industrial Average)</h3><p>One of the oldest and most well-known US stock indices, covering 30 large US companies (e.g. Apple, Microsoft, Coca-Cola). Selectable as a benchmark in Stock Monitor (ticker DIA).</p>
+<div class="warning">⚠️ <strong>Note:</strong> Despite its fame, it's methodologically somewhat outdated – unlike most modern indices, it's price-weighted rather than weighted by market capitalization. This means a high-priced stock moves the index more than a low-priced one, regardless of the company's actual size. The S&amp;P 500 doesn't have this weakness.</div></article>
+<article class="term-card" id="drawdown-dd" data-search=" measures the percentage decline from a prior peak to the current low – showing how painful a price decline actually was from an investor's point of view. 
+ 💡  practical tip:  before buying a position, check its maximum drawdown over a 5-year period. ask yourself:  would i have held through a −50% drawdown without selling?   drawdown (dd)"><h3>Drawdown (DD)</h3><p>Measures the percentage decline from a prior peak to the current low – showing how painful a price decline actually was from an investor's point of view.</p>
+<div class="tip">💡 <strong>Practical tip:</strong> Before buying a position, check its maximum drawdown over a 5-year period. Ask yourself: <em>Would I have held through a −50% drawdown without selling?</em></div></article>
+<h2 class="letter-heading" id="letter-E">E</h2>
+<article class="term-card" id="etf-fund-holdings" data-search=" for etfs and investment funds, stock monitor automatically shows the fund's top holdings – i.e. its largest individual positions, including weighting and number of shares. this gives an instant view of what you're actually invested in through the fund.  etf/fund holdings"><h3>ETF/Fund Holdings</h3><p>For ETFs and investment funds, Stock Monitor automatically shows the fund's top holdings – i.e. its largest individual positions, including weighting and number of shares. This gives an instant view of what you're actually invested in through the fund.</p></article>
+<article class="term-card" id="excess-cape-yield-ecy" data-search=" shows at a glance whether the us stock market (s&amp;p 500) is attractively or expensively valued relative to safe government bonds. 
+  formula:   ecy = earnings yield (1/cape × 100) − real 10-year bond yield (tips)  
+ 
+ 
+ 
+ ecy 
+ signal 
+ assessment 
+ 
+ 
+ 
+ 
+ &gt; 3% 
+ 🟢 
+ attractive 
+ 
+ 
+ 1–3% 
+ 🟡 
+ neutral 
+ 
+ 
+ 0–1% 
+ 🟠 
+ elevated 
+ 
+ 
+ &lt; 0% 
+ 🔴 
+ expensive 
+ 
+ 
+ 
+ ⚠️  note:  ecy is a market indicator, not a portfolio indicator – it says nothing about your individual positions and is not investment advice.  excess cape yield (ecy)"><h3>Excess CAPE Yield (ECY)</h3><p>Shows at a glance whether the US stock market (S&amp;P 500) is attractively or expensively valued relative to safe government bonds.</p>
+<p><strong>Formula:</strong> <code>ECY = Earnings yield (1/CAPE × 100) − real 10-year bond yield (TIPS)</code></p>
+<table>
+<thead>
+<tr>
+<th>ECY</th>
+<th>Signal</th>
+<th>Assessment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&gt; 3%</td>
+<td>🟢</td>
+<td>Attractive</td>
+</tr>
+<tr>
+<td>1–3%</td>
+<td>🟡</td>
+<td>Neutral</td>
+</tr>
+<tr>
+<td>0–1%</td>
+<td>🟠</td>
+<td>Elevated</td>
+</tr>
+<tr>
+<td>&lt; 0%</td>
+<td>🔴</td>
+<td>Expensive</td>
+</tr>
+</tbody>
+</table>
+<div class="warning">⚠️ <strong>Note:</strong> ECY is a market indicator, not a portfolio indicator – it says nothing about your individual positions and is not investment advice.</div></article>
+<h2 class="letter-heading" id="letter-F">F</h2>
+<article class="term-card" id="financials-financial-data" data-search=" income statement, balance sheet, and cash flow of a company, switchable between quarterly and annual views.  financials (financial data)"><h3>Financials (Financial Data)</h3><p>Income statement, balance sheet, and cash flow of a company, switchable between quarterly and annual views.</p></article>
+<article class="term-card" id="forex-fx" data-search=" short for &quot;foreign exchange&quot; – the worldwide market where currencies are traded against each other. decentralized and open around the clock on weekdays, it's the largest and most liquid financial market in the world, with a daily trading volume of several trillion us dollars. 
+ 💡  relation to stock monitor:  currency pairs (e.g. eur/usd) can't be held as their own position – but exchange-rate moves feed in indirectly through currency risk on foreign-currency positions (see currency risk).  forex (fx)"><h3>Forex (FX)</h3><p>Short for "Foreign Exchange" – the worldwide market where currencies are traded against each other. Decentralized and open around the clock on weekdays, it's the largest and most liquid financial market in the world, with a daily trading volume of several trillion US dollars.</p>
+<div class="tip">💡 <strong>Relation to Stock Monitor:</strong> Currency pairs (e.g. EUR/USD) can't be held as their own position – but exchange-rate moves feed in indirectly through currency risk on foreign-currency positions (see Currency Risk).</div></article>
+<article class="term-card" id="freefloat" data-search=" the portion of a company's shares that is freely traded on the exchange – i.e. not held by fixed hands (founding family, government, strategic large shareholders) who typically don't sell. 
+ 💡  why it matters:  a low freefloat means fewer tradable shares in the market, which can lead to higher price volatility since even smaller buy/sell orders move the price more. stock indices like the smi or s&amp;p 500 usually weight companies by freefloat market cap rather than full market cap.  freefloat"><h3>Freefloat</h3><p>The portion of a company's shares that is freely traded on the exchange – i.e. not held by fixed hands (founding family, government, strategic large shareholders) who typically don't sell.</p>
+<div class="tip">💡 <strong>Why it matters:</strong> A low freefloat means fewer tradable shares in the market, which can lead to higher price volatility since even smaller buy/sell orders move the price more. Stock indices like the SMI or S&amp;P 500 usually weight companies by freefloat market cap rather than full market cap.</div></article>
+<article class="term-card" id="ftse-100" data-search=" the uk's leading stock index, covering the 100 largest companies listed on the london stock exchange. &quot;ftse&quot; stands for financial times stock exchange. selectable as a benchmark in stock monitor (ticker ^ftse).  ftse 100"><h3>FTSE 100</h3><p>The UK's leading stock index, covering the 100 largest companies listed on the London Stock Exchange. "FTSE" stands for Financial Times Stock Exchange. Selectable as a benchmark in Stock Monitor (ticker ^FTSE).</p></article>
+<article class="term-card" id="full-reserve-banking-vollgeld" data-search=" a monetary reform concept under which only the central bank would be allowed to create money – commercial banks would lose the right to create additional book money (&quot;giralgeld&quot;) through lending. 
+ 💡  swiss reference:  on 10 june 2018, swiss voters went to the polls on the so-called vollgeld initiative – it was clearly rejected, with around 76% voting no. 
+ ⚠️  don't confuse:  unlike the gold standard, full-reserve banking isn't about pegging currency to a precious metal – it's about who is allowed to create book money (see gold standard).  full-reserve banking (vollgeld)"><h3>Full-Reserve Banking (Vollgeld)</h3><p>A monetary reform concept under which only the central bank would be allowed to create money – commercial banks would lose the right to create additional book money ("Giralgeld") through lending.</p>
+<div class="tip">💡 <strong>Swiss reference:</strong> On 10 June 2018, Swiss voters went to the polls on the so-called Vollgeld Initiative – it was clearly rejected, with around 76% voting no.</div>
+<div class="warning">⚠️ <strong>Don't confuse:</strong> Unlike the Gold Standard, full-reserve banking isn't about pegging currency to a precious metal – it's about who is allowed to create book money (see Gold Standard).</div></article>
+<article class="term-card" id="fund-investment-fund" data-search=" a pool where money from many investors is combined and jointly invested in a portfolio of securities – managed by a fund company. 
+ 💡  difference from an etf:  an etf (exchange traded fund) is a special type that trades continuously on the exchange like a stock and usually passively tracks an index. &quot;classic&quot; funds, by contrast, are often actively managed and traded only once a day at a fixed price (see also etf/fund holdings). 
+ ⚠️  practical tip:  actively managed funds usually charge higher fees than passive etfs – whether that's worth it depends on whether the fund manager consistently beats the market or index, which historically only a few manage to do.  fund (investment fund)"><h3>Fund (Investment Fund)</h3><p>A pool where money from many investors is combined and jointly invested in a portfolio of securities – managed by a fund company.</p>
+<div class="tip">💡 <strong>Difference from an ETF:</strong> An ETF (Exchange Traded Fund) is a special type that trades continuously on the exchange like a stock and usually passively tracks an index. "Classic" funds, by contrast, are often actively managed and traded only once a day at a fixed price (see also ETF/Fund Holdings).</div>
+<div class="warning">⚠️ <strong>Practical tip:</strong> Actively managed funds usually charge higher fees than passive ETFs – whether that's worth it depends on whether the fund manager consistently beats the market or index, which historically only a few manage to do.</div></article>
+<article class="term-card" id="futures" data-search=" standardized forward contracts: buyer and seller commit to buying or selling an underlying asset (e.g. commodity, index, stock) at a price fixed today, on a specific date in the future. 
+ ⚠️  for advanced users:  futures almost always involve leverage – even small price moves in the underlying can lead to disproportionate gains or losses, up to a total loss of the capital deployed. stock monitor deliberately does not offer futures, since the app is built for buy-and-hold investors.  futures"><h3>Futures</h3><p>Standardized forward contracts: buyer and seller commit to buying or selling an underlying asset (e.g. commodity, index, stock) at a price fixed today, on a specific date in the future.</p>
+<div class="warning">⚠️ <strong>For advanced users:</strong> Futures almost always involve leverage – even small price moves in the underlying can lead to disproportionate gains or losses, up to a total loss of the capital deployed. Stock Monitor deliberately does not offer futures, since the app is built for buy-and-hold investors.</div></article>
+<h2 class="letter-heading" id="letter-G">G</h2>
+<article class="term-card" id="gics-global-industry-classification-standard" data-search=" a worldwide standard for classifying publicly traded companies into industries. developed in 1999 by s&amp;p global and msci, it's used today by exchanges, fund managers, and financial media around the world. four-tier system: every stock gets an 8-digit code that narrows down through sector, industry group, industry and sub-industry – 11 sectors, 25 industry groups, 74 industries and 163 sub-industries in total. 
+ 💡  example:  apple and microsoft belong to the  information technology  sector, novartis and roche to  health care  – but at the finer industry level the paths often diverge clearly, e.g. chipmakers vs. software companies within the same sector. 
+ ⚠️  relation to stock monitor:  the sector diversification feature in stock monitor only uses the top level, i.e. the 11 sectors – the finer levels mainly help professional analysts make more precise comparisons (see sector diversification).  gics (global industry classification standard)"><h3>GICS (Global Industry Classification Standard)</h3><p>A worldwide standard for classifying publicly traded companies into industries. Developed in 1999 by S&amp;P Global and MSCI, it's used today by exchanges, fund managers, and financial media around the world. Four-tier system: every stock gets an 8-digit code that narrows down through Sector, Industry Group, Industry and Sub-Industry.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Count</th>
+<th>Example (Apple)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sector</td>
+<td>11</td>
+<td>Information Technology</td>
+</tr>
+<tr>
+<td>Industry Group</td>
+<td>25</td>
+<td>Technology Hardware & Equipment</td>
+</tr>
+<tr>
+<td>Industry</td>
+<td>74</td>
+<td>Technology Hardware, Storage & Peripherals</td>
+</tr>
+<tr>
+<td>Sub-Industry</td>
+<td>163</td>
+<td>Technology Hardware, Storage & Peripherals</td>
+</tr>
+</tbody>
+</table>
+<div class="tip">💡 <strong>Example:</strong> Apple and Microsoft belong to the <em>Information Technology</em> sector, Novartis and Roche to <em>Health Care</em> – but at the finer Industry level the paths often diverge clearly, e.g. chipmakers vs. software companies within the same sector.</div>
+<div class="warning">⚠️ <strong>Relation to Stock Monitor:</strong> The sector diversification feature in Stock Monitor only uses the top level, i.e. the 11 sectors – the finer levels mainly help professional analysts make more precise comparisons (see Sector Diversification).</div></article>
+<article class="term-card" id="gold-standard-and-silver-standard" data-search=" a historical monetary system in which the value of a currency was fixed to a specific amount of gold (or silver, under the silver standard) – central banks had to exchange paper money for the corresponding amount of precious metal on demand. 
+ 💡  tip:  most major economies, including the us, gradually abandoned the gold standard during the 20th century – finally in 1971 (the so-called &quot;nixon shock&quot;). since then, most currencies are &quot;fiat money&quot;: their value rests on trust in the issuing state rather than a precious-metal backing. 
+ ⚠️  don't confuse:  the gold standard has nothing to do with a gold etf (see commodities), which you can buy as an investment today – that's a pure investment, not a currency peg.  gold standard (and silver standard)"><h3>Gold Standard (and Silver Standard)</h3><p>A historical monetary system in which the value of a currency was fixed to a specific amount of gold (or silver, under the silver standard) – central banks had to exchange paper money for the corresponding amount of precious metal on demand.</p>
+<div class="tip">💡 <strong>Tip:</strong> Most major economies, including the US, gradually abandoned the gold standard during the 20th century – finally in 1971 (the so-called "Nixon Shock"). Since then, most currencies are "fiat money": their value rests on trust in the issuing state rather than a precious-metal backing.</div>
+<div class="warning">⚠️ <strong>Don't confuse:</strong> The gold standard has nothing to do with a gold ETF (see Commodities), which you can buy as an investment today – that's a pure investment, not a currency peg.</div></article>
+<article class="term-card" id="golden-cross" data-search=" a classic technical buy signal: the short-term moving average (ma50) crosses the long-term one (ma200)  from below to above . seen as a sign of a possible upward trend change. 
+ ⚠️  note:  like any signal based on moving averages, the golden cross reacts with a delay – it tends to confirm a trend already underway rather than predict it.  golden cross"><h3>Golden Cross</h3><p>A classic technical buy signal: the short-term moving average (MA50) crosses the long-term one (MA200) <strong>from below to above</strong>. Seen as a sign of a possible upward trend change.</p>
+<div class="warning">⚠️ <strong>Note:</strong> Like any signal based on moving averages, the Golden Cross reacts with a delay – it tends to confirm a trend already underway rather than predict it.</div></article>
+<article class="term-card" id="government-bonds" data-search=" debt securities issued by a state: investors lend the government money in exchange for regular interest payments (coupons) and repayment of the principal at maturity. depending on the country, they're considered a relatively safe investment, usually with lower returns than stocks. 
+ 💡  relation to stock monitor:  the &quot;real 10-year bond yield (tips)&quot; in the ecy formula refers specifically to us government bonds (the inflation-protected variant). and the &quot;risk-free rate&quot; used as a reference in the sharpe and sortino ratios is, in practice, usually approximated by the yield on short-term government bonds – since these are considered practically default-free.  government bonds"><h3>Government Bonds</h3><p>Debt securities issued by a state: investors lend the government money in exchange for regular interest payments (coupons) and repayment of the principal at maturity. Depending on the country, they're considered a relatively safe investment, usually with lower returns than stocks.</p>
+<div class="tip">💡 <strong>Relation to Stock Monitor:</strong> The "real 10-year bond yield (TIPS)" in the ECY formula refers specifically to US government bonds (the inflation-protected variant). And the "risk-free rate" used as a reference in the Sharpe and Sortino ratios is, in practice, usually approximated by the yield on short-term government bonds – since these are considered practically default-free.</div></article>
+<h2 class="letter-heading" id="letter-H">H</h2>
+<article class="term-card" id="head-and-shoulders-pattern" data-search=" classic technical reversal pattern: a first peak (left shoulder) is followed by a higher peak (head), then a third, lower peak (right shoulder) at roughly the same level as the left shoulder. the low points between the three peaks form the so-called neckline. 
+ 💡  signal:  if the price falls below the neckline after the right shoulder, that's read as a sell signal – the pattern suggests the end of an uptrend. the mirror image, the inverse head and shoulders, is read as a buy signal at the end of a downtrend. 
+ ⚠️  note:  as with the golden cross/death cross: chart patterns are a matter of interpretation and often only confirm themselves in hindsight – a break of the neckline is no guarantee of an actual trend reversal.  head and shoulders pattern"><h3>Head and Shoulders Pattern</h3><p>Classic technical reversal pattern: a first peak ("left shoulder") is followed by a higher peak ("head"), then a third, lower peak ("right shoulder") at roughly the same level as the left shoulder. The low points between the three peaks form the so-called neckline.</p>
+<div class="tip">💡 <strong>Signal:</strong> If the price falls below the neckline after the right shoulder, that's read as a sell signal – the pattern suggests the end of an uptrend. The mirror image, the inverse head and shoulders, is read as a buy signal at the end of a downtrend.</div>
+<div class="warning">⚠️ <strong>Note:</strong> As with the Golden Cross/Death Cross: chart patterns are a matter of interpretation and often only confirm themselves in hindsight – a break of the neckline is no guarantee of an actual trend reversal.</div></article>
+<article class="term-card" id="hedge-fund" data-search=" a type of fund that, unlike classic, long-term-oriented funds, often uses derivatives, short selling (betting on falling prices), and leverage to generate returns even when prices fall. usually accessible only to professional or very wealthy investors, with high minimum investments and fees. 
+ ⚠️  relation to stock monitor:  the app is deliberately not built for hedge-fund-style strategies – no leveraged products, no short selling. this fits the buy-and-hold philosophy stock monitor was designed for.  hedge fund"><h3>Hedge Fund</h3><p>A type of fund that, unlike classic, long-term-oriented funds, often uses derivatives, short selling (betting on falling prices), and leverage to generate returns even when prices fall. Usually accessible only to professional or very wealthy investors, with high minimum investments and fees.</p>
+<div class="warning">⚠️ <strong>Relation to Stock Monitor:</strong> The app is deliberately not built for hedge-fund-style strategies – no leveraged products, no short selling. This fits the buy-and-hold philosophy Stock Monitor was designed for.</div></article>
+<article class="term-card" id="holding-company" data-search=" a company whose main purpose is to hold and control shares in other companies (subsidiaries). a holding company usually doesn't produce goods or services itself, but bundles control over a group of companies. 
+ 💡  example:  many large corporations are organized as a holding structure – an &quot;xy holding ag&quot; holds majority stakes in several operating subsidiaries. 
+ 💡  tip:  a holding company is itself usually organized as an ag, gmbh, or similar (see company forms) – &quot;holding&quot; describes the function or structure, not the legal form.  holding company"><h3>Holding Company</h3><p>A company whose main purpose is to hold and control shares in other companies (subsidiaries). A holding company usually doesn't produce goods or services itself, but bundles control over a group of companies.</p>
+<div class="tip">💡 <strong>Example:</strong> Many large corporations are organized as a holding structure – an "XY Holding AG" holds majority stakes in several operating subsidiaries.</div>
+<div class="tip">💡 <strong>Tip:</strong> A holding company is itself usually organized as an AG, GmbH, or similar (see Company Forms) – "holding" describes the function or structure, not the legal form.</div></article>
+<h2 class="letter-heading" id="letter-I">I</h2>
+<article class="term-card" id="income-statement-pandl" data-search=" shows whether a company made a profit or loss over a period (quarter/year): revenue minus costs minus taxes, and so on. part of the financial data in stock monitor. 
+ 💡  difference from the balance sheet:  the balance sheet is a snapshot (&quot;what do we own today?&quot;), while the income statement shows the development over a period (&quot;what did we earn in this period?&quot;).  income statement (p&l)"><h3>Income Statement (P&L)</h3><p>Shows whether a company made a profit or loss over a period (quarter/year): revenue minus costs minus taxes, and so on. Part of the financial data in Stock Monitor.</p>
+<div class="tip">💡 <strong>Difference from the balance sheet:</strong> The balance sheet is a snapshot ("what do we own today?"), while the income statement shows the development over a period ("what did we earn in this period?").</div></article>
+<article class="term-card" id="index-comparison" data-search=" shows the performance of the world's major stock indices (including s&amp;p 500, dax, smi, nikkei 225) in a bar chart, optionally alongside your own portfolio's performance for direct comparison. 
+ 💡  example:  this lets you answer at a glance: &quot;has my portfolio outperformed or underperformed the smi over the last 12 months?&quot;  index comparison"><h3>Index Comparison</h3><p>Shows the performance of the world's major stock indices (including S&amp;P 500, DAX, SMI, Nikkei 225) in a bar chart, optionally alongside your own portfolio's performance for direct comparison.</p>
+<div class="tip">💡 <strong>Example:</strong> This lets you answer at a glance: "Has my portfolio outperformed or underperformed the SMI over the last 12 months?"</div></article>
+<article class="term-card" id="interest-rates" data-search=" the price of lending money: whoever lends money (e.g. via a savings account or a government bond) earns interest for it; whoever borrows money (e.g. takes out a loan) pays it. 
+ 💡  why this matters for investors:  central banks like the snb or the us federal reserve set policy rates that influence the overall interest-rate level of an economy – and, with it, how attractive stocks are relative to government bonds (see government bonds, excess cape yield). when rates rise, safe bonds become relatively more attractive, which tends to put pressure on stock prices – and vice versa.  interest rates"><h3>Interest Rates</h3><p>The price of lending money: whoever lends money (e.g. via a savings account or a government bond) earns interest for it; whoever borrows money (e.g. takes out a loan) pays it.</p>
+<div class="tip">💡 <strong>Why this matters for investors:</strong> Central banks like the SNB or the US Federal Reserve set policy rates that influence the overall interest-rate level of an economy – and, with it, how attractive stocks are relative to government bonds (see Government Bonds, Excess CAPE Yield). When rates rise, safe bonds become relatively more attractive, which tends to put pressure on stock prices – and vice versa.</div></article>
+<article class="term-card" id="ipo-initial-public-offering" data-search=" the moment a previously private company sells shares to the public for the first time, making it publicly tradable. before that, the company belonged only to a few owners (e.g. founders, family, venture capitalists) – after the ipo, anyone can buy shares on the exchange. 
+ 💡  how does it work?  the company, together with banks, sets an issue price and brings a certain number of new shares to the exchange. whoever buys shares on the first trading day (or afterward) becomes a co-owner of the company – just like with any other stock. in return, the company receives fresh capital, e.g. to grow or pay down debt. 
+ ⚠️  good to know:  ipo stocks are often considered more volatile than established, long-traded stocks – there's little price history yet to judge fair value, and the freefloat is often small at first (see freefloat). in addition, founders and early investors are usually barred from selling their own shares for several months (the so-called  lock-up period ) – once that period ends, a lot of shares can hit the market at once, putting additional pressure on the price.  ipo (initial public offering)"><h3>IPO (Initial Public Offering)</h3><p>The moment a previously private company sells shares to the public for the first time, making it publicly tradable. Before that, the company belonged only to a few owners (e.g. founders, family, venture capitalists) – after the IPO, anyone can buy shares on the exchange.</p>
+<div class="tip">💡 <strong>How does it work?</strong> The company, together with banks, sets an issue price and brings a certain number of new shares to the exchange. Whoever buys shares on the first trading day (or afterward) becomes a co-owner of the company – just like with any other stock. In return, the company receives fresh capital, e.g. to grow or pay down debt.</div>
+<div class="warning">⚠️ <strong>Good to know:</strong> IPO stocks are often considered more volatile than established, long-traded stocks – there's little price history yet to judge fair value, and the freefloat is often small at first (see Freefloat). In addition, founders and early investors are usually barred from selling their own shares for several months (the so-called <strong>lock-up period</strong>) – once that period ends, a lot of shares can hit the market at once, putting additional pressure on the price.</div></article>
+<h2 class="letter-heading" id="letter-L">L</h2>
+<article class="term-card" id="lombard-loan" data-search=" a loan secured by pledged securities (e.g. your own stock portfolio) – the bank lends money against the portfolio as collateral, without the securities having to be sold. widely used in private banking, especially in switzerland. 
+ 💡  example:  an investor wants to invest additional capital without selling existing positions (e.g. for tax reasons). they take out a lombard loan, pledge their portfolio as collateral, and invest the borrowed money on top – increasing the leverage on their total wealth. 
+ ⚠️  for advanced users:  if the value of the pledged securities drops sharply, the bank can issue a margin call – additional collateral must be posted, or positions are forcibly sold, often at the worst possible time. a lombard loan therefore increases both the leverage and the risk of the overall portfolio, similar to other leveraged products (see futures, mini futures).  lombard loan"><h3>Lombard Loan</h3><p>A loan secured by pledged securities (e.g. your own stock portfolio) – the bank lends money against the portfolio as collateral, without the securities having to be sold. Widely used in private banking, especially in Switzerland.</p>
+<div class="tip">💡 <strong>Example:</strong> An investor wants to invest additional capital without selling existing positions (e.g. for tax reasons). They take out a Lombard loan, pledge their portfolio as collateral, and invest the borrowed money on top – increasing the leverage on their total wealth.</div>
+<div class="warning">⚠️ <strong>For advanced users:</strong> If the value of the pledged securities drops sharply, the bank can issue a margin call – additional collateral must be posted, or positions are forcibly sold, often at the worst possible time. A Lombard loan therefore increases both the leverage and the risk of the overall portfolio, similar to other leveraged products (see Futures, Mini Futures).</div></article>
+<h2 class="letter-heading" id="letter-M">M</h2>
+<article class="term-card" id="market-capitalization" data-search=" the total value of a company on the stock market – i.e. what you would theoretically have to pay to buy all of its outstanding shares at once. 
+  formula:   market cap = share price × number of outstanding shares  
+ 💡  example:  a share costs 50 chf, there are 100 million shares → market cap = 50 × 100 million =  5 billion chf . 
+ common size categories (definitions vary, rough guidelines): 
+ 
+ 
+ 
+ category 
+ market cap 
+ 
+ 
+ 
+ 
+ large cap 
+ &gt; 10 billion 
+ 
+ 
+ mid cap 
+ 2–10 billion 
+ 
+ 
+ small cap 
+ &lt; 2 billion 
+ 
+ 
+ 
+ ⚠️  note:  market capitalization is not the same as enterprise value – it doesn't account for things like debt or cash holdings.  market capitalization"><h3>Market Capitalization</h3><p>The total value of a company on the stock market – i.e. what you would theoretically have to pay to buy all of its outstanding shares at once.</p>
+<p><strong>Formula:</strong> <code>Market cap = Share price × Number of outstanding shares</code></p>
+<div class="tip">💡 <strong>Example:</strong> A share costs 50 CHF, there are 100 million shares → market cap = 50 × 100 million = <strong>5 billion CHF</strong>.</div>
+<p>Common size categories (definitions vary, rough guidelines):</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Market Cap</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Large Cap</td>
+<td>&gt; 10 billion</td>
+</tr>
+<tr>
+<td>Mid Cap</td>
+<td>2–10 billion</td>
+</tr>
+<tr>
+<td>Small Cap</td>
+<td>&lt; 2 billion</td>
+</tr>
+</tbody>
+</table>
+<div class="warning">⚠️ <strong>Note:</strong> Market capitalization is not the same as enterprise value – it doesn't account for things like debt or cash holdings.</div></article>
+<article class="term-card" id="mini-futures" data-search=" a leveraged bank product (leverage certificate) for retail investors that tracks the price movement of an underlying (e.g. stock, index, commodity) with leverage – smaller price moves have a disproportionate effect on the value of the mini future. 
+ ⚠️  for advanced users:  mini futures have a so-called knock-out barrier – if it's touched, the product immediately expires worthless, regardless of how the price develops afterward. this total-loss risk clearly sets mini futures apart from regular stocks. for this reason, they are not part of stock monitor's feature set.  mini futures"><h3>Mini Futures</h3><p>A leveraged bank product (leverage certificate) for retail investors that tracks the price movement of an underlying (e.g. stock, index, commodity) with leverage – smaller price moves have a disproportionate effect on the value of the mini future.</p>
+<div class="warning">⚠️ <strong>For advanced users:</strong> Mini futures have a so-called knock-out barrier – if it's touched, the product immediately expires worthless, regardless of how the price develops afterward. This total-loss risk clearly sets mini futures apart from regular stocks. For this reason, they are not part of Stock Monitor's feature set.</div></article>
+<article class="term-card" id="monte-carlo-simulation" data-search=" calculates thousands of possible future scenarios for a portfolio, based on the historical volatility and return of the positions held (geometric brownian motion). the result is displayed as a band chart (10th/25th/50th/75th/90th percentile). 
+ ⚠️  note:  not a forecast! the simulation is based on historical data and is not investment advice.  monte carlo simulation"><h3>Monte Carlo Simulation</h3><p>Calculates thousands of possible future scenarios for a portfolio, based on the historical volatility and return of the positions held (geometric Brownian motion). The result is displayed as a band chart (10th/25th/50th/75th/90th percentile).</p>
+<div class="warning">⚠️ <strong>Note:</strong> Not a forecast! The simulation is based on historical data and is not investment advice.</div></article>
+<article class="term-card" id="moving-averages-ma" data-search=" smooth out the price curve by showing the average price over the last x days – hiding short-term fluctuations and revealing the underlying trend. 
+ 
+  ma20:  short-term trend (20 days) 
+  ma50:  medium-term trend (50 days) 
+  ma200:  long-term trend (200 days) 
+ 
+ 💡  trading tip:  when ma50 crosses ma200 from below to above, that's called a  golden cross  – a classic buy signal.  moving averages (ma)"><h3>Moving Averages (MA)</h3><p>Smooth out the price curve by showing the average price over the last X days – hiding short-term fluctuations and revealing the underlying trend.</p>
+<ul>
+<li><strong>MA20:</strong> Short-term trend (20 days)</li>
+<li><strong>MA50:</strong> Medium-term trend (50 days)</li>
+<li><strong>MA200:</strong> Long-term trend (200 days)</li>
+</ul>
+<div class="tip">💡 <strong>Trading tip:</strong> When MA50 crosses MA200 from below to above, that's called a <strong>Golden Cross</strong> – a classic buy signal.</div></article>
+<article class="term-card" id="msci-world" data-search=" a global stock index with around 1,500 companies from 23 developed countries – covering practically the entire developed world economy. selectable as a benchmark in stock monitor (ticker urth). 
+ 💡  tip:  for investors who want to spread as broadly as possible across countries and sectors with a single etf (buy-and-hold), the msci world or similar global indices are a common go-to choice in practice.  msci world"><h3>MSCI World</h3><p>A global stock index with around 1,500 companies from 23 developed countries – covering practically the entire developed world economy. Selectable as a benchmark in Stock Monitor (ticker URTH).</p>
+<div class="tip">💡 <strong>Tip:</strong> For investors who want to spread as broadly as possible across countries and sectors with a single ETF (buy-and-hold), the MSCI World or similar global indices are a common go-to choice in practice.</div></article>
+<article class="term-card" id="mwr-money-weighted-return" data-search=" measures an investor's personal return, taking into account when and how much money was paid in or withdrawn. usually calculated via the xirr method. in stock monitor, it complements the twr in the portfolio performance section. 
+ 💡  difference from twr:  if you make a large purchase shortly before a strong price rally, that shows up as a strong positive effect in the mwr – but not in the twr, since twr measures pure market movement, independent of your own timing. mwr answers the question &quot;how good was  my  timing?&quot;, while twr answers &quot;how good was the investment itself?&quot;.  mwr (money-weighted return)"><h3>MWR (Money-Weighted Return)</h3><p>Measures an investor's personal return, taking into account when and how much money was paid in or withdrawn. Usually calculated via the XIRR method. In Stock Monitor, it complements the TWR in the Portfolio Performance section.</p>
+<div class="tip">💡 <strong>Difference from TWR:</strong> If you make a large purchase shortly before a strong price rally, that shows up as a strong positive effect in the MWR – but not in the TWR, since TWR measures pure market movement, independent of your own timing. MWR answers the question "How good was <em>my</em> timing?", while TWR answers "How good was the investment itself?".</div></article>
+<h2 class="letter-heading" id="letter-N">N</h2>
+<article class="term-card" id="nasdaq-100" data-search=" tracks the 100 largest companies listed on the us technology exchange nasdaq that are not from the financial industry – so banks, insurers, and asset managers are excluded (the &quot;financials&quot; sector in the gics system, see gics). heavily weighted toward technology (e.g. apple, microsoft, nvidia, amazon). considered a barometer for the tech sector. selectable as a benchmark in stock monitor (ticker qqq).  nasdaq 100"><h3>NASDAQ 100</h3><p>Tracks the 100 largest companies listed on the US technology exchange NASDAQ that are not from the financial industry – so banks, insurers, and asset managers are excluded (the "Financials" sector in the GICS system, see GICS). Heavily weighted toward technology (e.g. Apple, Microsoft, NVIDIA, Amazon). Considered a barometer for the tech sector. Selectable as a benchmark in Stock Monitor (ticker QQQ).</p></article>
+<h2 class="letter-heading" id="letter-O">O</h2>
+<article class="term-card" id="options" data-search=" derivatives that give the buyer the right (but not the obligation) to buy an underlying asset at a fixed price (the strike) on or before a specific date (a call option) or to sell it (a put option). in return, the seller of the option (the writer) is obligated to fulfil the contract if the buyer exercises their right. 
+ 💡  uses:  options are used both to hedge existing positions and to speculate with leverage – depending on the strategy, the risk profile varies widely. 
+ ⚠️  for advanced users:  the buyer of an option can lose at most the premium paid, while the seller (writer) of an uncovered position faces theoretically unlimited loss risk. stock monitor deliberately does not offer options.  options"><h3>Options</h3><p>Derivatives that give the buyer the right (but not the obligation) to buy an underlying asset at a fixed price (the strike) on or before a specific date (a call option) or to sell it (a put option). In return, the seller of the option (the writer) is obligated to fulfil the contract if the buyer exercises their right.</p>
+<div class="tip">💡 <strong>Uses:</strong> Options are used both to hedge existing positions and to speculate with leverage – depending on the strategy, the risk profile varies widely.</div>
+<div class="warning">⚠️ <strong>For advanced users:</strong> The buyer of an option can lose at most the premium paid, while the seller (writer) of an uncovered position faces theoretically unlimited loss risk. Stock Monitor deliberately does not offer options.</div></article>
+<h2 class="letter-heading" id="letter-P">P</h2>
+<article class="term-card" id="p-a-per-annum" data-search=" latin for &quot;per year&quot; – one of the most common abbreviations in finance. it shows up wherever a return, interest rate, or growth rate is converted to an annual basis so that different time periods become comparable. 
+ 💡  example:  &quot;sharpe ratio, annualized&quot; or &quot;risk-free rate: 5% p.a.&quot; means the figure refers to a full year – not a day, a month, or the total holding period. 
+ ⚠️  good to know:  when two investments were held for different lengths of time, a p.a. figure is more meaningful than the raw total gain – it lets you fairly compare, say, a stock that rose 10% in 6 months with one that rose 15% in 2 years.  p.a. (per annum)"><h3>p.a. (per annum)</h3><p>Latin for "per year" – one of the most common abbreviations in finance. It shows up wherever a return, interest rate, or growth rate is converted to an annual basis so that different time periods become comparable.</p>
+<div class="tip">💡 <strong>Example:</strong> "Sharpe ratio, annualized" or "risk-free rate: 5% p.a." means the figure refers to a full year – not a day, a month, or the total holding period.</div>
+<div class="warning">⚠️ <strong>Good to know:</strong> When two investments were held for different lengths of time, a p.a. figure is more meaningful than the raw total gain – it lets you fairly compare, say, a stock that rose 10% in 6 months with one that rose 15% in 2 years.</div></article>
+<article class="term-card" id="p-e-ratio-price-earnings-ratio" data-search=" one of the best-known valuation metrics for a stock: it shows how many times annual earnings you're currently paying for a share. 
+  formula:   p/e = share price ÷ earnings per share  
+ 💡  example:  a stock costs 100 chf, earnings per share are 5 chf a year → p/e = 100 ÷ 5 =  20 . investors are paying 20 times annual earnings. 
+ ⚠️  context matters:  a low p/e is often read as &quot;cheap&quot; and a high one as &quot;expensive&quot; – but the p/e is only meaningful in comparison: against the stock's own history, against peers in the same industry, or against the broader market. high-growth companies often carry persistently higher p/e ratios than mature, slow-growing ones – that alone doesn't make them overvalued.  p/e ratio (price-earnings ratio)"><h3>P/E Ratio (Price-Earnings Ratio)</h3><p>One of the best-known valuation metrics for a stock: it shows how many times annual earnings you're currently paying for a share.</p>
+<p><strong>Formula:</strong> <code>P/E = Share price ÷ Earnings per share</code></p>
+<div class="tip">💡 <strong>Example:</strong> A stock costs 100 CHF, earnings per share are 5 CHF a year → P/E = 100 ÷ 5 = <strong>20</strong>. Investors are paying 20 times annual earnings.</div>
+<div class="warning">⚠️ <strong>Context matters:</strong> A low P/E is often read as "cheap" and a high one as "expensive" – but the P/E is only meaningful in comparison: against the stock's own history, against peers in the same industry, or against the broader market. High-growth companies often carry persistently higher P/E ratios than mature, slow-growing ones – that alone doesn't make them overvalued.</div></article>
+<article class="term-card" id="purchase-price-line-cost-basis" data-search=" the weighted average purchase price across all of your own buys of a position (average across all tranches), shown in the chart as a reference line. price above = gain, price below = loss.  purchase price line (cost basis)"><h3>Purchase Price Line (Cost Basis)</h3><p>The weighted average purchase price across all of your own buys of a position (average across all tranches), shown in the chart as a reference line. Price above = gain, price below = loss.</p></article>
+<h2 class="letter-heading" id="letter-R">R</h2>
+<article class="term-card" id="rebalancing" data-search=" periodically bringing a portfolio back to its originally planned weighting of individual positions or asset classes, after different price developments have shifted the weights. overweighted positions are reduced, underweighted ones topped up. 
+ 💡  example:  someone who built a portfolio at 60% stocks / 40% bonds and, after a strong year for stocks, ends up at 75%/25% would sell part of the stocks during rebalancing and buy more bonds to get back to 60/40. 
+ ⚠️  relation to stock monitor:  the app offers an automated version of this concept with ai-balance (rebalancing), which compares each position's current and target weight and derives buy/sell/hold recommendations from it (see ai-balance).  rebalancing"><h3>Rebalancing</h3><p>Periodically bringing a portfolio back to its originally planned weighting of individual positions or asset classes, after different price developments have shifted the weights. Overweighted positions are reduced, underweighted ones topped up.</p>
+<div class="tip">💡 <strong>Example:</strong> Someone who built a portfolio at 60% stocks / 40% bonds and, after a strong year for stocks, ends up at 75%/25% would sell part of the stocks during rebalancing and buy more bonds to get back to 60/40.</div>
+<div class="warning">⚠️ <strong>Relation to Stock Monitor:</strong> The app offers an automated version of this concept with AI-Balance (Rebalancing), which compares each position's current and target weight and derives buy/sell/hold recommendations from it (see AI-Balance).</div></article>
+<article class="term-card" id="regional-distribution" data-search=" shows the portfolio's geographic breakdown by continent or country – helping you assess how dependent a portfolio is on the economic development of a single region.  regional distribution"><h3>Regional Distribution</h3><p>Shows the portfolio's geographic breakdown by continent or country – helping you assess how dependent a portfolio is on the economic development of a single region.</p></article>
+<article class="term-card" id="ri-factor-return-investment-share" data-search=" shows whether a position delivers above- or below-average returns relative to its share of invested capital in the portfolio. 
+  formula:   ri factor = performance % ÷ capital share %  
+ 💡  example:  capital share 8.46% · performance +101.58% → ri factor = 101.58 ÷ 8.46 ≈  12.00 . this position is generating 12× as much return as its weight in the portfolio would suggest. 
+ 
+ 
+ 
+ value 
+ symbol 
+ meaning 
+ 
+ 
+ 
+ 
+ &gt; 1 
+ ✅ 
+ above average – the position outperforms its weight in the portfolio 
+ 
+ 
+ = 1 
+ – 
+ average – return exactly matches the capital share 
+ 
+ 
+ &lt; 1 
+ ⚠️ 
+ below average – the position underperforms its weight 
+ 
+ 
+ &lt; 0 
+ ⚠️ 
+ loss-making position 
+ 
+ 
+  ri factor (return / investment share)"><h3>RI Factor (Return / Investment Share)</h3><p>Shows whether a position delivers above- or below-average returns relative to its share of invested capital in the portfolio.</p>
+<p><strong>Formula:</strong> <code>RI factor = Performance % ÷ Capital share %</code></p>
+<div class="tip">💡 <strong>Example:</strong> Capital share 8.46% · Performance +101.58% → RI factor = 101.58 ÷ 8.46 ≈ <strong>12.00</strong>. This position is generating 12× as much return as its weight in the portfolio would suggest.</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Symbol</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&gt; 1</td>
+<td>✅</td>
+<td>Above average – the position outperforms its weight in the portfolio</td>
+</tr>
+<tr>
+<td>= 1</td>
+<td>–</td>
+<td>Average – return exactly matches the capital share</td>
+</tr>
+<tr>
+<td>&lt; 1</td>
+<td>⚠️</td>
+<td>Below average – the position underperforms its weight</td>
+</tr>
+<tr>
+<td>&lt; 0</td>
+<td>⚠️</td>
+<td>Loss-making position</td>
+</tr>
+</tbody>
+</table></article>
+<article class="term-card" id="rsi-relative-strength-index" data-search=" a technical indicator measuring whether a stock is short-term overbought or oversold, on a scale from 0 to 100. 
+ 
+ 
+ 
+ value 
+ signal 
+ rule of thumb 
+ 
+ 
+ 
+ 
+ &gt; 70 
+ 🔺 overbought 
+ possible pullback 
+ 
+ 
+ 30–70 
+ ▬ neutral 
+ normal range 
+ 
+ 
+ &lt; 30 
+ 🔻 oversold 
+ possible recovery 
+ 
+ 
+  rsi (relative strength index)"><h3>RSI (Relative Strength Index)</h3><p>A technical indicator measuring whether a stock is short-term overbought or oversold, on a scale from 0 to 100.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Signal</th>
+<th>Rule of Thumb</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&gt; 70</td>
+<td>🔺 Overbought</td>
+<td>Possible pullback</td>
+</tr>
+<tr>
+<td>30–70</td>
+<td>▬ Neutral</td>
+<td>Normal range</td>
+</tr>
+<tr>
+<td>&lt; 30</td>
+<td>🔻 Oversold</td>
+<td>Possible recovery</td>
+</tr>
+</tbody>
+</table></article>
+<article class="term-card" id="rule-based-portfolio-assessment" data-search=" an automatic evaluation of a portfolio based on fixed rules and metrics – entirely without ai, and without sending any data to an external service. 
+ 💡  how does it work?  metrics such as diversification, performance, risk (e.g. sharpe/sortino ratio, drawdown), and concentration risk are combined into an overall assessment: a traffic-light color and a score from 0–100, broken down into several categories. 
+ ⚠️  difference from ai analysis:  a rule-based assessment always follows the same, traceable rules – the same portfolio data always produces the same result. an ai analysis, by contrast, can pick up on additional patterns but is less predictable. neither replaces your own investment decision.  rule-based portfolio assessment"><h3>Rule-Based Portfolio Assessment</h3><p>An automatic evaluation of a portfolio based on fixed rules and metrics – entirely without AI, and without sending any data to an external service.</p>
+<div class="tip">💡 <strong>How does it work?</strong> Metrics such as diversification, performance, risk (e.g. Sharpe/Sortino ratio, drawdown), and concentration risk are combined into an overall assessment: a traffic-light color and a score from 0–100, broken down into several categories.</div>
+<div class="warning">⚠️ <strong>Difference from AI analysis:</strong> A rule-based assessment always follows the same, traceable rules – the same portfolio data always produces the same result. An AI analysis, by contrast, can pick up on additional patterns but is less predictable. Neither replaces your own investment decision.</div></article>
+<h2 class="letter-heading" id="letter-S">S</h2>
+<article class="term-card" id="sandp-500" data-search=" the most closely watched us stock index, covering the 500 largest publicly traded us companies by market capitalization. widely regarded as the best barometer for the us economy as a whole and commonly used as the default benchmark – in stock monitor too, it's the default comparison index for alpha, beta, and the sharpe ratio (ticker spy).  s&p 500"><h3>S&P 500</h3><p>The most closely watched US stock index, covering the 500 largest publicly traded US companies by market capitalization. Widely regarded as the best barometer for the US economy as a whole and commonly used as the default benchmark – in Stock Monitor too, it's the default comparison index for Alpha, Beta, and the Sharpe ratio (ticker SPY).</p></article>
+<article class="term-card" id="sector-diversification" data-search=" shows the breakdown of the portfolio by gics sector (e.g. technology, financials, health care). a portfolio spread broadly across sectors is less vulnerable if a single sector runs into trouble. 
+ 💡  example:  an investor holding only tech stocks takes the full hit of a tech sell-off – one who also holds health care, industrials, and financials cushions the blow.  sector diversification"><h3>Sector Diversification</h3><p>Shows the breakdown of the portfolio by GICS sector (e.g. technology, financials, health care). A portfolio spread broadly across sectors is less vulnerable if a single sector runs into trouble.</p>
+<div class="tip">💡 <strong>Example:</strong> An investor holding only tech stocks takes the full hit of a tech sell-off – one who also holds health care, industrials, and financials cushions the blow.</div></article>
+<article class="term-card" id="semi-deviation-downside-deviation" data-search=" unlike regular volatility, this measures only the fluctuations  to the downside  – i.e. deviations below a reference value (usually the average return or the risk-free rate). positive price swings are not included. 
+ 💡  why does the distinction matter?  regular volatility treats an upward price jump as &quot;risk&quot; in exactly the same way as a downward drop – but from an investor's perspective, it's usually only the downward movement that actually feels unpleasant. semi-deviation captures that &quot;felt risk&quot; more accurately. 
+ ⚠️  relation to stock monitor:  semi-deviation is the quantity that sits in the denominator of the sortino ratio (denoted there as σ⁻) – it's essentially the downside counterpart to the regular volatility used in the sharpe ratio.  semi-deviation (downside deviation)"><h3>Semi-Deviation (Downside Deviation)</h3><p>Unlike regular volatility, this measures only the fluctuations <strong>to the downside</strong> – i.e. deviations below a reference value (usually the average return or the risk-free rate). Positive price swings are not included.</p>
+<div class="tip">💡 <strong>Why does the distinction matter?</strong> Regular volatility treats an upward price jump as "risk" in exactly the same way as a downward drop – but from an investor's perspective, it's usually only the downward movement that actually feels unpleasant. Semi-deviation captures that "felt risk" more accurately.</div>
+<div class="warning">⚠️ <strong>Relation to Stock Monitor:</strong> Semi-deviation is the quantity that sits in the denominator of the Sortino ratio (denoted there as σ⁻) – it's essentially the downside counterpart to the regular volatility used in the Sharpe ratio.</div></article>
+<article class="term-card" id="sharpe-ratio" data-search=" measures an investment's return relative to the risk taken (volatility) – showing how much return you actually got per unit of risk. 
+  formula:   sharpe = (rp − rf) / σp × √252  
+ 
+ 
+ 
+ symbol 
+ meaning 
+ 
+ 
+ 
+ 
+ rp 
+ portfolio return (average daily return) 
+ 
+ 
+ rf 
+ risk-free rate (5% p.a.) 
+ 
+ 
+ σp 
+ standard deviation of all daily returns 
+ 
+ 
+ √252 
+ annualization factor (trading days per year) 
+ 
+ 
+ 
+ 
+ 
+ 
+ value 
+ assessment 
+ 
+ 
+ 
+ 
+ ≥ 1.0 
+ good 
+ 
+ 
+ ≥ 0.5 
+ acceptable 
+ 
+ 
+ ≥ 0.0 
+ weak 
+ 
+ 
+ &lt; 0.0 
+ negative 
+ 
+ 
+ 
+ ⚠️  limitations:  upside and downside volatility are &quot;punished&quot; equally – a stock that jumps sharply higher appears riskier than it really is. for portfolios with strong upward momentum, the sortino ratio is often more informative.  sharpe ratio"><h3>Sharpe Ratio</h3><p>Measures an investment's return relative to the risk taken (volatility) – showing how much return you actually got per unit of risk.</p>
+<p><strong>Formula:</strong> <code>Sharpe = (Rp − Rf) / σp × √252</code></p>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rp</td>
+<td>Portfolio return (average daily return)</td>
+</tr>
+<tr>
+<td>Rf</td>
+<td>Risk-free rate (5% p.a.)</td>
+</tr>
+<tr>
+<td>σp</td>
+<td>Standard deviation of all daily returns</td>
+</tr>
+<tr>
+<td>√252</td>
+<td>Annualization factor (trading days per year)</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Assessment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>≥ 1.0</td>
+<td>Good</td>
+</tr>
+<tr>
+<td>≥ 0.5</td>
+<td>Acceptable</td>
+</tr>
+<tr>
+<td>≥ 0.0</td>
+<td>Weak</td>
+</tr>
+<tr>
+<td>&lt; 0.0</td>
+<td>Negative</td>
+</tr>
+</tbody>
+</table>
+<div class="warning">⚠️ <strong>Limitations:</strong> Upside and downside volatility are "punished" equally – a stock that jumps sharply higher appears riskier than it really is. For portfolios with strong upward momentum, the Sortino ratio is often more informative.</div></article>
+<article class="term-card" id="skewness" data-search=" a statistical measure of the asymmetry of a return distribution – showing whether extreme outliers tend to occur on the positive or the negative side.
+positive skew: distribution with a long right &quot;tail&quot; – many small losses, but occasional very large gains
+negative skew: distribution with a long left &quot;tail&quot; – many small gains, but occasional very large losses (&quot;tail risk&quot;)
+skewness = 0: symmetric distribution (as with a normal distribution)
+💡 example: many options strategies with regular small premium income (e.g. option-writing strategies) show strongly negative skewness – things usually go fine, but a rare crash can wipe out a disproportionate share of the gains.
+⚠️ practical tip: two investments with identical volatility and sharpe ratio can have completely different skewness. anyone wary of tail risk should look specifically for a roughly neutral or positive skew – not just at return and standard deviation. skewness"><h3>Skewness</h3><p>A statistical measure of the asymmetry of a return distribution – showing whether extreme outliers tend to occur on the positive or the negative side.</p>
+<ul>
+<li><strong>Positive skew:</strong> Distribution with a long right "tail" – many small losses, but occasional very large gains</li>
+<li><strong>Negative skew:</strong> Distribution with a long left "tail" – many small gains, but occasional very large losses ("tail risk")</li>
+<li><strong>Skewness = 0:</strong> Symmetric distribution (as with a normal distribution)</li>
+</ul>
+<div class="tip">💡 <strong>Example:</strong> Many options strategies with regular small premium income (e.g. option-writing strategies) show strongly negative skewness – things usually go fine, but a rare crash can wipe out a disproportionate share of the gains.</div>
+<div class="warning">⚠️ <strong>Practical tip:</strong> Two investments with identical volatility and Sharpe ratio can have completely different skewness. Anyone wary of tail risk should look specifically for a roughly neutral or positive skew – not just at return and standard deviation.</div></article>
+<article class="term-card" id="smi-swiss-market-index" data-search=" switzerland's leading stock index, covering the 20 largest and most liquid companies listed on the swiss stock exchange (six) (e.g. nestlé, roche, novartis, ubs). selectable as a benchmark in stock monitor (ticker ewl).  smi (swiss market index)"><h3>SMI (Swiss Market Index)</h3><p>Switzerland's leading stock index, covering the 20 largest and most liquid companies listed on the Swiss stock exchange (SIX) (e.g. Nestlé, Roche, Novartis, UBS). Selectable as a benchmark in Stock Monitor (ticker EWL).</p></article>
+<article class="term-card" id="sortino-ratio" data-search=" a refinement of the sharpe ratio developed by frank sortino: also measures return per unit of risk, but penalizes  only negative  fluctuations – positive price jumps don't count as risk. 
+  formula:   sortino = (rp − rf) / σ⁻ × √252  (σ⁻ = standard deviation of negative returns only) 
+ 
+ 
+ 
+  
+ sharpe ratio 
+ sortino ratio 
+ 
+ 
+ 
+ 
+ considers 
+ all fluctuations 
+ only negative fluctuations 
+ 
+ 
+ positive outliers 
+ counted as risk 
+ ignored 
+ 
+ 
+ typical value 
+ 0.5 – 2.0 
+ often somewhat higher than sharpe 
+ 
+ 
+  sortino ratio"><h3>Sortino Ratio</h3><p>A refinement of the Sharpe ratio developed by Frank Sortino: also measures return per unit of risk, but penalizes <strong>only negative</strong> fluctuations – positive price jumps don't count as risk.</p>
+<p><strong>Formula:</strong> <code>Sortino = (Rp − Rf) / σ⁻ × √252</code> (σ⁻ = standard deviation of negative returns only)</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Sharpe Ratio</th>
+<th>Sortino Ratio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Considers</td>
+<td>All fluctuations</td>
+<td>Only negative fluctuations</td>
+</tr>
+<tr>
+<td>Positive outliers</td>
+<td>Counted as risk</td>
+<td>Ignored</td>
+</tr>
+<tr>
+<td>Typical value</td>
+<td>0.5 – 2.0</td>
+<td>Often somewhat higher than Sharpe</td>
+</tr>
+</tbody>
+</table></article>
+<article class="term-card" id="stop-loss-and-target-price" data-search=" personal price limits that can be set individually for each stock: 
+ 
+  stop-loss:  a lower limit – if the price falls below it, the app raises a warning 
+  target price:  a personal price goal (independent of the analyst target price) 
+  stop-loss & target price"><h3>Stop-Loss & Target Price</h3><p>Personal price limits that can be set individually for each stock:</p>
+<ul>
+<li><strong>Stop-loss:</strong> A lower limit – if the price falls below it, the app raises a warning</li>
+<li><strong>Target price:</strong> A personal price goal (independent of the analyst target price)</li>
+</ul></article>
+<article class="term-card" id="stress-test-portfolio" data-search=" simulates how a portfolio would behave under various negative market scenarios – e.g. a sharp rise in interest rates, a market crash, or a downturn in a specific sector. unlike the monte carlo simulation, which runs through many random future scenarios, a stress test specifically tests individual, predefined crisis scenarios. 
+ 💡  why it's useful:  a stress test shows how robust a portfolio is against certain risks – for example, whether it's too concentrated in a single sector or region (see sector diversification, regional distribution, correlation matrix). 
+ 🔧  in stock monitor:  this feature is planned but not yet available – envisioned as an additional tab within the existing correlation window.  stress test (portfolio)"><h3>Stress Test (Portfolio)</h3><p>Simulates how a portfolio would behave under various negative market scenarios – e.g. a sharp rise in interest rates, a market crash, or a downturn in a specific sector. Unlike the Monte Carlo simulation, which runs through many random future scenarios, a stress test specifically tests individual, predefined crisis scenarios.</p>
+<div class="tip">💡 <strong>Why it's useful:</strong> A stress test shows how robust a portfolio is against certain risks – for example, whether it's too concentrated in a single sector or region (see Sector Diversification, Regional Distribution, Correlation Matrix).</div>
+<div class="planned">🔧 <strong>In Stock Monitor:</strong> This feature is planned but not yet available – envisioned as an additional tab within the existing Correlation window.</div></article>
+<h2 class="letter-heading" id="letter-T">T</h2>
+<article class="term-card" id="trend-line" data-search=" a linear regression through the price history – showing the broad direction a stock has moved in over the selected period. upward slope = uptrend, downward slope = downtrend.  trend line"><h3>Trend Line</h3><p>A linear regression through the price history – showing the broad direction a stock has moved in over the selected period. Upward slope = uptrend, downward slope = downtrend.</p></article>
+<article class="term-card" id="twr-time-weighted-return" data-search=" measures the pure return of an investment, independent of when and how much you yourself paid in or withdrew. the standard way to objectively assess an investment's performance and compare it to a benchmark (e.g. the s&amp;p 500). 
+ 💡  example:  two investors hold the same portfolio over the same period – one pays in everything upfront, the other adds money monthly. the twr is identical for both, since it only measures market movement, not individual deposit/withdrawal behavior. their personal return (see mwr) can still differ significantly.  twr (time-weighted return)"><h3>TWR (Time-Weighted Return)</h3><p>Measures the pure return of an investment, independent of when and how much you yourself paid in or withdrew. The standard way to objectively assess an investment's performance and compare it to a benchmark (e.g. the S&amp;P 500).</p>
+<div class="tip">💡 <strong>Example:</strong> Two investors hold the same portfolio over the same period – one pays in everything upfront, the other adds money monthly. The TWR is identical for both, since it only measures market movement, not individual deposit/withdrawal behavior. Their personal return (see MWR) can still differ significantly.</div></article>
+<h2 class="letter-heading" id="letter-V">V</h2>
+<article class="term-card" id="var-value-at-risk" data-search=" a risk metric that indicates the maximum loss of a position or portfolio over a given time period that is not expected to be exceeded with a certain probability (the so-called confidence level). 
+ 💡  example:  a 1-day var of 5,000 chf at a 95% confidence level means: with 95% probability, the loss on a given day will be at most 5,000 chf – in the remaining 5% of cases it can be higher. 
+ ⚠️  limitation:  the var says nothing about how large the loss can actually get in those remaining 5% of cases – that's exactly the gap the cvar closes (see above under c).  var (value at risk)"><h3>VaR (Value at Risk)</h3><p>A risk metric that indicates the maximum loss of a position or portfolio over a given time period that is not expected to be exceeded with a certain probability (the so-called confidence level).</p>
+<div class="tip">💡 <strong>Example:</strong> A 1-day VaR of 5,000 CHF at a 95% confidence level means: with 95% probability, the loss on a given day will be at most 5,000 CHF – in the remaining 5% of cases it can be higher.</div>
+<div class="warning">⚠️ <strong>Limitation:</strong> The VaR says nothing about how large the loss can actually get in those remaining 5% of cases – that's exactly the gap the CVaR closes (see above under C).</div></article>
+<article class="term-card" id="volatility" data-search=" measures how strongly a stock's price fluctuates – regardless of whether it moves up or down. statistically, the standard deviation of price returns, usually expressed as a percentage per year. 
+ ⚠️  important for beginners:  volatility is not the same as &quot;bad&quot; or &quot;risky&quot; in the everyday sense – a stock that rises sharply also has high volatility. it describes the range of fluctuation, not the direction. that's exactly why the sharpe ratio (which is based on volatility) also penalizes positive outliers – while the sortino ratio only considers downside fluctuations. 
+ 💡  practical tip:  low volatility means calmer, more predictable price movements – interesting for safety-focused investors. high volatility means bigger opportunities, but also bigger potential losses.  volatility"><h3>Volatility</h3><p>Measures how strongly a stock's price fluctuates – regardless of whether it moves up or down. Statistically, the standard deviation of price returns, usually expressed as a percentage per year.</p>
+<div class="warning">⚠️ <strong>Important for beginners:</strong> Volatility is not the same as "bad" or "risky" in the everyday sense – a stock that rises sharply also has high volatility. It describes the range of fluctuation, not the direction. That's exactly why the Sharpe ratio (which is based on volatility) also penalizes positive outliers – while the Sortino ratio only considers downside fluctuations.</div>
+<div class="tip">💡 <strong>Practical tip:</strong> Low volatility means calmer, more predictable price movements – interesting for safety-focused investors. High volatility means bigger opportunities, but also bigger potential losses.</div></article>
+<h2 class="letter-heading" id="letter-W">W</h2>
+<article class="term-card" id="warrants" data-search=" securitized instruments issued by banks that grant option-like rights: buyers acquire the right to buy an underlying at a fixed price (call warrant) or to sell it (put warrant). unlike classic options, warrants are securities that trade freely on the exchange. 
+ ⚠️  for advanced users:  as with options and mini futures, the value of a warrant can fall to a total loss – especially if the underlying moves unfavorably or as the warrant approaches its expiration date (time-value decay). not part of stock monitor's feature set.  warrants"><h3>Warrants</h3><p>Securitized instruments issued by banks that grant option-like rights: buyers acquire the right to buy an underlying at a fixed price (call warrant) or to sell it (put warrant). Unlike classic options, warrants are securities that trade freely on the exchange.</p>
+<div class="warning">⚠️ <strong>For advanced users:</strong> As with options and mini futures, the value of a warrant can fall to a total loss – especially if the underlying moves unfavorably or as the warrant approaches its expiration date (time-value decay). Not part of Stock Monitor's feature set.</div></article>
+<article class="term-card" id="watchlist" data-search=" lets you quickly compare the performance of multiple symbols (up to 50) in a single bar chart – without those positions actually having to be held in the portfolio.  watchlist"><h3>Watchlist</h3><p>Lets you quickly compare the performance of multiple symbols (up to 50) in a single bar chart – without those positions actually having to be held in the portfolio.</p></article>
+<h2 class="letter-heading" id="letter-X">X</h2>
+<article class="term-card" id="xirr" data-search=" method for calculating the annualized return of an investment where deposits and withdrawals occur at irregular points in time – unlike classic irr, which assumes evenly spaced intervals. each cash flow is weighted by its exact date. 
+ 💡  in stock monitor:  forms the computational basis of mwr (money-weighted return) in the portfolio performance section – wherever irregular purchases and sales need to be accounted for correctly.  xirr (extended internal rate of return)"><h3>XIRR (Extended Internal Rate of Return)</h3><p>Method for calculating the annualized return of an investment where deposits and withdrawals occur at irregular points in time – unlike classic IRR, which assumes evenly spaced intervals. Each cash flow is weighted by its exact date.</p>
+<div class="tip">💡 <strong>In Stock Monitor:</strong> Forms the computational basis of MWR (Money-Weighted Return) in the Portfolio Performance section – wherever irregular purchases and sales need to be accounted for correctly.</div></article>
+<div id="no-results">No matching term found. Try a different search.</div>
+</main>
+
+<footer>
+  <div>© 2026 Stock Monitor · Developed in Switzerland 🇨🇭</div>
+  <div class="footer-links">
+    <a href="/?lang=en">Home</a>
+    <a href="https://github.com/StockMonitorCH/stock-monitor" target="_blank">GitHub</a>
+    <a href="mailto:info@stock-monitor.ch">info@stock-monitor.ch</a>
+  </div>
+</footer>
+
+<script>
+const searchInput = document.getElementById('glossary-search');
+const cards = Array.from(document.querySelectorAll('.term-card'));
+const letterHeadings = Array.from(document.querySelectorAll('.letter-heading'));
+const alphaNav = document.getElementById('alpha-nav');
+const searchCount = document.getElementById('search-count');
+const noResults = document.getElementById('no-results');
+const stickyGroup = document.querySelector('.sticky-header-group');
+const glossaryContent = document.getElementById('glossary-content');
+
+// Read each card's title once and split into words (for jump matching)
+const cardTitles = cards.map(c => (c.querySelector('h3')?.textContent || '').trim().toLowerCase());
+const cardWords = cardTitles.map(t => t.split(/[\s/(),–-]+/).filter(Boolean));
+
+// Also split each card's full description text into words (for filtering the
+// result list). Matching at word-start instead of a plain substring check
+// avoids accidental hits like "rsi" inside "diveRSIfication".
+const cardTextWords = cards.map(c => (c.dataset.search || '').split(/[^\p{L}\p{N}]+/u).filter(Boolean));
+
+function matchesQuery(words, query) {
+  const terms = query.split(/\s+/).filter(Boolean);
+  return terms.length > 0 && terms.every(t => words.some(w => w.startsWith(t)));
+}
+
+// Find the best jump target for query q, in priority order:
+// 1) A word in the title matches exactly (e.g. "ma" -> "Moving Averages (MA)")
+// 2) The title starts with the query (e.g. "gold" -> "Golden Cross")
+// 3) Any word in the title starts with the query (e.g. "ri" -> "RI Factor")
+function findJumpTarget(q) {
+  for (let i = 0; i < cards.length; i++) {
+    if (cardWords[i].includes(q)) return cards[i];
+  }
+  for (let i = 0; i < cards.length; i++) {
+    if (cardTitles[i].startsWith(q)) return cards[i];
+  }
+  for (let i = 0; i < cards.length; i++) {
+    if (cardWords[i].some(w => w.startsWith(q))) return cards[i];
+  }
+  return null;
+}
+
+// Measure the actual height of the fixed area: keep the spacer (so content
+// doesn't disappear underneath it) and the jump scroll-offset in sync.
+function updateStickyOffset() {
+  const h = stickyGroup ? stickyGroup.getBoundingClientRect().height : 190;
+  document.documentElement.style.setProperty('--sticky-offset', (h + 14) + 'px');
+}
+updateStickyOffset();
+window.addEventListener('resize', updateStickyOffset);
+window.addEventListener('load', updateStickyOffset);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', updateStickyOffset);
+}
+
+// Mobile: collapse the header (logo/back/language) and title on scroll or
+// jump, so the search box + letter nav stay pinned near the top and more
+// reading room opens up below. Expand again when back at the page top
+// (e.g. focusing the search field).
+const headerEl = document.querySelector('header.site-header');
+const introEl = document.querySelector('.glossary-intro');
+const mobileQuery = window.matchMedia('(max-width: 640px)');
+let isCompact = false;
+
+function setCompact(v) {
+  if (v === isCompact) return;
+  isCompact = v;
+  stickyGroup.classList.toggle('compact', v);
+}
+
+function handleScrollCompact() {
+  if (!mobileQuery.matches) { setCompact(false); return; }
+  setCompact(window.scrollY > 20);
+}
+
+window.addEventListener('scroll', handleScrollCompact, { passive: true });
+if (mobileQuery.addEventListener) {
+  mobileQuery.addEventListener('change', handleScrollCompact);
+}
+[headerEl, introEl].forEach(el => {
+  if (el) el.addEventListener('transitionend', updateStickyOffset);
+});
+
+let jumpTimer = null;
+let lastJumpTarget = null;
+let jumpDebounce = null;
+
+function jumpTo(card) {
+  if (!card) return;
+  // Don't skip based on "same target as last time": otherwise jumping to
+  // the same term again (e.g. after manually scrolling elsewhere) would
+  // wrongly do nothing.
+  if (lastJumpTarget && lastJumpTarget !== card) lastJumpTarget.classList.remove('jump-target');
+  lastJumpTarget = card;
+  card.classList.add('jump-target');
+  updateStickyOffset();
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  clearTimeout(jumpTimer);
+  jumpTimer = setTimeout(() => card.classList.remove('jump-target'), 1600);
+}
+
+searchInput.addEventListener('focus', () => {
+  // Prevents mobile browsers from miscalculating the fixed area when the
+  // keyboard opens if the page is still scrolled from a previous jump.
+  window.scrollTo({ top: 0, behavior: 'auto' });
+  updateStickyOffset();
+});
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  let visible = 0;
+
+  if (q === '') {
+    cards.forEach(c => c.classList.remove('hidden', 'jump-target'));
+    letterHeadings.forEach(h => h.style.display = '');
+    alphaNav.style.display = 'flex';
+    searchCount.textContent = '';
+    noResults.style.display = 'none';
+    lastJumpTarget = null;
+    clearTimeout(jumpDebounce);
+    glossaryContent.style.paddingBottom = '';
+    updateStickyOffset();
+    return;
+  }
+
+  alphaNav.style.display = 'none';
+
+  let jumpTarget = null;
+  cards.forEach((c, i) => {
+    const match = matchesQuery(cardTextWords[i], q);
+    c.classList.toggle('hidden', !match);
+    if (match) visible++;
+  });
+
+  // If filtering leaves only a few terms, the page as a whole gets shorter
+  // than the viewport - the browser then can't scroll a card further down
+  // (e.g. the last match) all the way to the top, because the page already
+  // ends. Reserve extra space at the bottom so any card can be scrolled to
+  // the top; without an active search the space stays normal.
+  glossaryContent.style.paddingBottom = window.innerHeight + 'px';
+
+  jumpTarget = findJumpTarget(q);
+  // No term has a title word starting with the query (e.g. "ris" only
+  // matches body text like "Risiko", not "RSI"): fall back to the first
+  // actual match in the filtered list instead of not jumping at all and
+  // leaving the page at its old scroll position.
+  if (!jumpTarget) {
+    jumpTarget = cards.find(c => !c.classList.contains('hidden')) || null;
+  }
+
+  letterHeadings.forEach(h => {
+    let el = h.nextElementSibling;
+    let anyVisible = false;
+    while (el && !el.classList.contains('letter-heading')) {
+      if (el.classList.contains('term-card') && !el.classList.contains('hidden')) {
+        anyVisible = true;
+      }
+      el = el.nextElementSibling;
+    }
+    h.style.display = anyVisible ? '' : 'none';
+  });
+
+  searchCount.textContent = visible + (visible === 1 ? ' term found' : ' terms found');
+  noResults.style.display = visible === 0 ? 'block' : 'none';
+
+  // Jump only now: counter text and alpha-nav visibility are already set,
+  // so the measured height of the fixed area is accurate.
+  // Debounced: only jump once typing pauses briefly, otherwise every
+  // keystroke triggers an overlapping jump and only the first (usually
+  // not the intended result) is ever visible.
+  clearTimeout(jumpDebounce);
+  if (jumpTarget) {
+    jumpDebounce = setTimeout(() => jumpTo(jumpTarget), 150);
+  } else if (lastJumpTarget) {
+    lastJumpTarget.classList.remove('jump-target');
+    lastJumpTarget = null;
+  }
+});
+</script>
+
+</body>
+</html>
