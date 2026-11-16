@@ -1,2 +1,47 @@
 # Deutsche Screenshots nur lokal / auf der Homepage, README ist englisch
 screenshots/*_DE.png
+
+# --- Privat: darf nie auf GitHub ---
+Schlüssel/
+zugang.odt
+*.smpf
+!Demo.smpf
+transactions-*.csv
+US_Tax_Summary_*.pdf
+Wertschriftenverzeichnis_*.pdf
+HomePage/subscribe.php
+HomePage/Timm Boner.jpg
+
+# --- Erzeugte Dateien: Pakete, Logs, Caches ---
+*.flatpak
+*.dmg
+*.apk
+stock_monitor.zip
+fp/repo/
+fp/generated-sources.json
+__pycache__/
+*.log
+*.pkl
+*download_stats.html
+
+# --- Persönliche Arbeitsdateien ---
+Alt/
+Alte Pakete/
+**/Alt/
+HomePage/Neuer Ordner/
+HomePage/Test/
+test/
+ttt/
+*.mp4
+*.odt
+*.rtf
+Demo_notes.*
+Traceback*.txt
+/=
+
+# --- Homepage: Bilder und Dokumente nur auf dem Webserver ---
+HomePage/screenshots/
+HomePage/chart-monitor/
+HomePage/fx/
+HomePage/docs/
+HomePage/zinsen.jpg
